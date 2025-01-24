@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowInsets
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.activity.ComponentActivity
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -84,6 +83,8 @@ class MainActivity : ComponentActivity() {
         Log.d("MainActivity", "onCreate called")
         enableEdgeToEdge()
         setContent {
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
+
             val context = LocalContext.current
             val installedApps = getInstalledApps(context).sortedBy { it.name }
             val groupedApps =
