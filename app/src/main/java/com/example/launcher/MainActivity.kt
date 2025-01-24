@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -71,6 +73,13 @@ fun getInstalledApps(context: Context): List<App> {
         )
     }
 }
+
+fun calculateLetterOffset(letter: Char, letters: List<Char>, scrollbarHeightFraction: Float): Dp {
+    val letterIndex = letters.indexOf(letter)
+    val letterPosition = letterIndex.toFloat() / letters.size * scrollbarHeightFraction
+    return Dp(letterPosition * 100) // Adjust the multiplier as needed
+}
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,21 +127,37 @@ class MainActivity : ComponentActivity() {
                         .fillMaxHeight()
                 ) {
                     // Selected letter
-                    if (isScrollbarTouched && selectedLetter != null) {
-                        Text(
-                            text = selectedLetter.toString(),
-                            fontSize = 24.sp, // Make the letter bigger
-                            color = Color.Red,
+                    if (isScrollbarTouched) {
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.CenterVertically)
-                                .padding(end = 8.dp) // Add some spacing
-                        )
+                                .fillMaxHeight()
+                                .width(48.dp)
+                                .background(Color.Transparent)
+                        ) {
+                            // Display the alphabet vertically
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(8.dp)
+                            ) {
+                                sortedLetters.forEach { letter ->
+                                    Text(
+                                        text = letter.toString(),
+                                        fontSize = 16.sp,
+                                        color = if (letter == selectedLetter) Color.Red else Color.Gray,
+                                        modifier = Modifier.padding(2.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // bar
+
+                    val scrollbarHeightFraction = 1f - (1f / 3f + 1f / 8f)
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight(1f - (1f / 3f + 1f / 8f))
+                            .fillMaxHeight(scrollbarHeightFraction)
                             .width(48.dp)
                             .background(Color.Transparent)
                             .border(1.dp, Color.Gray)
@@ -152,22 +177,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                     ) {
-                        if (isScrollbarTouched) {
-                            // Display the alphabet vertically
-                            Column(
+                        selectedLetter?.let { letter ->
+                            Text(
+                                text = letter.toString(),
+                                fontSize = 24.sp, // Make the selected letter bigger
+                                color = Color.Red,
                                 modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(8.dp)
-                            ) {
-                                sortedLetters.forEach { letter ->
-                                    Text(
-                                        text = letter.toString(),
-                                        fontSize = 32.sp, // Adjust the size as needed
-                                        color = if (letter == selectedLetter) Color.Red else Color.Gray,
-                                        modifier = Modifier.padding(2.dp)
-                                    )
-                                }
-                            }
+                                    .align(Alignment.CenterStart)
+                                    .offset(y = calculateLetterOffset(letter, sortedLetters, scrollbarHeightFraction))
+                            )
                         }
                     }
                 }
