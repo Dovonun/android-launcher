@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,10 +41,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.core.graphics.drawable.toBitmap
 
 data class App(
@@ -72,12 +75,6 @@ fun getInstalledApps(context: Context): List<App> {
             resolveInfo.loadIcon(packageManager).toBitmap().asImageBitmap()
         )
     }
-}
-
-fun calculateLetterOffset(letter: Char, letters: List<Char>, scrollbarHeightFraction: Float): Dp {
-    val letterIndex = letters.indexOf(letter)
-    val letterPosition = letterIndex.toFloat() / letters.size * scrollbarHeightFraction
-    return Dp(letterPosition * 100) // Adjust the multiplier as needed
 }
 
 
@@ -110,6 +107,7 @@ class MainActivity : ComponentActivity() {
                 installedApps.filter { it.name[0].uppercaseChar() == letter }
             } ?: installedApps
 
+
             Box(modifier = Modifier.fillMaxSize()) {
                 // Display the list of apps
                 LazyColumn(state = lazyListState) {
@@ -121,72 +119,68 @@ class MainActivity : ComponentActivity() {
                 }
 
 
-                Row(
+                Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
+                        .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
+                        .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
+                        .border(1.dp, Color.Green)
                 ) {
-                    // Selected letter
-                    if (isScrollbarTouched) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .border(1.dp, Color.Blue)
+                    ) {
+                        // Selected letter
+                        if (isScrollbarTouched) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(48.dp)
+                                    .background(Color.Transparent)
+                            ) {
+                                // Display the alphabet vertically
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(8.dp),
+                                            verticalArrangement = Arrangement.SpaceBetween // Evenly distribute letters
+                                ) {
+                                    sortedLetters.forEach { letter ->
+                                        Text(
+                                            text = letter.toString(),
+                                            fontSize = if (letter == selectedLetter) 24.sp else 16.sp, // Make the selected letter bigger
+                                            color = if (letter == selectedLetter) Color.Red else Color.Gray,
+                                            modifier = Modifier.padding(2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .width(48.dp)
                                 .background(Color.Transparent)
-                        ) {
-                            // Display the alphabet vertically
-                            Column(
-                                modifier = Modifier
-                                    .align(Alignment.CenterStart)
-                                    .padding(8.dp)
-                            ) {
-                                sortedLetters.forEach { letter ->
-                                    Text(
-                                        text = letter.toString(),
-                                        fontSize = 16.sp,
-                                        color = if (letter == selectedLetter) Color.Red else Color.Gray,
-                                        modifier = Modifier.padding(2.dp)
+                                .border(1.dp, Color.Gray)
+                                .pointerInput(Unit) {
+                                    detectDragGestures(
+                                        onDragStart = {
+                                            isScrollbarTouched = true
+                                        },
+                                        onDragEnd = {
+                                            isScrollbarTouched = false
+                                        },
+                                        onDrag = { change, _ ->
+                                            val letterIndex =
+                                                (change.position.y / size.height * sortedLetters.size).toInt()
+                                            selectedLetter = sortedLetters.getOrNull(letterIndex)
+                                        }
                                     )
                                 }
-                            }
-                        }
-                    }
-
-                    // bar
-
-                    val scrollbarHeightFraction = 1f - (1f / 3f + 1f / 8f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight(scrollbarHeightFraction)
-                            .width(48.dp)
-                            .background(Color.Transparent)
-                            .border(1.dp, Color.Gray)
-                            .pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDragStart = {
-                                        isScrollbarTouched = true
-                                    },
-                                    onDragEnd = {
-                                        isScrollbarTouched = false
-                                    },
-                                    onDrag = { change, _ ->
-                                        val letterIndex =
-                                            (change.position.y / size.height * sortedLetters.size).toInt()
-                                        selectedLetter = sortedLetters.getOrNull(letterIndex)
-                                    }
-                                )
-                            }
-                    ) {
-                        selectedLetter?.let { letter ->
-                            Text(
-                                text = letter.toString(),
-                                fontSize = 24.sp, // Make the selected letter bigger
-                                color = Color.Red,
-                                modifier = Modifier
-                                    .align(Alignment.CenterStart)
-                                    .offset(y = calculateLetterOffset(letter, sortedLetters, scrollbarHeightFraction))
-                            )
-                        }
+                        )
                     }
                 }
 //                AlphabetScrollbar(
