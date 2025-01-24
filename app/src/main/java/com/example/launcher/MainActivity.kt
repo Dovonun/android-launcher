@@ -110,7 +110,25 @@ class MainActivity : ComponentActivity() {
 
             Box(modifier = Modifier.fillMaxSize()) {
                 // Display the list of apps
-                LazyColumn(state = lazyListState) {
+                LazyColumn(
+                    state = lazyListState, modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 1f / 4f * LocalConfiguration.current.screenHeightDp.dp)
+                ) {
+                    // Add the selected letter as a header
+                    selectedLetter?.let { letter ->
+                        item {
+                            Text(
+                                text = letter.toString(),
+                                fontSize = 24.sp,
+                                color = Color.Black,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                                    .padding(start = 64.dp)
+                            )
+                        }
+                    }
                     items(filteredApps) { app ->
                         AppRow(app = app) {
                             app.launch(context)
@@ -146,7 +164,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .fillMaxHeight()
                                         .padding(8.dp),
-                                            verticalArrangement = Arrangement.SpaceBetween // Evenly distribute letters
+                                    verticalArrangement = Arrangement.SpaceBetween // Evenly distribute letters
                                 ) {
                                     sortedLetters.forEach { letter ->
                                         Text(
