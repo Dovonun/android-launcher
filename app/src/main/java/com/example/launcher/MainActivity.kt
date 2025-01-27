@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
             Column {
                 Text(text = selectedLetter?.toString() ?: "Foo")
                 Text(text = selectedApp?.toString() ?: "Selected App")
-                Text(text = favorites.toString() ?: "Selected App")
+                Text(text = favorites.toString())
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
