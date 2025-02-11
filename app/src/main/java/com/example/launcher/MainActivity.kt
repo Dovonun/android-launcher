@@ -13,7 +13,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -184,12 +183,6 @@ class MainActivity : ComponentActivity() {
 //            Button(onClick = {
 //                statusBarManager?.expandNotificationsPanel()
 //            })
-            //debug texts
-            Column {
-                Text(text = selectedLetter?.toString() ?: "Foo")
-                Text(text = selectedApp?.toString() ?: "Selected App")
-                Text(text = favorites.toString())
-            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -201,7 +194,6 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                            .border(1.dp, Color.Gray)
                     ) {
                         items(installedApps.values.flatten()
                             .filter { app -> favorites.contains(app.packageName) },
@@ -317,7 +309,6 @@ fun LetterBar(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(if (isScrollbarTouched) 96.dp else 48.dp)
-                .border(1.dp, Color.Gray)
                 .pointerInput(Unit) {
                     detectDragGestures(onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
@@ -356,7 +347,6 @@ fun AppRow(
             .fillMaxWidth()
             .padding(start = 48.dp)
             .padding(vertical = 8.dp)
-            .border(1.dp, Color.Gray)
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { launchApp() }, onLongPress = { toggleFavorites() })
             }) {
