@@ -278,7 +278,7 @@ class MainActivity : ComponentActivity() {
                         selectedLetter = newLetter
                         coroutineScope.launch {
                             val targetIndex = letterIndices[newLetter] ?: return@launch
-                            listState.animateScrollToItem(
+                            listState.scrollToItem(
                                 index = targetIndex,
                                 scrollOffset = 0
                             )
