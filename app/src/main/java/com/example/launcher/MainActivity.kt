@@ -13,8 +13,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,11 +46,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -86,6 +93,20 @@ sealed class ListItem {
     data class AppEntry(val appInfo: App) : ListItem()
 }
 
+private fun expandNotificationShade(context: Context) {
+    try {
+        // Get the internal StatusBarManager class
+        val statusBarService = context.getSystemService("statusbar")
+        val statusBarManager = Class.forName("android.app.StatusBarManager")
+
+        // Call expandNotificationsPanel()
+        val expandMethod = statusBarManager.getMethod("expandNotificationsPanel")
+        expandMethod.invoke(statusBarService)
+    } catch (e: Exception) {
+        Log.e("MainActivity", "Failed to expand notifications: ${e.message}")
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,13 +133,11 @@ class MainActivity : ComponentActivity() {
             val primaryColor = remember { primaryColorInt?.let { Color(it) } ?: Color.Black }
 //            val primaryColorHsv = remember { FloatArray(3) }
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
-//            val statusBarManager =
-//                context.getSystemService(Context.STATUS_BAR_SERVICE) as? StatusBarManager
             val listState = rememberLazyListState()
 
             var selectedLetter by remember { mutableStateOf<Char?>(null) }
             val installedApps by remember {
-                mutableStateOf(getInstalledApps(context).sortedBy { it.name }
+                mutableStateOf(getInstalledApps(context).sortedBy { it.name.lowercase() }
                     .groupBy { it.name[0].uppercaseChar() })
             }
             val (appList, letterIndices) = remember(installedApps) {
@@ -134,9 +153,6 @@ class MainActivity : ComponentActivity() {
                 }
                 Pair(items, indices)
             }
-//            val sectionIndices = remember(groupedApps) {
-//                groupedApps.value.keys.map { it  -> to groupedApps.keys.takeWhile { k -> k != it }.size }.toMap()
-//            }
 
             val sharedPreferences by remember {
                 mutableStateOf(
@@ -151,6 +167,8 @@ class MainActivity : ComponentActivity() {
                 )
             }
             var selectedApp by remember { mutableStateOf<App?>(null) }
+
+            var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
             if (selectedApp != null) {
                 AlertDialog(onDismissRequest = { selectedApp = null },
                     title = { Text(text = selectedApp!!.name) },
@@ -165,6 +183,7 @@ class MainActivity : ComponentActivity() {
                     },
                     confirmButton = {
                         Button(onClick = {
+                            Log.d("MainActivity", "I hate android development")
                             val newFavorites = if (favorites.contains(selectedApp!!.packageName)) {
                                 favorites.filter { it != selectedApp!!.packageName }.toSet()
                             } else {
@@ -176,25 +195,41 @@ class MainActivity : ComponentActivity() {
                         }) { Text("Yes") }
                     })
             }
-
-//            val filteredApps = selectedLetter?.let { letter ->
-//                installedApps.filter { it.name[0].uppercaseChar() == letter }
-//            } ?: installedApps
-//            Button(onClick = {
-//                statusBarManager?.expandNotificationsPanel()
-//            })
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
             ) {
                 if (selectedLetter == null) {
-                    LazyColumn(
-                        reverseLayout = true,
+                    LazyColumn(reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                    ) {
+                            .clickable { /* No-op, just to claim touch priority */ }
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    Log.d("MainActivity", "pointerInput called")
+                                    while (true) {
+                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                        val dragEvent = event.changes.firstOrNull()
+
+                                        if (dragEvent != null) {
+                                            val touchPosition = dragEvent.position
+                                            val verticalDelta = dragEvent.positionChange().y
+                                            Log.d(
+                                                "MainActivity", "Vertical delta: $verticalDelta"
+                                            ) // Debug delta
+                                            if (
+                                                !letterBarBounds.contains(touchPosition) &&
+                                                verticalDelta > 50f
+                                            ) {
+                                                expandNotificationShade(context)
+                                                dragEvent.consume() // Block children from handling
+                                            }
+                                        }
+                                    }
+                                }
+                            }) {
                         items(installedApps.values.flatten()
                             .filter { app -> favorites.contains(app.packageName) },
                             key = { it.packageName }) { app ->
@@ -207,7 +242,6 @@ class MainActivity : ComponentActivity() {
                     LazyColumn(
                         modifier = Modifier, state = listState, contentPadding = PaddingValues(
                             top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
-//                            top = (viewportHeight / 3).dp,
                             bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                         )
                     ) {
@@ -232,45 +266,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-//                        groupedApps.value.forEach { (key, apps) ->
-//                            // Section header
-//                            item(key = "header_$key") {
-//                                Text(
-//                                    text = key.toString(),
-//                                    fontSize = 24.sp,
-//                                    color = primaryColor,
-//                                    modifier = Modifier
-//                                        .padding(16.dp)
-//                                        .padding(start = 64.dp)
-//                                )
-//                            }
-//                            // List of items under the section
-//                            items(apps, key = { it.packageName }) { app ->
-//                                AppRow(app = app,
-//                                    launchApp = { app.launch(context) },
-//                                    toggleFavorites = { selectedApp = app })
-//                            }
-//                        }
                     }
-//                    LazyColumn(
-//                        modifier = Modifier.padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp)
-//                    ) {
-//                        item(key = "header") {
-//                            Text(
-//                                text = selectedLetter.toString(),
-//                                fontSize = 24.sp,
-//                                color = primaryColor,
-//                                modifier = Modifier
-//                                    .padding(16.dp)
-//                                    .padding(start = 64.dp)
-//                            )
-//                        }
-//                        items(filteredApps, key = { it.packageName }) { app ->
-//                            AppRow(app = app,
-//                                launchApp = { app.launch(context) },
-//                                toggleFavorites = { selectedApp = app })
-//                        }
-//                    }
                 }
                 LetterBar(
                     sortedLetters = letterIndices.keys.toList(),
@@ -279,8 +275,7 @@ class MainActivity : ComponentActivity() {
                         coroutineScope.launch {
                             val targetIndex = letterIndices[newLetter] ?: return@launch
                             listState.scrollToItem(
-                                index = targetIndex,
-                                scrollOffset = 0
+                                index = targetIndex, scrollOffset = 0
                             )
                         }
                     },
@@ -289,6 +284,9 @@ class MainActivity : ComponentActivity() {
                         .align(Alignment.CenterEnd)
                         .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
                         .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
+                        .onGloballyPositioned { coordinates ->
+                            letterBarBounds = coordinates.boundsInWindow()
+                        }
                 )
             }
         }
@@ -362,7 +360,5 @@ fun AppRow(
                 )
             )
         )
-//            modifier = Modifier.shadow(1.dp, shape = RectangleShape)
-//        )
     }
 }
