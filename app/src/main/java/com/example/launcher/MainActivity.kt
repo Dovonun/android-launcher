@@ -1,7 +1,9 @@
 package com.example.launcher
 
+import android.annotation.SuppressLint
 import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -16,7 +18,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,10 +39,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +73,7 @@ data class App(
 
 fun App.launch(context: Context) {
     val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return
+    (context as? MainActivity)?.appLaunched = true // Set flag
     context.startActivity(intent)
 }
 
@@ -108,6 +112,22 @@ private fun expandNotificationShade(context: Context) {
 }
 
 class MainActivity : ComponentActivity() {
+    private var userPressedHome by mutableStateOf(false)
+    var appLaunched by mutableStateOf(false)
+    private var homeKeyPressed by mutableStateOf(false)
+    private val homeButtonReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            Log.d("MainActivity", "in here")
+            if (intent.action == Intent.ACTION_CLOSE_SYSTEM_DIALOGS) {
+                val reason = intent.getStringExtra("reason")
+                if (reason == "homekey") {
+                    homeKeyPressed = true
+                }
+            }
+        }
+    }
+
+    @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("MainActivity", "onCreate called")
@@ -135,7 +155,15 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            var selectedLetter by remember { mutableStateOf<Char?>(null) }
+            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
+
+            Log.d("MainActivity", "here $appLaunched")
+            if (!appLaunched) {
+                LaunchedEffect(Unit) {
+                    selectedLetter = null
+                    appLaunched = false // Reset the flag
+                }
+            }
             val installedApps by remember {
                 mutableStateOf(getInstalledApps(context).sortedBy { it.name.lowercase() }
                     .groupBy { it.name[0].uppercaseChar() })
@@ -290,6 +318,23 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+    override fun onResume() {
+        super.onResume()
+        // Reset flags when returning from another app
+//        userPressedHome = false
+//        appLaunched = false
+
+        Log.d("MainActivity", "resume $appLaunched")
+    }
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        Log.d("MainActivity", "I foo2 $appLaunched")
+        // Called when home button is pressed or app is backgrounded
+//        if (!appLaunched) {
+//            userPressedHome = true
+//        }
+//        appLaunched = false
     }
 }
 
