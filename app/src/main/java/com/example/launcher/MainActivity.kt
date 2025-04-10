@@ -115,17 +115,10 @@ class MainActivity : ComponentActivity() {
     private var userPressedHome by mutableStateOf(false)
     var appLaunched by mutableStateOf(false)
     private var homeKeyPressed by mutableStateOf(false)
-    private val homeButtonReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            Log.d("MainActivity", "in here")
-            if (intent.action == Intent.ACTION_CLOSE_SYSTEM_DIALOGS) {
-                val reason = intent.getStringExtra("reason")
-                if (reason == "homekey") {
-                    homeKeyPressed = true
-                }
-            }
-        }
-    }
+    private var isLauncherVisible by mutableStateOf(true)
+
+    var selectedLetter by mutableStateOf<Char?>(null)
+
 
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -155,12 +148,13 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
+            val currentLetter = (context as? MainActivity)?.selectedLetter
+//            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
 
             Log.d("MainActivity", "here $appLaunched")
             if (!appLaunched) {
                 LaunchedEffect(Unit) {
-                    selectedLetter = null
+                    currentLetter = null
                     appLaunched = false // Reset the flag
                 }
             }
@@ -228,7 +222,7 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
             ) {
-                if (selectedLetter == null) {
+                if (currentLetter == null) {
                     LazyColumn(reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
@@ -321,11 +315,20 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        Log.d("MainActivity", "resume called $appLaunched")
+        if (!isLauncherVisible) {
+            isLauncherVisible = true
+            selectedLetter = null
+        }
         // Reset flags when returning from another app
 //        userPressedHome = false
 //        appLaunched = false
+    }
 
-        Log.d("MainActivity", "resume $appLaunched")
+    override fun onPause() {
+        super.onPause()
+        Log.d("MainActivity", "pause called")
+        isLauncherVisible = false
     }
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
