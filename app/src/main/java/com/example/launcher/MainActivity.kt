@@ -15,6 +15,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -55,6 +56,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInWindow
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 data class App(
     val name: String, val packageName: String, val icon: ImageBitmap
@@ -148,7 +151,7 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            val currentLetter = (context as? MainActivity)?.selectedLetter
+            var currentLetter = (context as? MainActivity)?.selectedLetter
 //            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
 
             Log.d("MainActivity", "here $appLaunched")
@@ -211,7 +214,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 favorites + selectedApp!!.packageName
                             }
-                            sharedPreferences.edit().putStringSet("favorites", newFavorites).apply()
+                            sharedPreferences.edit() { putStringSet("favorites", newFavorites) }
                             favorites = newFavorites
                             selectedApp = null
                         }) { Text("Yes") }
@@ -220,7 +223,19 @@ class MainActivity : ComponentActivity() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .border(1.dp, Color.White)
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDrag = { change, dragAmount ->
+                                if (dragAmount.y < 0) {
+                                    Log.d("MainActivity", "Drag up | should intercept the home button")
+                                    currentLetter = null
+                                    change.consume()
+                                }
+                            },
+                        )
+                    }
             ) {
                 if (currentLetter == null) {
                     LazyColumn(reverseLayout = true,
