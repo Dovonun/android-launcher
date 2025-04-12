@@ -76,7 +76,6 @@ data class App(
 
 fun App.launch(context: Context) {
     val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return
-    (context as? MainActivity)?.appLaunched = true // Set flag
     context.startActivity(intent)
 }
 
@@ -115,12 +114,7 @@ private fun expandNotificationShade(context: Context) {
 }
 
 class MainActivity : ComponentActivity() {
-    private var userPressedHome by mutableStateOf(false)
-    var appLaunched by mutableStateOf(true)
-    private var homeKeyPressed by mutableStateOf(false)
-    private var isLauncherVisible by mutableStateOf(true)
-
-    var selectedLetter: Char? by mutableStateOf(null)
+    private var selectedLetter: Char? by mutableStateOf(null)
 
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -149,17 +143,6 @@ class MainActivity : ComponentActivity() {
 //            val primaryColorHsv = remember { FloatArray(3) }
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
-
-//            var currentLetter = (context as? MainActivity)?.selectedLetter
-//            selectedLetter = mutableStateOf<Char?>(null)
-//            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
-
-            Log.d("MainActivity", "here $appLaunched")
-//            if (!appLaunched) {
-//                LaunchedEffect(Unit) {
-//                    currentLetter = null
-//                }
-//            }
             val installedApps by remember {
                 mutableStateOf(getInstalledApps(context).sortedBy { it.name.lowercase() }
                     .groupBy { it.name[0].uppercaseChar() })
@@ -328,47 +311,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    override fun onResume() {
-        super.onResume()
-        Log.d("MainActivity", "resume called $appLaunched")
-//        overridePendingTransition(0, 0)
-//        if (!isLauncherVisible) {
-//            isLauncherVisible = true
-//            selectedLetter = null
-//        }
-        // Reset flags when returning from another app
-//        userPressedHome = false
-//        appLaunched = false
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.d("MainActivity", "pause called")
-        isLauncherVisible = false
-    }
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        appLaunched = false;
-        Log.d("MainActivity", "Leave Hint, keep state $appLaunched")
-        // Called when home button is pressed or app is backgrounded
-//        if (!appLaunched) {
-//            userPressedHome = true
-//        }
-//        appLaunched = false
-    }
-    override fun onStop() {
-        super.onStop()
-        Log.d("MainActivity", "stop called")
-    }
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         selectedLetter = null
         Log.d("MainActivity", "new intent called")
-
-        // Home was pressed → user returned to launcher
-//        showSearchBar() // or trigger your behavior here
     }
-
 }
 
 @Composable
