@@ -116,12 +116,11 @@ private fun expandNotificationShade(context: Context) {
 
 class MainActivity : ComponentActivity() {
     private var userPressedHome by mutableStateOf(false)
-    var appLaunched by mutableStateOf(false)
+    var appLaunched by mutableStateOf(true)
     private var homeKeyPressed by mutableStateOf(false)
     private var isLauncherVisible by mutableStateOf(true)
 
-    var selectedLetter by mutableStateOf<Char?>(null)
-
+    var selectedLetter: Char? by mutableStateOf(null)
 
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -151,16 +150,16 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            var currentLetter = (context as? MainActivity)?.selectedLetter
+//            var currentLetter = (context as? MainActivity)?.selectedLetter
+//            selectedLetter = mutableStateOf<Char?>(null)
 //            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
 
             Log.d("MainActivity", "here $appLaunched")
-            if (!appLaunched) {
-                LaunchedEffect(Unit) {
-                    currentLetter = null
-                    appLaunched = false // Reset the flag
-                }
-            }
+//            if (!appLaunched) {
+//                LaunchedEffect(Unit) {
+//                    currentLetter = null
+//                }
+//            }
             val installedApps by remember {
                 mutableStateOf(getInstalledApps(context).sortedBy { it.name.lowercase() }
                     .groupBy { it.name[0].uppercaseChar() })
@@ -230,14 +229,14 @@ class MainActivity : ComponentActivity() {
                             onDrag = { change, dragAmount ->
                                 if (dragAmount.y < 0) {
                                     Log.d("MainActivity", "Drag up | should intercept the home button")
-                                    currentLetter = null
+                                    selectedLetter = null
                                     change.consume()
                                 }
                             },
                         )
                     }
             ) {
-                if (currentLetter == null) {
+                if (selectedLetter == null) {
                     LazyColumn(reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
@@ -307,6 +306,7 @@ class MainActivity : ComponentActivity() {
                 }
                 LetterBar(
                     sortedLetters = letterIndices.keys.toList(),
+                    selectedLetter = selectedLetter,
                     setSelectedLetter = { newLetter ->
                         selectedLetter = newLetter
                         coroutineScope.launch {
@@ -331,10 +331,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "resume called $appLaunched")
-        if (!isLauncherVisible) {
-            isLauncherVisible = true
-            selectedLetter = null
-        }
+//        overridePendingTransition(0, 0)
+//        if (!isLauncherVisible) {
+//            isLauncherVisible = true
+//            selectedLetter = null
+//        }
         // Reset flags when returning from another app
 //        userPressedHome = false
 //        appLaunched = false
@@ -347,13 +348,27 @@ class MainActivity : ComponentActivity() {
     }
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        Log.d("MainActivity", "I foo2 $appLaunched")
+        appLaunched = false;
+        Log.d("MainActivity", "Leave Hint, keep state $appLaunched")
         // Called when home button is pressed or app is backgrounded
 //        if (!appLaunched) {
 //            userPressedHome = true
 //        }
 //        appLaunched = false
     }
+    override fun onStop() {
+        super.onStop()
+        Log.d("MainActivity", "stop called")
+    }
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        selectedLetter = null
+        Log.d("MainActivity", "new intent called")
+
+        // Home was pressed → user returned to launcher
+//        showSearchBar() // or trigger your behavior here
+    }
+
 }
 
 @Composable
@@ -361,9 +376,9 @@ fun LetterBar(
     modifier: Modifier = Modifier,
     color: Color,
     sortedLetters: List<Char>,
+    selectedLetter: Char?,
     setSelectedLetter: (Char?) -> Unit
 ) {
-    var selectedLetter by remember { mutableStateOf<Char?>(null) }
     Row(modifier = modifier) {
         var isScrollbarTouched by remember { mutableStateOf(false) }
         Column(verticalArrangement = Arrangement.SpaceBetween,
@@ -374,15 +389,8 @@ fun LetterBar(
                     detectDragGestures(onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
                         onDrag = { change, _ ->
-                            val letterIndex =
-                                (change.position.y / size.height * sortedLetters.size).toInt()
-                            if (letterIndex in sortedLetters.indices) {
-                                selectedLetter = sortedLetters[letterIndex]
-                                setSelectedLetter(selectedLetter)
-                            } else {
-                                selectedLetter = null
-                                setSelectedLetter(null)
-                            }
+                            val letterIndex = (change.position.y / size.height * sortedLetters.size).toInt()
+                            setSelectedLetter( if (letterIndex in sortedLetters.indices) sortedLetters[letterIndex] else null)
                         })
                 }) {
             sortedLetters.forEach { letter ->
