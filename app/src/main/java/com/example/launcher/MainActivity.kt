@@ -15,6 +15,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -55,6 +56,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInWindow
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 data class App(
     val name: String, val packageName: String, val icon: ImageBitmap
@@ -73,7 +76,6 @@ data class App(
 
 fun App.launch(context: Context) {
     val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return
-    (context as? MainActivity)?.appLaunched = true // Set flag
     context.startActivity(intent)
 }
 
@@ -112,20 +114,7 @@ private fun expandNotificationShade(context: Context) {
 }
 
 class MainActivity : ComponentActivity() {
-    private var userPressedHome by mutableStateOf(false)
-    var appLaunched by mutableStateOf(false)
-    private var homeKeyPressed by mutableStateOf(false)
-    private val homeButtonReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            Log.d("MainActivity", "in here")
-            if (intent.action == Intent.ACTION_CLOSE_SYSTEM_DIALOGS) {
-                val reason = intent.getStringExtra("reason")
-                if (reason == "homekey") {
-                    homeKeyPressed = true
-                }
-            }
-        }
-    }
+    private var selectedLetter: Char? by mutableStateOf(null)
 
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -154,16 +143,6 @@ class MainActivity : ComponentActivity() {
 //            val primaryColorHsv = remember { FloatArray(3) }
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
-
-            var selectedLetter by rememberSaveable { mutableStateOf<Char?>(null) }
-
-            Log.d("MainActivity", "here $appLaunched")
-            if (!appLaunched) {
-                LaunchedEffect(Unit) {
-                    selectedLetter = null
-                    appLaunched = false // Reset the flag
-                }
-            }
             val installedApps by remember {
                 mutableStateOf(getInstalledApps(context).sortedBy { it.name.lowercase() }
                     .groupBy { it.name[0].uppercaseChar() })
@@ -217,7 +196,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 favorites + selectedApp!!.packageName
                             }
-                            sharedPreferences.edit().putStringSet("favorites", newFavorites).apply()
+                            sharedPreferences.edit() { putStringSet("favorites", newFavorites) }
                             favorites = newFavorites
                             selectedApp = null
                         }) { Text("Yes") }
@@ -226,7 +205,19 @@ class MainActivity : ComponentActivity() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .border(1.dp, Color.White)
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDrag = { change, dragAmount ->
+                                if (dragAmount.y < 0) {
+                                    Log.d("MainActivity", "Drag up | should intercept the home button")
+                                    selectedLetter = null
+                                    change.consume()
+                                }
+                            },
+                        )
+                    }
             ) {
                 if (selectedLetter == null) {
                     LazyColumn(reverseLayout = true,
@@ -298,6 +289,7 @@ class MainActivity : ComponentActivity() {
                 }
                 LetterBar(
                     sortedLetters = letterIndices.keys.toList(),
+                    selectedLetter = selectedLetter,
                     setSelectedLetter = { newLetter ->
                         selectedLetter = newLetter
                         coroutineScope.launch {
@@ -319,22 +311,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    override fun onResume() {
-        super.onResume()
-        // Reset flags when returning from another app
-//        userPressedHome = false
-//        appLaunched = false
-
-        Log.d("MainActivity", "resume $appLaunched")
-    }
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        Log.d("MainActivity", "I foo2 $appLaunched")
-        // Called when home button is pressed or app is backgrounded
-//        if (!appLaunched) {
-//            userPressedHome = true
-//        }
-//        appLaunched = false
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        selectedLetter = null
+        Log.d("MainActivity", "new intent called")
     }
 }
 
@@ -343,9 +323,9 @@ fun LetterBar(
     modifier: Modifier = Modifier,
     color: Color,
     sortedLetters: List<Char>,
+    selectedLetter: Char?,
     setSelectedLetter: (Char?) -> Unit
 ) {
-    var selectedLetter by remember { mutableStateOf<Char?>(null) }
     Row(modifier = modifier) {
         var isScrollbarTouched by remember { mutableStateOf(false) }
         Column(verticalArrangement = Arrangement.SpaceBetween,
@@ -356,15 +336,8 @@ fun LetterBar(
                     detectDragGestures(onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
                         onDrag = { change, _ ->
-                            val letterIndex =
-                                (change.position.y / size.height * sortedLetters.size).toInt()
-                            if (letterIndex in sortedLetters.indices) {
-                                selectedLetter = sortedLetters[letterIndex]
-                                setSelectedLetter(selectedLetter)
-                            } else {
-                                selectedLetter = null
-                                setSelectedLetter(null)
-                            }
+                            val letterIndex = (change.position.y / size.height * sortedLetters.size).toInt()
+                            setSelectedLetter( if (letterIndex in sortedLetters.indices) sortedLetters[letterIndex] else null)
                         })
                 }) {
             sortedLetters.forEach { letter ->
