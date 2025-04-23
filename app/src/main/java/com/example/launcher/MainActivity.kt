@@ -6,6 +6,8 @@ import android.app.WallpaperManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowInsets
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,10 +38,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +78,7 @@ import androidx.compose.ui.unit.times
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
+import androidx.core.net.toUri
 
 data class App(
     val name: String, val packageName: String, val icon: ImageBitmap
@@ -116,6 +126,7 @@ private fun expandNotificationShade(context: Context) {
 class MainActivity : ComponentActivity() {
     private var selectedLetter: Char? by mutableStateOf(null)
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -170,38 +181,15 @@ class MainActivity : ComponentActivity() {
             }
             var favorites by remember {
                 mutableStateOf(
-                    sharedPreferences.getStringSet("favorites", emptySet()) ?: emptySet()
+                    sharedPreferences.getStringSet("favorites", emptySet())?.toSet() ?: emptySet()
                 )
             }
-            var selectedApp by remember { mutableStateOf<App?>(null) }
+
+            val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            var showSheetForApp by remember { mutableStateOf<App?>(null) }
 
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
-            if (selectedApp != null) {
-                AlertDialog(onDismissRequest = { selectedApp = null },
-                    title = { Text(text = selectedApp!!.name) },
-                    text = {
-                        Text(
-                            if (favorites.contains(selectedApp!!.packageName)) {
-                                "Remove ${selectedApp!!.name} from favorites?"
-                            } else {
-                                "Add ${selectedApp!!.name} to favorites?"
-                            }
-                        )
-                    },
-                    confirmButton = {
-                        Button(onClick = {
-                            Log.d("MainActivity", "I hate android development")
-                            val newFavorites = if (favorites.contains(selectedApp!!.packageName)) {
-                                favorites.filter { it != selectedApp!!.packageName }.toSet()
-                            } else {
-                                favorites + selectedApp!!.packageName
-                            }
-                            sharedPreferences.edit() { putStringSet("favorites", newFavorites) }
-                            favorites = newFavorites
-                            selectedApp = null
-                        }) { Text("Yes") }
-                    })
-            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -219,6 +207,47 @@ class MainActivity : ComponentActivity() {
                         )
                     }
             ) {
+
+                LaunchedEffect(showSheetForApp) {
+                    if (showSheetForApp == null && bottomSheetState.isVisible) {
+                        bottomSheetState.hide()
+                    }
+                }
+
+
+                if (showSheetForApp != null) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showSheetForApp = null },
+                        sheetState = bottomSheetState,
+                        containerColor = Color(0xFF121212),
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                        val app = showSheetForApp!!
+                        Column(Modifier.fillMaxWidth()) {
+                            SheetEntry(
+                                if (favorites.contains(app.packageName)) "Remove from favorites" else "Add to favorites"
+                            ) {
+                                val newFavorites = if (favorites.contains(app.packageName)) favorites - app.packageName else favorites + app.packageName
+                                sharedPreferences.edit { putStringSet("favorites", newFavorites) }
+                                favorites = newFavorites
+                                showSheetForApp = null
+                            }
+                            SheetEntry("Uninstall") {
+                                val intent = Intent(Intent.ACTION_DELETE)
+                                intent.data = "package:${app.packageName}".toUri()
+                                context.startActivity(intent)
+                                showSheetForApp = null
+                            }
+                            SheetEntry("App settings") {
+                                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                intent.data = "package:${app.packageName}".toUri()
+                                context.startActivity(intent)
+                                showSheetForApp = null
+                            }
+                        }
+                    }
+                }
+
                 if (selectedLetter == null) {
                     LazyColumn(reverseLayout = true,
                         modifier = Modifier
@@ -235,9 +264,6 @@ class MainActivity : ComponentActivity() {
                                         if (dragEvent != null) {
                                             val touchPosition = dragEvent.position
                                             val verticalDelta = dragEvent.positionChange().y
-                                            Log.d(
-                                                "MainActivity", "Vertical delta: $verticalDelta"
-                                            ) // Debug delta
                                             if (
                                                 !letterBarBounds.contains(touchPosition) &&
                                                 verticalDelta > 50f
@@ -248,13 +274,18 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                            }) {
-                        items(installedApps.values.flatten()
-                            .filter { app -> favorites.contains(app.packageName) },
-                            key = { it.packageName }) { app ->
+                            }
+                    ) {
+                        val appMap = installedApps.values.flatten().associateBy { it.packageName }
+                        val favoriteAppList = favorites.mapNotNull { appMap[it] }
+                        items(favoriteAppList,
+                            key = { "fav-${it.packageName}" }) { app ->
                             AppRow(app = app,
                                 launchApp = { app.launch(context) },
-                                toggleFavorites = { selectedApp = app })
+                                onLongPress = {
+                                    showSheetForApp = app
+                                    coroutineScope.launch { bottomSheetState.show()}
+                                })
                         }
                     }
                 } else {
@@ -281,7 +312,10 @@ class MainActivity : ComponentActivity() {
                                     val app = item.appInfo
                                     AppRow(app = app,
                                         launchApp = { app.launch(context) },
-                                        toggleFavorites = { selectedApp = app })
+                                        onLongPress = {
+                                            showSheetForApp = app
+                                            coroutineScope.launch { bottomSheetState.show() }
+                                        })
                                 }
                             }
                         }
@@ -356,7 +390,7 @@ fun LetterBar(
 
 @Composable
 fun AppRow(
-    app: App, modifier: Modifier = Modifier, launchApp: () -> Unit, toggleFavorites: () -> Unit
+    app: App, modifier: Modifier = Modifier, launchApp: () -> Unit, onLongPress: () -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -364,7 +398,7 @@ fun AppRow(
             .padding(start = 48.dp)
             .padding(vertical = 8.dp)
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { launchApp() }, onLongPress = { toggleFavorites() })
+                detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
             }) {
         Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
         Spacer(modifier = Modifier.width(32.dp))
@@ -377,6 +411,25 @@ fun AppRow(
                     color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
                 )
             )
+        )
+    }
+}
+
+@Composable
+fun SheetEntry(text: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(56.dp) // same as AppRow height
+    ) {
+        Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
+        Text(
+            text = text,
+            fontSize = 24.sp,
+            color = Color.White
         )
     }
 }
