@@ -115,11 +115,8 @@ sealed class ListItem {
 
 private fun expandNotificationShade(context: Context) {
     try {
-        // Get the internal StatusBarManager class
         val statusBarService = context.getSystemService("statusbar")
         val statusBarManager = Class.forName("android.app.StatusBarManager")
-
-        // Call expandNotificationsPanel()
         val expandMethod = statusBarManager.getMethod("expandNotificationsPanel")
         expandMethod.invoke(statusBarService)
     } catch (e: Exception) {
@@ -143,31 +140,23 @@ class PackageChangeReceiver(
 class MainActivity : ComponentActivity() {
     private lateinit var receiver: BroadcastReceiver
     private var loadApps: (() -> Unit)? = null
-
-    //    private val installedAppsState = mutableStateOf<Map<Char, List<App>>>(emptyMap())
     private var selectedLetter: Char? by mutableStateOf(null)
-
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("MainActivity", "onCreate called")
-
         receiver = PackageChangeReceiver {
             Log.d("Receiver", "Package change received")
             loadApps?.invoke()
         }
-
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
             addAction(Intent.ACTION_PACKAGE_REPLACED)
             addDataScheme("package")
         }
-
         ContextCompat.registerReceiver( this, receiver, filter, ContextCompat.RECEIVER_EXPORTED )
-
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
@@ -216,18 +205,8 @@ class MainActivity : ComponentActivity() {
             }
             val currentLetterIndices by rememberUpdatedState(letterIndices)
 
-            val sharedPreferences by remember {
-                mutableStateOf(
-                    context.getSharedPreferences(
-                        "launcher_prefs", Context.MODE_PRIVATE
-                    )
-                )
-            }
-            var favorites by remember {
-                mutableStateOf(
-                    sharedPreferences.getStringSet("favorites", emptySet())?.toSet() ?: emptySet()
-                )
-            }
+            val sharedPreferences by remember { mutableStateOf( context.getSharedPreferences( "launcher_prefs", Context.MODE_PRIVATE))}
+            var favorites by remember { mutableStateOf( sharedPreferences.getStringSet("favorites", emptySet())?.toSet() ?: emptySet())}
 
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
@@ -242,23 +221,11 @@ class MainActivity : ComponentActivity() {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
                                 if (dragAmount.y < 0) {
-                                    Log.d(
-                                        "MainActivity",
-                                        "Drag up | should intercept the home button"
-                                    )
                                     selectedLetter = null
                                     change.consume()
-                                }
-                            },
-                        )
-                    }
+                                } }, ) }
             ) {
-
-                LaunchedEffect(showSheetForApp) {
-                    if (showSheetForApp == null && bottomSheetState.isVisible) {
-                        bottomSheetState.hide()
-                    }
-                }
+                LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
 
                 if (showSheetForApp != null) {
                     ModalBottomSheet(
