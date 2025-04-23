@@ -6,6 +6,7 @@ import android.app.WallpaperManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -50,10 +51,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,6 +78,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
@@ -123,14 +127,46 @@ private fun expandNotificationShade(context: Context) {
     }
 }
 
+class PackageChangeReceiver(
+    private val onChange: () -> Unit
+) : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        when (intent?.action) {
+            Intent.ACTION_PACKAGE_ADDED,
+            Intent.ACTION_PACKAGE_REMOVED,
+            Intent.ACTION_PACKAGE_REPLACED -> onChange()
+        }
+    }
+}
+
+
 class MainActivity : ComponentActivity() {
+    private lateinit var receiver: BroadcastReceiver
+    private var loadApps: (() -> Unit)? = null
+
+    //    private val installedAppsState = mutableStateOf<Map<Char, List<App>>>(emptyMap())
     private var selectedLetter: Char? by mutableStateOf(null)
+
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("MainActivity", "onCreate called")
+
+        receiver = PackageChangeReceiver {
+            Log.d("Receiver", "Package change received")
+            loadApps?.invoke()
+        }
+
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+
+        ContextCompat.registerReceiver( this, receiver, filter, ContextCompat.RECEIVER_EXPORTED )
 
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
@@ -142,9 +178,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             window.insetsController?.hide(WindowInsets.Type.statusBars())
             val context = LocalContext.current
-
             val coroutineScope = rememberCoroutineScope()
-
+            val installedAppsState = remember { mutableStateOf<Map<Char, List<App>>>(emptyMap()) }
+            val groupedApps = installedAppsState.value
+            loadApps = {
+                val apps = getInstalledApps(context).sortedBy { it.name.lowercase() } .groupBy { it.name[0].uppercaseChar() }
+                Log.d("MainActivity", "Apps loaded: ${apps.size}")
+                installedAppsState.value = apps
+            }
+            LaunchedEffect(Unit) {
+                loadApps?.invoke()
+            }
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? =
                 remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
@@ -154,23 +198,23 @@ class MainActivity : ComponentActivity() {
 //            val primaryColorHsv = remember { FloatArray(3) }
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
-            val installedApps by remember {
-                mutableStateOf(getInstalledApps(context).sortedBy { it.name.lowercase() }
-                    .groupBy { it.name[0].uppercaseChar() })
-            }
-            val (appList, letterIndices) = remember(installedApps) {
+
+            val (appList, letterIndices) = remember(groupedApps) {
+                Log.d("AppListDebug", "Recomputing appList and letterIndices")
                 val items = mutableListOf<ListItem>()
                 val indices = mutableMapOf<Char, Int>()
 
-                installedApps.entries.forEach { (letter, apps) ->
+                groupedApps.entries.forEach { (letter, apps) ->
+                    Log.d("AppListDebug", "Adding section $letter with ${apps.size} apps")
+                    indices[letter] = items.size
                     items.add(ListItem.Header(letter))
-                    indices[letter] = items.lastIndex
                     apps.forEach { app ->
                         items.add(ListItem.AppEntry(app))
                     }
                 }
                 Pair(items, indices)
             }
+            val currentLetterIndices by rememberUpdatedState(letterIndices)
 
             val sharedPreferences by remember {
                 mutableStateOf(
@@ -187,7 +231,6 @@ class MainActivity : ComponentActivity() {
 
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
-
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
 
             Box(
@@ -199,7 +242,10 @@ class MainActivity : ComponentActivity() {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
                                 if (dragAmount.y < 0) {
-                                    Log.d("MainActivity", "Drag up | should intercept the home button")
+                                    Log.d(
+                                        "MainActivity",
+                                        "Drag up | should intercept the home button"
+                                    )
                                     selectedLetter = null
                                     change.consume()
                                 }
@@ -214,7 +260,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-
                 if (showSheetForApp != null) {
                     ModalBottomSheet(
                         onDismissRequest = { showSheetForApp = null },
@@ -227,7 +272,8 @@ class MainActivity : ComponentActivity() {
                             SheetEntry(
                                 if (favorites.contains(app.packageName)) "Remove from favorites" else "Add to favorites"
                             ) {
-                                val newFavorites = if (favorites.contains(app.packageName)) favorites - app.packageName else favorites + app.packageName
+                                val newFavorites =
+                                    if (favorites.contains(app.packageName)) favorites - app.packageName else favorites + app.packageName
                                 sharedPreferences.edit { putStringSet("favorites", newFavorites) }
                                 favorites = newFavorites
                                 showSheetForApp = null
@@ -248,47 +294,43 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (selectedLetter == null) {
-                    LazyColumn(reverseLayout = true,
+                if (selectedLetter == null) { // show favorites
+                    LazyColumn(
+                        reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
                             .clickable { /* No-op, just to claim touch priority */ }
                             .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    Log.d("MainActivity", "pointerInput called")
-                                    while (true) {
-                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                        val dragEvent = event.changes.firstOrNull()
-
-                                        if (dragEvent != null) {
-                                            val touchPosition = dragEvent.position
-                                            val verticalDelta = dragEvent.positionChange().y
-                                            if (
-                                                !letterBarBounds.contains(touchPosition) &&
-                                                verticalDelta > 50f
-                                            ) {
-                                                expandNotificationShade(context)
-                                                dragEvent.consume() // Block children from handling
+                                while (true) {
+                                    awaitPointerEventScope {
+                                        Log.d("MainActivity", "pointerInput called")
+                                        awaitPointerEvent(pass = PointerEventPass.Initial).changes.firstOrNull()
+                                            ?.let {
+                                                if (!letterBarBounds.contains(it.position) && it.positionChange().y > 50f) {
+                                                    expandNotificationShade(context)
+                                                    it.consume() // Block children from handling
+                                                }
                                             }
-                                        }
                                     }
                                 }
                             }
                     ) {
-                        val appMap = installedApps.values.flatten().associateBy { it.packageName }
+                        val appMap = groupedApps.values.flatten().associateBy { it.packageName }
                         val favoriteAppList = favorites.mapNotNull { appMap[it] }
-                        items(favoriteAppList,
+                        items(
+                            favoriteAppList,
                             key = { "fav-${it.packageName}" }) { app ->
-                            AppRow(app = app,
+                            AppRow(
+                                app = app,
                                 launchApp = { app.launch(context) },
                                 onLongPress = {
                                     showSheetForApp = app
-                                    coroutineScope.launch { bottomSheetState.show()}
+                                    coroutineScope.launch { bottomSheetState.show() }
                                 })
                         }
                     }
-                } else {
+                } else { // show all apps
                     LazyColumn(
                         modifier = Modifier, state = listState, contentPadding = PaddingValues(
                             top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
@@ -310,7 +352,8 @@ class MainActivity : ComponentActivity() {
 
                                 is ListItem.AppEntry -> {
                                     val app = item.appInfo
-                                    AppRow(app = app,
+                                    AppRow(
+                                        app = app,
                                         launchApp = { app.launch(context) },
                                         onLongPress = {
                                             showSheetForApp = app
@@ -327,10 +370,8 @@ class MainActivity : ComponentActivity() {
                     setSelectedLetter = { newLetter ->
                         selectedLetter = newLetter
                         coroutineScope.launch {
-                            val targetIndex = letterIndices[newLetter] ?: return@launch
-                            listState.scrollToItem(
-                                index = targetIndex, scrollOffset = 0
-                            )
+                            val targetIndex = currentLetterIndices[newLetter] ?: return@launch
+                            listState.scrollToItem(index = targetIndex, scrollOffset = 0)
                         }
                     },
                     color = primaryColor,
@@ -345,10 +386,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         selectedLetter = null
         Log.d("MainActivity", "new intent called")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(receiver)
     }
 }
 
@@ -360,18 +407,22 @@ fun LetterBar(
     selectedLetter: Char?,
     setSelectedLetter: (Char?) -> Unit
 ) {
+    val currentSortedLetters by rememberUpdatedState(sortedLetters)
     Row(modifier = modifier) {
         var isScrollbarTouched by remember { mutableStateOf(false) }
-        Column(verticalArrangement = Arrangement.SpaceBetween,
+        Column(
+            verticalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier
                 .fillMaxHeight()
                 .width(if (isScrollbarTouched) 96.dp else 48.dp)
                 .pointerInput(Unit) {
-                    detectDragGestures(onDragStart = { isScrollbarTouched = true },
+                    detectDragGestures(
+                        onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
                         onDrag = { change, _ ->
-                            val letterIndex = (change.position.y / size.height * sortedLetters.size).toInt()
-                            setSelectedLetter( if (letterIndex in sortedLetters.indices) sortedLetters[letterIndex] else null)
+                            val letterIndex =
+                                (change.position.y / size.height * currentSortedLetters.size).toInt()
+                            setSelectedLetter(if (letterIndex in currentSortedLetters.indices) currentSortedLetters[letterIndex] else null)
                         })
                 }) {
             sortedLetters.forEach { letter ->
@@ -392,7 +443,8 @@ fun LetterBar(
 fun AppRow(
     app: App, modifier: Modifier = Modifier, launchApp: () -> Unit, onLongPress: () -> Unit
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 48.dp)
