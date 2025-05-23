@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -66,6 +69,8 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -120,9 +125,7 @@ class PackageChangeReceiver(
 ) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         when (intent?.action) {
-            Intent.ACTION_PACKAGE_ADDED,
-            Intent.ACTION_PACKAGE_REMOVED,
-            Intent.ACTION_PACKAGE_REPLACED -> onChange()
+            Intent.ACTION_PACKAGE_ADDED, Intent.ACTION_PACKAGE_REMOVED, Intent.ACTION_PACKAGE_REPLACED -> onChange()
         }
     }
 }
@@ -147,7 +150,7 @@ class MainActivity : ComponentActivity() {
             addAction(Intent.ACTION_PACKAGE_REPLACED)
             addDataScheme("package")
         }
-        ContextCompat.registerReceiver( this, receiver, filter, ContextCompat.RECEIVER_EXPORTED )
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
@@ -162,7 +165,8 @@ class MainActivity : ComponentActivity() {
             val installedAppsState = remember { mutableStateOf<Map<Char, List<App>>>(emptyMap()) }
             val groupedApps = installedAppsState.value
             loadApps = {
-                val apps = getInstalledApps(context).sortedBy { it.name.lowercase() } .groupBy { it.name[0].uppercaseChar() }
+                val apps = getInstalledApps(context).sortedBy { it.name.lowercase() }
+                    .groupBy { it.name[0].uppercaseChar() }
                 Log.d("MainActivity", "Apps loaded: ${apps.size}")
                 installedAppsState.value = apps
             }
@@ -196,12 +200,27 @@ class MainActivity : ComponentActivity() {
             }
             val currentLetterIndices by rememberUpdatedState(letterIndices)
 
-            val sharedPreferences by remember { mutableStateOf( context.getSharedPreferences( "launcher_prefs", Context.MODE_PRIVATE))}
-            var favorites by remember { mutableStateOf( sharedPreferences.getStringSet("favorites", emptySet())?.toSet() ?: emptySet())}
+            val sharedPreferences by remember {
+                mutableStateOf(
+                    context.getSharedPreferences(
+                        "launcher_prefs", Context.MODE_PRIVATE
+                    )
+                )
+            }
+            var favorites by remember {
+                mutableStateOf(
+                    sharedPreferences.getStringSet(
+                        "favorites", emptySet()
+                    )?.toSet() ?: emptySet()
+                )
+            }
 
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
+
+            var selectedApp by remember { mutableStateOf<App?>(null) }
+            var anchorBounds by remember { mutableStateOf(Rect.Zero) }
 
             Box(
                 modifier = Modifier
@@ -214,9 +233,38 @@ class MainActivity : ComponentActivity() {
                                 if (dragAmount.y < 0) {
                                     selectedLetter = null
                                     change.consume()
-                                } }, ) }
-            ) {
+                                }
+                            },
+                        )
+                    }) {
                 LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
+
+                DropdownMenu(
+                    expanded = selectedApp != null,
+                    onDismissRequest = { selectedApp = null },
+                    offset = DpOffset(
+                        x = with(LocalDensity.current) { anchorBounds.left.toDp() },
+                        y = with(LocalDensity.current) {
+                            val showAbove =
+                                anchorBounds.top > LocalConfiguration.current.screenHeightDp.dp.toPx() / 2
+                            if (showAbove) (anchorBounds.top - 100).toDp() else anchorBounds.bottom.toDp()
+                        })
+                ) {
+                    DropdownMenuItem(text = {
+                        Text("New Tab")
+                    }, onClick = {
+                        // example action
+                        println("New Tab for ${selectedApp?.name}")
+                        selectedApp = null
+                    })
+
+                    DropdownMenuItem(onClick = {
+                        println("Uninstall ${selectedApp?.name}")
+                        selectedApp = null
+                    }, text = {
+                        Text("Uninstall")
+                    })
+                }
 
                 if (showSheetForApp != null) {
                     ModalBottomSheet(
@@ -243,7 +291,8 @@ class MainActivity : ComponentActivity() {
                                 showSheetForApp = null
                             }
                             SheetEntry("App settings") {
-                                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                val intent =
+                                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                                 intent.data = "package:${app.packageName}".toUri()
                                 context.startActivity(intent)
                                 showSheetForApp = null
@@ -272,20 +321,19 @@ class MainActivity : ComponentActivity() {
                                             }
                                     }
                                 }
-                            }
-                    ) {
+                            }) {
                         val appMap = groupedApps.values.flatten().associateBy { it.packageName }
                         val favoriteAppList = favorites.mapNotNull { appMap[it] }
                         items(
-                            favoriteAppList,
-                            key = { "fav-${it.packageName}" }) { app ->
-                            AppRow(
-                                app = app,
-                                launchApp = { app.launch(context) },
-                                onLongPress = {
-                                    showSheetForApp = app
-                                    coroutineScope.launch { bottomSheetState.show() }
-                                })
+                            favoriteAppList, key = { "fav-${it.packageName}" }) { app ->
+                            AppRow(app = app, launchApp = { app.launch(context) }, onLongPress = {
+                                showSheetForApp = app
+                                coroutineScope.launch { bottomSheetState.show() }
+                            }, onLongSwipe = { tappedApp, bounds ->
+                                Log.d("MainActivity", "long swipe")
+                                selectedApp = tappedApp
+                                anchorBounds = bounds
+                            })
                         }
                     }
                 } else { // show all apps
@@ -316,6 +364,10 @@ class MainActivity : ComponentActivity() {
                                         onLongPress = {
                                             showSheetForApp = app
                                             coroutineScope.launch { bottomSheetState.show() }
+                                        },
+                                        onLongSwipe = { tappedApp, bounds ->
+                                            selectedApp = tappedApp
+                                            anchorBounds = bounds
                                         })
                                 }
                             }
@@ -339,8 +391,7 @@ class MainActivity : ComponentActivity() {
                         .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
                         .onGloballyPositioned { coordinates ->
                             letterBarBounds = coordinates.boundsInWindow()
-                        }
-                )
+                        })
             }
         }
     }
@@ -399,16 +450,32 @@ fun LetterBar(
 
 @Composable
 fun AppRow(
-    app: App, modifier: Modifier = Modifier, launchApp: () -> Unit, onLongPress: () -> Unit
+    app: App,
+    modifier: Modifier = Modifier,
+    launchApp: () -> Unit,
+    onLongPress: () -> Unit,
+    onLongSwipe: (App, Rect) -> Unit
 ) {
+    var rowBounds by remember { mutableStateOf(Rect.Zero) }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 48.dp)
             .padding(vertical = 8.dp)
+            .onGloballyPositioned { coordinates ->
+                rowBounds = coordinates.boundsInWindow()
+            }
             .pointerInput(Unit) {
+
                 detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    Log.d("MainActivity", "dragAmount: $dragAmount")
+                    if (dragAmount > 50f) onLongSwipe(app, rowBounds)
+                }
             }) {
         Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
         Spacer(modifier = Modifier.width(32.dp))
@@ -437,9 +504,7 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
     ) {
         Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
         Text(
-            text = text,
-            fontSize = 24.sp,
-            color = Color.White
+            text = text, fontSize = 24.sp, color = Color.White
         )
     }
 }
