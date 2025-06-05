@@ -9,7 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
-import android.view.WindowInsets
+import android.view.WindowInsets as ViewWindowInsets
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -78,6 +79,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
 import kotlinx.coroutines.launch
 
 data class App(
@@ -155,11 +157,12 @@ class MainActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
         )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.attributes.setWallpaperTouchEventsEnabled(false)
 
         enableEdgeToEdge()
         setContent {
-            window.insetsController?.hide(WindowInsets.Type.statusBars())
+            window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
             val installedAppsState = remember { mutableStateOf<Map<Char, List<App>>>(emptyMap()) }
@@ -225,7 +228,7 @@ class MainActivity : ComponentActivity() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .border(1.dp, Color.White)
+//                    .border(1.dp, Color.White)
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     .pointerInput(Unit) {
                         detectDragGestures(
@@ -271,7 +274,8 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest = { showSheetForApp = null },
                         sheetState = bottomSheetState,
                         containerColor = Color(0xFF121212),
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                        windowInsets = WindowInsets(0.dp)
                     ) {
                         val app = showSheetForApp!!
                         Column(Modifier.fillMaxWidth()) {
@@ -297,6 +301,7 @@ class MainActivity : ComponentActivity() {
                                 context.startActivity(intent)
                                 showSheetForApp = null
                             }
+                            Spacer(Modifier.height(42.dp))
                         }
                     }
                 }
@@ -499,8 +504,8 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(56.dp) // same as AppRow height
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .height(42.dp) // same as AppRow height
     ) {
         Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
         Text(
