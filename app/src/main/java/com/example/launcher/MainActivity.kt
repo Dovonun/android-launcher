@@ -3,20 +3,20 @@ package com.example.launcher
 import android.annotation.SuppressLint
 import android.app.WallpaperColors
 import android.app.WallpaperManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
+import android.content.pm.LauncherApps
+import android.content.pm.LauncherApps.ShortcutQuery
+import android.content.pm.ShortcutInfo
 import android.os.Bundle
+import android.os.UserHandle
 import android.util.Log
-import android.view.WindowInsets as ViewWindowInsets
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -48,6 +48,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,35 +76,45 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
-import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import kotlinx.coroutines.launch
+import android.view.WindowInsets as ViewWindowInsets
 
 data class App(
     val name: String, val packageName: String, val icon: ImageBitmap
 )
 
 fun App.launch(context: Context) {
-    val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return
-    context.startActivity(intent)
+    context.startActivity(context.packageManager.getLaunchIntentForPackage(packageName) ?: return)
 }
 
-fun getInstalledApps(context: Context): List<App> {
-    val packageManager = context.packageManager
-    val intent = Intent(Intent.ACTION_MAIN, null).apply {
-        addCategory(Intent.CATEGORY_LAUNCHER)
+class AppChangeCallback(private val onChanged: () -> Unit) : LauncherApps.Callback() {
+    override fun onPackageAdded(packageName: String, user: UserHandle) = onChanged()
+    override fun onPackageRemoved(packageName: String, user: UserHandle) = onChanged()
+    override fun onPackageChanged(packageName: String, user: UserHandle) = onChanged()
+    override fun onPackagesAvailable( packageNames: Array<out String?>?, user: UserHandle, replacing: Boolean ) { onChanged() }
+    override fun onPackagesUnavailable( packageNames: Array<out String?>?, user: UserHandle?, replacing: Boolean ) { onChanged() }
+}
+
+fun getInstalledApps(user: UserHandle, service: LauncherApps): Map<Char, List<App>> {
+    return service.getActivityList(null, user).map { app ->
+        App( app.label.toString(), app.componentName.packageName, app.getIcon(0).toBitmap().asImageBitmap() )
+    }.sortedBy { it.name.lowercase() }.groupBy { it.name[0].uppercaseChar() }
+}
+
+fun getShortcutsForApp( user: UserHandle, service: LauncherApps, packageName: String ): List<ShortcutInfo> {
+    Log.d("MainActivity", "getShortcutsForApp called with $packageName")
+    val query = ShortcutQuery().apply {
+        // TODO: remove hidden/disabled shortcuts | check if that is even needed
+        setPackage(packageName)
+        setQueryFlags( ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
     }
-    val resolveInfos = packageManager.queryIntentActivities(intent, 0)
-    return resolveInfos.map { resolveInfo ->
-        App(
-            resolveInfo.loadLabel(packageManager).toString(),
-            resolveInfo.activityInfo.packageName,
-            resolveInfo.loadIcon(packageManager).toBitmap().asImageBitmap()
-        )
-    }
+    val shortcuts = service.getShortcuts(query, user)
+    Log.d("MainActivity", "getShortcutsForApp returned $shortcuts")
+    return shortcuts ?: emptyList()
 }
 
 sealed class ListItem {
@@ -122,41 +133,17 @@ private fun expandNotificationShade(context: Context) {
     }
 }
 
-class PackageChangeReceiver(
-    private val onChange: () -> Unit
-) : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-        when (intent?.action) {
-            Intent.ACTION_PACKAGE_ADDED, Intent.ACTION_PACKAGE_REMOVED, Intent.ACTION_PACKAGE_REPLACED -> onChange()
-        }
-    }
-}
-
-
 class MainActivity : ComponentActivity() {
-    private lateinit var receiver: BroadcastReceiver
-    private var loadApps: (() -> Unit)? = null
     private var selectedLetter: Char? by mutableStateOf(null)
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        receiver = PackageChangeReceiver {
-            Log.d("Receiver", "Package change received")
-            loadApps?.invoke()
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addAction(Intent.ACTION_PACKAGE_REMOVED)
-            addAction(Intent.ACTION_PACKAGE_REPLACED)
-            addDataScheme("package")
-        }
-        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
-            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
-        )
+        val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
+        val userHandle = android.os.Process.myUserHandle()
+
+        window.setFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER, WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.attributes.setWallpaperTouchEventsEnabled(false)
 
@@ -165,16 +152,11 @@ class MainActivity : ComponentActivity() {
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
-            val installedAppsState = remember { mutableStateOf<Map<Char, List<App>>>(emptyMap()) }
-            val groupedApps = installedAppsState.value
-            loadApps = {
-                val apps = getInstalledApps(context).sortedBy { it.name.lowercase() }
-                    .groupBy { it.name[0].uppercaseChar() }
-                Log.d("MainActivity", "Apps loaded: ${apps.size}")
-                installedAppsState.value = apps
-            }
-            LaunchedEffect(Unit) {
-                loadApps?.invoke()
+            var installedAppsState by remember { mutableStateOf<Map<Char, List<App>>>( getInstalledApps(userHandle, launcherApps) ) }
+            DisposableEffect(Unit) {
+                val callback = AppChangeCallback {installedAppsState = getInstalledApps(userHandle, launcherApps)}
+                launcherApps.registerCallback(callback)
+                onDispose { launcherApps.unregisterCallback(callback) }
             }
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? =
@@ -186,12 +168,12 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            val (appList, letterIndices) = remember(groupedApps) {
+            val (appList, letterIndices) = remember(installedAppsState) {
                 Log.d("AppListDebug", "Recomputing appList and letterIndices")
                 val items = mutableListOf<ListItem>()
                 val indices = mutableMapOf<Char, Int>()
 
-                groupedApps.entries.forEach { (letter, apps) ->
+                installedAppsState.entries.forEach { (letter, apps) ->
                     Log.d("AppListDebug", "Adding section $letter with ${apps.size} apps")
                     indices[letter] = items.size
                     items.add(ListItem.Header(letter))
@@ -206,7 +188,7 @@ class MainActivity : ComponentActivity() {
             val sharedPreferences by remember {
                 mutableStateOf(
                     context.getSharedPreferences(
-                        "launcher_prefs", Context.MODE_PRIVATE
+                        "launcher_prefs", MODE_PRIVATE
                     )
                 )
             }
@@ -253,20 +235,25 @@ class MainActivity : ComponentActivity() {
                             if (showAbove) (anchorBounds.top - 100).toDp() else anchorBounds.bottom.toDp()
                         })
                 ) {
-                    DropdownMenuItem(text = {
-                        Text("New Tab")
-                    }, onClick = {
-                        // example action
-                        println("New Tab for ${selectedApp?.name}")
-                        selectedApp = null
-                    })
+                    var shortcuts =
+                        remember(selectedApp) { mutableStateOf<List<ShortcutInfo>>(emptyList()) }
 
-                    DropdownMenuItem(onClick = {
-                        println("Uninstall ${selectedApp?.name}")
-                        selectedApp = null
-                    }, text = {
-                        Text("Uninstall")
-                    })
+                    LaunchedEffect(selectedApp) {
+                        selectedApp?.let { app ->
+                            shortcuts.value =
+                                getShortcutsForApp(userHandle, launcherApps, app.packageName)
+                        }
+                    }
+                    shortcuts.value.forEach { s ->
+                        DropdownMenuItem(text = {
+                            Text(
+                                s.shortLabel?.toString() ?: s.longLabel.toString()
+                            )
+                        }, onClick = {
+                            launcherApps.startShortcut( s.`package`, s.id, null, null, userHandle )
+                            selectedApp = null // dismiss here
+                        })
+                    }
                 }
 
                 if (showSheetForApp != null) {
@@ -327,7 +314,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }) {
-                        val appMap = groupedApps.values.flatten().associateBy { it.packageName }
+                        val appMap =
+                            installedAppsState.values.flatten().associateBy { it.packageName }
                         val favoriteAppList = favorites.mapNotNull { appMap[it] }
                         items(
                             favoriteAppList, key = { "fav-${it.packageName}" }) { app ->
@@ -409,7 +397,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(receiver)
     }
 }
 
@@ -434,8 +421,7 @@ fun LetterBar(
                         onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
                         onDrag = { change, _ ->
-                            val letterIndex =
-                                (change.position.y / size.height * currentSortedLetters.size).toInt()
+                            val letterIndex = (change.position.y / size.height * currentSortedLetters.size).toInt()
                             setSelectedLetter(if (letterIndex in currentSortedLetters.indices) currentSortedLetters[letterIndex] else null)
                         })
                 }) {
@@ -462,7 +448,6 @@ fun AppRow(
     onLongSwipe: (App, Rect) -> Unit
 ) {
     var rowBounds by remember { mutableStateOf(Rect.Zero) }
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -473,7 +458,6 @@ fun AppRow(
                 rowBounds = coordinates.boundsInWindow()
             }
             .pointerInput(Unit) {
-
                 detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
             }
             .pointerInput(Unit) {
@@ -508,8 +492,6 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
             .height(42.dp) // same as AppRow height
     ) {
         Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
-        Text(
-            text = text, fontSize = 24.sp, color = Color.White
-        )
+        Text( text = text, fontSize = 24.sp, color = Color.White )
     }
 }
