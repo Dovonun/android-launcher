@@ -139,15 +139,13 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
         val userHandle = android.os.Process.myUserHandle()
 
-        window.setFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER, WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.attributes.setWallpaperTouchEventsEnabled(false)
 
-        enableEdgeToEdge()
         setContent {
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
