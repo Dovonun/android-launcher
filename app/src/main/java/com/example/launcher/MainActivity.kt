@@ -73,9 +73,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
+import androidx.compose.ui.window.Popup
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
@@ -224,35 +226,44 @@ class MainActivity : ComponentActivity() {
                     }) {
                 LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
 
-                DropdownMenu(
-                    expanded = selectedApp != null,
-                    onDismissRequest = { selectedApp = null },
-                    offset = DpOffset(
-                        x = with(LocalDensity.current) { anchorBounds.left.toDp() },
-                        y = with(LocalDensity.current) {
-                            val showAbove =
-                                anchorBounds.top > LocalConfiguration.current.screenHeightDp.dp.toPx() / 2
-                            if (showAbove) (anchorBounds.top - 100).toDp() else anchorBounds.bottom.toDp()
-                        })
-                ) {
-                    var shortcuts =
-                        remember(selectedApp) { mutableStateOf<List<ShortcutInfo>>(emptyList()) }
+                if (selectedApp != null) {
+                    var shortcuts by remember(selectedApp) { mutableStateOf<List<ShortcutInfo>>(emptyList()) }
 
                     LaunchedEffect(selectedApp) {
-                        selectedApp?.let { app ->
-                            shortcuts.value =
-                                getShortcutsForApp(userHandle, launcherApps, app.packageName)
+                        selectedApp?.let {
+                            shortcuts = getShortcutsForApp(userHandle, launcherApps, it.packageName)
                         }
                     }
-                    shortcuts.value.forEach { s ->
-                        DropdownMenuItem(text = {
-                            Text(
-                                s.shortLabel?.toString() ?: s.longLabel.toString()
-                            )
-                        }, onClick = {
-                            launcherApps.startShortcut( s.`package`, s.id, null, null, userHandle )
-                            selectedApp = null // dismiss here
-                        })
+
+                    Popup(
+                        offset = IntOffset(anchorBounds.left.toInt(), anchorBounds.top.toInt()),
+                        onDismissRequest = { selectedApp = null },
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(with(LocalDensity.current) { anchorBounds.width.toDp() })
+                                .padding(horizontal = 48.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFF121212), RoundedCornerShape(12.dp))
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
+                                    shortcuts.forEach { s ->
+                                        val icon = launcherApps.getShortcutIconDrawable(s, 0)?.toBitmap()?.asImageBitmap()
+                                        MenuRow(
+                                            text = s.shortLabel?.toString() ?: s.longLabel.toString(),
+                                            icon = icon,
+                                            onClick = {
+                                                launcherApps.startShortcut(s.`package`, s.id, null, null, userHandle)
+                                                selectedApp = null // Dismiss after click
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -440,6 +451,40 @@ fun LetterBar(
 }
 
 @Composable
+fun MenuRow(
+    text: String,
+    modifier: Modifier = Modifier,
+    icon: ImageBitmap? = null,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp) // Adjusted vertical padding
+    ) {
+        if (icon != null) {
+            Image(bitmap = icon, contentDescription = text, modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.width(32.dp))
+        } else {
+            // Spacer to align with AppRow's text when there's no icon
+            Spacer(modifier = Modifier.width(42.dp + 32.dp))
+        }
+        Text(
+            text = text,
+            fontSize = 24.sp,
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium.copy(
+                shadow = Shadow(
+                    color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
+                )
+            )
+        )
+    }
+}
+
+@Composable
 fun AppRow(
     app: App,
     modifier: Modifier = Modifier,
@@ -452,7 +497,6 @@ fun AppRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 48.dp)
             .padding(vertical = 8.dp)
             .onGloballyPositioned { coordinates ->
                 rowBounds = coordinates.boundsInWindow()
@@ -466,18 +510,20 @@ fun AppRow(
                     if (dragAmount > 50f) onLongSwipe(app, rowBounds)
                 }
             }) {
-        Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
-        Spacer(modifier = Modifier.width(32.dp))
-        Text(
-            text = app.name,
-            fontSize = 24.sp,
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium.copy(
-                shadow = Shadow(
-                    color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
+        Row(modifier = Modifier.padding(start = 48.dp)) {
+            Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.width(32.dp))
+            Text(
+                text = app.name,
+                fontSize = 24.sp,
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
+                    )
                 )
             )
-        )
+        }
     }
 }
 
