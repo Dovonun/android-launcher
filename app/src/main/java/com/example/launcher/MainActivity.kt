@@ -146,6 +146,8 @@ class MainActivity : ComponentActivity() {
 
         window.attributes.setWallpaperTouchEventsEnabled(false)
 
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+
         setContent {
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current

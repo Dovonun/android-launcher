@@ -22,7 +22,7 @@
         android:theme="@style/Theme.Launcher">
         <activity
             android:name=".MainActivity"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:exported="true"
