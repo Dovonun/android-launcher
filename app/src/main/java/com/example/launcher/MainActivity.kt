@@ -50,6 +50,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +85,17 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import kotlinx.coroutines.launch
 import android.view.WindowInsets as ViewWindowInsets
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+enum class ScreenState {
+    AllApps,
+    Favorites
+}
+
+data class UiShortcut(
+    val label: String,
+    val icon: ImageBitmap,
+)
 
 data class App(
     val name: String, val packageName: String, val icon: ImageBitmap
@@ -91,32 +103,6 @@ data class App(
 
 fun App.launch(context: Context) {
     context.startActivity(context.packageManager.getLaunchIntentForPackage(packageName) ?: return)
-}
-
-class AppChangeCallback(private val onChanged: () -> Unit) : LauncherApps.Callback() {
-    override fun onPackageAdded(packageName: String, user: UserHandle) = onChanged()
-    override fun onPackageRemoved(packageName: String, user: UserHandle) = onChanged()
-    override fun onPackageChanged(packageName: String, user: UserHandle) = onChanged()
-    override fun onPackagesAvailable( packageNames: Array<out String?>?, user: UserHandle, replacing: Boolean ) { onChanged() }
-    override fun onPackagesUnavailable( packageNames: Array<out String?>?, user: UserHandle?, replacing: Boolean ) { onChanged() }
-}
-
-fun getInstalledApps(user: UserHandle, service: LauncherApps): Map<Char, List<App>> {
-    return service.getActivityList(null, user).map { app ->
-        App( app.label.toString(), app.componentName.packageName, app.getIcon(0).toBitmap().asImageBitmap() )
-    }.sortedBy { it.name.lowercase() }.groupBy { it.name[0].uppercaseChar() }
-}
-
-fun getShortcutsForApp( user: UserHandle, service: LauncherApps, packageName: String ): List<ShortcutInfo> {
-    Log.d("MainActivity", "getShortcutsForApp called with $packageName")
-    val query = ShortcutQuery().apply {
-        // TODO: remove hidden/disabled shortcuts | check if that is even needed
-        setPackage(packageName)
-        setQueryFlags( ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
-    }
-    val shortcuts = service.getShortcuts(query, user)
-    Log.d("MainActivity", "getShortcutsForApp returned $shortcuts")
-    return shortcuts ?: emptyList()
 }
 
 sealed class ListItem {
@@ -143,26 +129,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
-        val userHandle = android.os.Process.myUserHandle()
 
         window.attributes.setWallpaperTouchEventsEnabled(false)
-
         window.setBackgroundDrawableResource(android.R.color.transparent)
 
         setContent {
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
-            var installedAppsState by remember { mutableStateOf<Map<Char, List<App>>>( getInstalledApps(userHandle, launcherApps) ) }
-            DisposableEffect(Unit) {
-                val callback = AppChangeCallback {installedAppsState = getInstalledApps(userHandle, launcherApps)}
-                launcherApps.registerCallback(callback)
-                onDispose { launcherApps.unregisterCallback(callback) }
-            }
+
+            val viewModel: LauncherViewModel = viewModel()
+            val density = context.resources.displayMetrics.densityDpi
+
+            val installedAppsState by viewModel.installedApps.collectAsState()
+            // TODO: shortcuts make no sense here :)
+//            val shortcuts = remember { viewModel.getShortcutsForApp("com.example.app", density) }
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? =
                 remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
+
+            val screen_state = remember { mutableStateOf(ScreenState.Favorites) }
 
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
             val primaryColor = remember { primaryColorInt?.let { Color(it) } ?: Color.Black }
@@ -226,45 +212,29 @@ class MainActivity : ComponentActivity() {
                     }) {
                 LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
 
+                if (viewModel.selectedApp.collectAsState().value != null) {
+                    ShortcutPopup(
+                        shortcuts = viewModel.shortcutUiItems.collectAsState().value,
+                        launch = { index -> viewModel.launchShortcut(index) },
+                        reset = { viewModel.selectApp(null) }
+                    )
+                }
+
                 if (selectedApp != null) {
-                    var shortcuts by remember(selectedApp) { mutableStateOf<List<ShortcutInfo>>(emptyList()) }
-
+                    var shortcuts by remember(selectedApp) {
+                        mutableStateOf<List<UiShortcut>>(
+                            emptyList()
+                        )
+                    }
                     LaunchedEffect(selectedApp) {
-                        selectedApp?.let {
-                            shortcuts = getShortcutsForApp(userHandle, launcherApps, it.packageName)
+                        selectedApp?.let { app ->
+                            shortcuts = viewModel.getShortcutsForApp(app.packageName, density)
                         }
                     }
-
-                    Popup(
-                        offset = IntOffset(anchorBounds.left.toInt(), anchorBounds.top.toInt()),
-                        onDismissRequest = { selectedApp = null },
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(with(LocalDensity.current) { anchorBounds.width.toDp() })
-                                .padding(horizontal = 48.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color(0xFF121212), RoundedCornerShape(12.dp))
-                            ) {
-                                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-                                    shortcuts.forEach { s ->
-                                        val icon = launcherApps.getShortcutIconDrawable(s, 0)?.toBitmap()?.asImageBitmap()
-                                        MenuRow(
-                                            text = s.shortLabel?.toString() ?: s.longLabel.toString(),
-                                            icon = icon,
-                                            onClick = {
-                                                launcherApps.startShortcut(s.`package`, s.id, null, null, userHandle)
-                                                selectedApp = null // Dismiss after click
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    ShortcutPopup(
+                        shortcuts,
+                        { viewModel.launchShortcut(it) },
+                        { selectedApp = null })
                 }
 
                 if (showSheetForApp != null) {
@@ -432,7 +402,8 @@ fun LetterBar(
                         onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
                         onDrag = { change, _ ->
-                            val letterIndex = (change.position.y / size.height * currentSortedLetters.size).toInt()
+                            val letterIndex =
+                                (change.position.y / size.height * currentSortedLetters.size).toInt()
                             setSelectedLetter(if (letterIndex in currentSortedLetters.indices) currentSortedLetters[letterIndex] else null)
                         })
                 }) {
@@ -538,6 +509,37 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
             .height(42.dp) // same as AppRow height
     ) {
         Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
-        Text( text = text, fontSize = 24.sp, color = Color.White )
+        Text(text = text, fontSize = 24.sp, color = Color.White)
+    }
+}
+
+@Composable
+fun ShortcutPopup(shortcuts: List<UiShortcut>, launch: (Int) -> Unit, reset: () -> Unit) {
+    val anchorBounds = Rect.Zero
+    Popup(
+        offset = IntOffset(anchorBounds.left.toInt(), anchorBounds.top.toInt()),
+        onDismissRequest = reset,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(with(LocalDensity.current) { anchorBounds.width.toDp() })
+                .padding(horizontal = 48.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF121212), RoundedCornerShape(12.dp))
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
+                    shortcuts.forEachIndexed { index,  s ->
+                        MenuRow(
+                            text = s.label,
+                            icon = s.icon,
+                            onClick = { launch(index) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
