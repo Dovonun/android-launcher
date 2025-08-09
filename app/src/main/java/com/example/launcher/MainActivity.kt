@@ -5,16 +5,12 @@ import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.LauncherApps
-import android.content.pm.LauncherApps.ShortcutQuery
-import android.content.pm.ShortcutInfo
 import android.os.Bundle
-import android.os.UserHandle
 import android.util.Log
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,15 +36,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,7 +57,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -73,23 +65,19 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Popup
-import androidx.core.content.edit
-import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
-import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import android.view.WindowInsets as ViewWindowInsets
-import androidx.lifecycle.viewmodel.compose.viewModel
 
-enum class ScreenState {
-    AllApps,
-    Favorites
+sealed interface View {
+    data object Favorites : View
+    data class AllApps(val letter: Char) : View
 }
 
 data class UiShortcut(
@@ -122,7 +110,7 @@ private fun expandNotificationShade(context: Context) {
 }
 
 class MainActivity : ComponentActivity() {
-    private var selectedLetter: Char? by mutableStateOf(null)
+    private val viewVM: ViewVM by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
@@ -138,17 +126,16 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
 
-            val viewModel: LauncherViewModel = viewModel()
-            val density = context.resources.displayMetrics.densityDpi
+            val appsVM: AppsVM = viewModel()
 
-            val installedAppsState by viewModel.installedApps.collectAsState()
-            // TODO: shortcuts make no sense here :)
-//            val shortcuts = remember { viewModel.getShortcutsForApp("com.example.app", density) }
+            val appListData by appsVM.appListData.collectAsState()
+            val favorites by appsVM.favoriteApps.collectAsState()
+
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? =
                 remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
 
-            val screen_state = remember { mutableStateOf(ScreenState.Favorites) }
+            var screenState: View by remember { mutableStateOf(View.Favorites) }
 
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
             val primaryColor = remember { primaryColorInt?.let { Color(it) } ?: Color.Black }
@@ -156,44 +143,9 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            val (appList, letterIndices) = remember(installedAppsState) {
-                Log.d("AppListDebug", "Recomputing appList and letterIndices")
-                val items = mutableListOf<ListItem>()
-                val indices = mutableMapOf<Char, Int>()
-
-                installedAppsState.entries.forEach { (letter, apps) ->
-                    Log.d("AppListDebug", "Adding section $letter with ${apps.size} apps")
-                    indices[letter] = items.size
-                    items.add(ListItem.Header(letter))
-                    apps.forEach { app ->
-                        items.add(ListItem.AppEntry(app))
-                    }
-                }
-                Pair(items, indices)
-            }
-            val currentLetterIndices by rememberUpdatedState(letterIndices)
-
-            val sharedPreferences by remember {
-                mutableStateOf(
-                    context.getSharedPreferences(
-                        "launcher_prefs", MODE_PRIVATE
-                    )
-                )
-            }
-            var favorites by remember {
-                mutableStateOf(
-                    sharedPreferences.getStringSet(
-                        "favorites", emptySet()
-                    )?.toSet() ?: emptySet()
-                )
-            }
-
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
-
-            var selectedApp by remember { mutableStateOf<App?>(null) }
-            var anchorBounds by remember { mutableStateOf(Rect.Zero) }
 
             Box(
                 modifier = Modifier
@@ -204,39 +156,22 @@ class MainActivity : ComponentActivity() {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
                                 if (dragAmount.y < 0) {
-                                    selectedLetter = null
+                                    viewVM.setView(View.Favorites)
                                     change.consume()
                                 }
                             },
                         )
                     }) {
-                LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
 
-                if (viewModel.selectedApp.collectAsState().value != null) {
+                if (appsVM.selectedApp.collectAsState().value != null) {
                     ShortcutPopup(
-                        shortcuts = viewModel.shortcutUiItems.collectAsState().value,
-                        launch = { index -> viewModel.launchShortcut(index) },
-                        reset = { viewModel.selectApp(null) }
+                        shortcuts = appsVM.shortcutUiItems.collectAsState().value,
+                        launch = { index -> appsVM.launchShortcut(index) },
+                        reset = { appsVM.selectApp(null) }
                     )
                 }
 
-                if (selectedApp != null) {
-                    var shortcuts by remember(selectedApp) {
-                        mutableStateOf<List<UiShortcut>>(
-                            emptyList()
-                        )
-                    }
-                    LaunchedEffect(selectedApp) {
-                        selectedApp?.let { app ->
-                            shortcuts = viewModel.getShortcutsForApp(app.packageName, density)
-                        }
-                    }
-                    ShortcutPopup(
-                        shortcuts,
-                        { viewModel.launchShortcut(it) },
-                        { selectedApp = null })
-                }
-
+                LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
                 if (showSheetForApp != null) {
                     ModalBottomSheet(
                         onDismissRequest = { showSheetForApp = null },
@@ -248,12 +183,9 @@ class MainActivity : ComponentActivity() {
                         val app = showSheetForApp!!
                         Column(Modifier.fillMaxWidth()) {
                             SheetEntry(
-                                if (favorites.contains(app.packageName)) "Remove from favorites" else "Add to favorites"
+                                if (appsVM.isFavorite(app.packageName)) "Remove from favorites" else "Add to favorites"
                             ) {
-                                val newFavorites =
-                                    if (favorites.contains(app.packageName)) favorites - app.packageName else favorites + app.packageName
-                                sharedPreferences.edit { putStringSet("favorites", newFavorites) }
-                                favorites = newFavorites
+                                appsVM.toggleFavorite(app.packageName)
                                 showSheetForApp = null
                             }
                             SheetEntry("Uninstall") {
@@ -274,13 +206,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (selectedLetter == null) { // show favorites
-                    LazyColumn(
+                when (screenState) {
+                    is View.Favorites -> LazyColumn(
                         reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                            .clickable { /* No-op, just to claim touch priority */ }
+                            .clickable { /* No-op, just to claim touch priority */ } // TODO: Is this the flicker issue?
                             .pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
@@ -295,29 +227,24 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }) {
-                        val appMap =
-                            installedAppsState.values.flatten().associateBy { it.packageName }
-                        val favoriteAppList = favorites.mapNotNull { appMap[it] }
-                        items(
-                            favoriteAppList, key = { "fav-${it.packageName}" }) { app ->
+                        items(favorites, key = { "fav-${it.packageName}" }) { app ->
                             AppRow(app = app, launchApp = { app.launch(context) }, onLongPress = {
                                 showSheetForApp = app
                                 coroutineScope.launch { bottomSheetState.show() }
-                            }, onLongSwipe = { tappedApp, bounds ->
+                            }, onLongSwipe = { target, bounds ->
                                 Log.d("MainActivity", "long swipe")
-                                selectedApp = tappedApp
-                                anchorBounds = bounds
+                                appsVM.selectApp(target)
                             })
                         }
                     }
-                } else { // show all apps
-                    LazyColumn(
+
+                    is View.AllApps -> LazyColumn(
                         modifier = Modifier, state = listState, contentPadding = PaddingValues(
                             top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
                             bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                         )
                     ) {
-                        itemsIndexed(appList) { _, item ->
+                        itemsIndexed(appListData.items) { _, item ->
                             when (item) {
                                 is ListItem.Header -> {
                                     Text(
@@ -340,23 +267,24 @@ class MainActivity : ComponentActivity() {
                                             coroutineScope.launch { bottomSheetState.show() }
                                         },
                                         onLongSwipe = { tappedApp, bounds ->
-                                            selectedApp = tappedApp
-                                            anchorBounds = bounds
+                                            appsVM.selectApp(tappedApp)
                                         })
                                 }
                             }
                         }
                     }
                 }
+//                            update(
+//                                currentSortedLetters.getOrNull((change.position.y / size.height * currentSortedLetters.size).toInt())
+//                                    ?.let { View.AllApps(it) } ?: View.Favorites)
                 LetterBar(
-                    sortedLetters = letterIndices.keys.toList(),
-                    selectedLetter = selectedLetter,
-                    setSelectedLetter = { newLetter ->
-                        selectedLetter = newLetter
-                        coroutineScope.launch {
-                            val targetIndex = currentLetterIndices[newLetter] ?: return@launch
-                            listState.scrollToItem(index = targetIndex, scrollOffset = 0)
-                        }
+                    sortedLetters = appListData.letterToIndex.keys.toList(),
+                    view = viewVM.view.collectAsState().value,
+                    update = { index ->
+                        appListData.letterToIndex.entries.elementAtOrNull(index)?.let { (letter, i) ->
+                            coroutineScope.launch { listState.scrollToItem(index = i, scrollOffset = 0) }
+                            viewVM.setView(View.AllApps(letter))
+                        } ?: viewVM.setView(View.Favorites)
                     },
                     color = primaryColor,
                     modifier = Modifier
@@ -372,7 +300,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        selectedLetter = null
+        viewVM.setView(View.Favorites)
         Log.d("MainActivity", "new intent called")
     }
 
@@ -386,8 +314,8 @@ fun LetterBar(
     modifier: Modifier = Modifier,
     color: Color,
     sortedLetters: List<Char>,
-    selectedLetter: Char?,
-    setSelectedLetter: (Char?) -> Unit
+    view: View,
+    update: (Int) -> Unit
 ) {
     val currentSortedLetters by rememberUpdatedState(sortedLetters)
     Row(modifier = modifier) {
@@ -401,18 +329,14 @@ fun LetterBar(
                     detectDragGestures(
                         onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
-                        onDrag = { change, _ ->
-                            val letterIndex =
-                                (change.position.y / size.height * currentSortedLetters.size).toInt()
-                            setSelectedLetter(if (letterIndex in currentSortedLetters.indices) currentSortedLetters[letterIndex] else null)
-                        })
+                        onDrag = { change, _ -> update((change.position.y / size.height * currentSortedLetters.size).toInt()) })
                 }) {
-            sortedLetters.forEach { letter ->
-                if (selectedLetter != null) {
+            if (view is View.AllApps) {
+                sortedLetters.forEach { letter ->
                     Text(
                         text = letter.toString(),
-                        fontSize = if (letter == selectedLetter) 24.sp else 16.sp, // Make the selected letter bigger
-                        color = if (letter == selectedLetter) Color.White else color,
+                        fontSize = if (letter == view.letter) 24.sp else 16.sp, // Make the selected letter bigger
+                        color = if (letter == view.letter) Color.White else color,
                         modifier = Modifier
                     )
                 }
@@ -531,7 +455,7 @@ fun ShortcutPopup(shortcuts: List<UiShortcut>, launch: (Int) -> Unit, reset: () 
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
             ) {
                 Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-                    shortcuts.forEachIndexed { index,  s ->
+                    shortcuts.forEachIndexed { index, s ->
                         MenuRow(
                             text = s.label,
                             icon = s.icon,
