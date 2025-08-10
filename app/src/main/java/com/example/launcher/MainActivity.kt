@@ -127,15 +127,13 @@ class MainActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
 
             val appsVM: AppsVM = viewModel()
-
             val appListData by appsVM.appListData.collectAsState()
             val favorites by appsVM.favoriteApps.collectAsState()
+            var screenState: View by remember { mutableStateOf(View.Favorites) }
 
             val wallpaperManager = WallpaperManager.getInstance(context)
-            val wallpaperColors: WallpaperColors? =
-                remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
+            val wallpaperColors: WallpaperColors? = remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
 
-            var screenState: View by remember { mutableStateOf(View.Favorites) }
 
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
             val primaryColor = remember { primaryColorInt?.let { Color(it) } ?: Color.Black }
@@ -182,6 +180,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         val app = showSheetForApp!!
                         Column(Modifier.fillMaxWidth()) {
+                            // TOOD: use material icons
                             SheetEntry(
                                 if (appsVM.isFavorite(app.packageName)) "Remove from favorites" else "Add to favorites"
                             ) {
