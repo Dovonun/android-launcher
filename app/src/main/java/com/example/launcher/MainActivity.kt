@@ -223,7 +223,6 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                            .clickable { /* No-op, just to claim touch priority */ } // TODO: Is this the flicker issue?
                             .pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
