@@ -125,11 +125,13 @@ class MainActivity : ComponentActivity() {
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
-
             val appsVM: AppsVM = viewModel()
+
+            val view by viewVM.view.collectAsState()
             val appListData by appsVM.appListData.collectAsState()
             val favorites by appsVM.favoriteApps.collectAsState()
-            var screenState: View by remember { mutableStateOf(View.Favorites) }
+            val selectedApp by appsVM.selectedApp.collectAsState()
+            val shortcuts by appsVM.shortcutUiItems.collectAsState()
 
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? = remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
@@ -144,6 +146,7 @@ class MainActivity : ComponentActivity() {
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
+            var anchorBounds by remember { mutableStateOf(Rect.Zero) }
 
             Box(
                 modifier = Modifier
@@ -161,9 +164,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }) {
 
-                if (appsVM.selectedApp.collectAsState().value != null) {
+                LaunchedEffect(selectedApp, shortcuts) {
+                    Log.d("UI", "selectedApp=$selectedApp, shortcuts=${shortcuts.size}")
+                }
+                if (selectedApp != null) {
+                    Log.d("UI", "now there should be a pop up :)")
                     ShortcutPopup(
-                        shortcuts = appsVM.shortcutUiItems.collectAsState().value,
+                        shortcuts = shortcuts,
+                        anchorBounds = anchorBounds,
                         launch = { index -> appsVM.launchShortcut(index) },
                         reset = { appsVM.selectApp(null) }
                     )
@@ -205,7 +213,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                when (screenState) {
+                Log.d("MainActivity", "screenState: $view")
+                when (view) {
                     is View.Favorites -> LazyColumn(
                         reverseLayout = true,
                         modifier = Modifier
@@ -233,6 +242,7 @@ class MainActivity : ComponentActivity() {
                             }, onLongSwipe = { target, bounds ->
                                 Log.d("MainActivity", "long swipe")
                                 appsVM.selectApp(target)
+                                anchorBounds = bounds
                             })
                         }
                     }
@@ -437,8 +447,8 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun ShortcutPopup(shortcuts: List<UiShortcut>, launch: (Int) -> Unit, reset: () -> Unit) {
-    val anchorBounds = Rect.Zero
+fun ShortcutPopup(shortcuts: List<UiShortcut>, anchorBounds: Rect, launch: (Int) -> Unit, reset: () -> Unit) {
+    Log.d("ShortcutPopup", "shortcuts: $shortcuts")
     Popup(
         offset = IntOffset(anchorBounds.left.toInt(), anchorBounds.top.toInt()),
         onDismissRequest = reset,

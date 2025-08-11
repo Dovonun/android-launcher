@@ -7,6 +7,7 @@ import android.content.pm.LauncherApps.ShortcutQuery
 import android.content.pm.ShortcutInfo
 import android.graphics.Bitmap
 import android.os.UserHandle
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.HelpOutline
@@ -110,6 +111,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectApp(app: App?) {
+        Log.d("AppsVM", "selectApp: $app")
         _selectedApp.value = app
     }
 
