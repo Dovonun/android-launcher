@@ -68,6 +68,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -172,7 +173,7 @@ class MainActivity : ComponentActivity() {
                 }
                 if (selectedApp != null) {
                     Log.d("UI", "now there should be a pop up :)")
-                    ShortcutPopup (
+                    ShortcutPopup(
                         shortcuts = shortcuts,
                         anchorBounds = anchorBounds,
                         launch = { index -> appsVM.launchShortcut(index) },
@@ -482,15 +483,20 @@ fun ShortcutPopup(
                     .padding(horizontal = 24.dp, vertical = 12.dp)
                     .align(Alignment.TopStart)
             ) {
-                shortcuts.forEachIndexed { index, s ->
-                    MenuRow(
-                        text = s.label,
-                        icon = s.icon,
-                        onClick = { launch(index) },
-                        modifier = if (index == 0) Modifier.onGloballyPositioned {
-                            rowHeightPx = it.size.height
-                        } else Modifier
-                    )
+                if (shortcuts.isNotEmpty()) {
+                    shortcuts.forEachIndexed { index, s ->
+                        MenuRow(
+                            text = s.label,
+                            icon = s.icon,
+                            onClick = { launch(index) },
+                            modifier = if (index == 0) Modifier.onGloballyPositioned {
+                                rowHeightPx = it.size.height
+                            } else Modifier
+                        )
+                    }
+                } else {
+                    val text = "No shortcuts found for this App"
+                    Text(text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
                 }
             }
         }
