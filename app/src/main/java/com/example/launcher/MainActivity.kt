@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,11 +68,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -169,7 +172,7 @@ class MainActivity : ComponentActivity() {
                 }
                 if (selectedApp != null) {
                     Log.d("UI", "now there should be a pop up :)")
-                    ShortcutPopup(
+                    ShortcutPopup (
                         shortcuts = shortcuts,
                         anchorBounds = anchorBounds,
                         launch = { index -> appsVM.launchShortcut(index) },
@@ -188,7 +191,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         val app = showSheetForApp!!
                         Column(Modifier.fillMaxWidth()) {
-                            // TOOD: use material icons
+                            // TODO: use material icons
                             SheetEntry(
                                 if (appsVM.isFavorite(app.packageName)) "Remove from favorites" else "Add to favorites"
                             ) {
@@ -447,30 +450,48 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun ShortcutPopup(shortcuts: List<UiShortcut>, anchorBounds: Rect, launch: (Int) -> Unit, reset: () -> Unit) {
-    Log.d("ShortcutPopup", "shortcuts: $shortcuts")
+fun ShortcutPopup(
+    shortcuts: List<UiShortcut>,
+    launch: (Int) -> Unit,
+    reset: () -> Unit,
+    anchorBounds: Rect
+) {
+    val density = LocalDensity.current
+    var rowHeightPx by remember { mutableIntStateOf(0) }
+
     Popup(
-        offset = IntOffset(anchorBounds.left.toInt(), anchorBounds.top.toInt()),
-        onDismissRequest = reset,
+        properties = PopupProperties(focusable = true),
+        onDismissRequest = reset
     ) {
         Box(
-            modifier = Modifier
-                .width(with(LocalDensity.current) { anchorBounds.width.toDp() })
-                .padding(horizontal = 48.dp)
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { reset() }
+                .padding(horizontal = 24.dp)
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .offset(
+                        x = with(density) { anchorBounds.left.toDp() },
+                        y = with(density) { (anchorBounds.top - rowHeightPx).toDp() }
+                    )
+                    .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .align(Alignment.TopStart)
             ) {
-                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-                    shortcuts.forEachIndexed { index, s ->
-                        MenuRow(
-                            text = s.label,
-                            icon = s.icon,
-                            onClick = { launch(index) }
-                        )
-                    }
+                shortcuts.forEachIndexed { index, s ->
+                    MenuRow(
+                        text = s.label,
+                        icon = s.icon,
+                        onClick = { launch(index) },
+                        modifier = if (index == 0) Modifier.onGloballyPositioned {
+                            rowHeightPx = it.size.height
+                        } else Modifier
+                    )
                 }
             }
         }
