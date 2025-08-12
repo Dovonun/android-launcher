@@ -151,6 +151,10 @@ class MainActivity : ComponentActivity() {
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
             var anchorBounds by remember { mutableStateOf(Rect.Zero) }
+            fun selectAppWithBounds(app: App, bounds: Rect) {
+                anchorBounds = bounds
+                appsVM.selectApp(app)
+            }
 
             Box(
                 modifier = Modifier
@@ -239,14 +243,14 @@ class MainActivity : ComponentActivity() {
                                 }
                             }) {
                         items(favorites, key = { "fav-${it.packageName}" }) { app ->
-                            AppRow(app = app, launchApp = { app.launch(context) }, onLongPress = {
-                                showSheetForApp = app
-                                coroutineScope.launch { bottomSheetState.show() }
-                            }, onLongSwipe = { target, bounds ->
-                                Log.d("MainActivity", "long swipe")
-                                appsVM.selectApp(target)
-                                anchorBounds = bounds
-                            })
+                            AppRow(
+                                app = app, launchApp = { app.launch(context) },
+                                onLongPress = {
+                                    showSheetForApp = app
+                                    coroutineScope.launch { bottomSheetState.show() }
+                                },
+                                onLongSwipe = ::selectAppWithBounds,
+                            )
                         }
                     }
 
@@ -278,17 +282,13 @@ class MainActivity : ComponentActivity() {
                                             showSheetForApp = app
                                             coroutineScope.launch { bottomSheetState.show() }
                                         },
-                                        onLongSwipe = { tappedApp, bounds ->
-                                            appsVM.selectApp(tappedApp)
-                                        })
+                                        onLongSwipe = ::selectAppWithBounds,
+                                    )
                                 }
                             }
                         }
                     }
                 }
-//                            update(
-//                                currentSortedLetters.getOrNull((change.position.y / size.height * currentSortedLetters.size).toInt())
-//                                    ?.let { View.AllApps(it) } ?: View.Favorites)
                 LetterBar(
                     sortedLetters = appListData.letterToIndex.keys.toList(),
                     view = viewVM.view.collectAsState().value,
