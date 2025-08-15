@@ -3,33 +3,33 @@ package com.example.launcher
 import android.annotation.SuppressLint
 import android.app.WallpaperColors
 import android.app.WallpaperManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
-import android.view.WindowInsets
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,7 +45,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,7 +60,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -66,37 +67,34 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
-import androidx.core.content.ContextCompat
-import androidx.core.content.edit
-import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import android.view.WindowInsets as ViewWindowInsets
+
+sealed interface View {
+    data object Favorites : View
+    data class AllApps(val letter: Char) : View
+}
+
+data class UiShortcut(
+    val label: String,
+    val icon: ImageBitmap,
+)
 
 data class App(
     val name: String, val packageName: String, val icon: ImageBitmap
 )
 
 fun App.launch(context: Context) {
-    val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return
-    context.startActivity(intent)
-}
-
-fun getInstalledApps(context: Context): List<App> {
-    val packageManager = context.packageManager
-    val intent = Intent(Intent.ACTION_MAIN, null).apply {
-        addCategory(Intent.CATEGORY_LAUNCHER)
-    }
-    val resolveInfos = packageManager.queryIntentActivities(intent, 0)
-    return resolveInfos.map { resolveInfo ->
-        App(
-            resolveInfo.loadLabel(packageManager).toString(),
-            resolveInfo.activityInfo.packageName,
-            resolveInfo.loadIcon(packageManager).toBitmap().asImageBitmap()
-        )
-    }
+    context.startActivity(context.packageManager.getLaunchIntentForPackage(packageName) ?: return)
 }
 
 sealed class ListItem {
@@ -115,63 +113,33 @@ private fun expandNotificationShade(context: Context) {
     }
 }
 
-class PackageChangeReceiver(
-    private val onChange: () -> Unit
-) : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-        when (intent?.action) {
-            Intent.ACTION_PACKAGE_ADDED,
-            Intent.ACTION_PACKAGE_REMOVED,
-            Intent.ACTION_PACKAGE_REPLACED -> onChange()
-        }
-    }
-}
-
-
 class MainActivity : ComponentActivity() {
-    private lateinit var receiver: BroadcastReceiver
-    private var loadApps: (() -> Unit)? = null
-    private var selectedLetter: Char? by mutableStateOf(null)
+    private val viewVM: ViewVM by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ReturnFromAwaitPointerEventScope")
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        receiver = PackageChangeReceiver {
-            Log.d("Receiver", "Package change received")
-            loadApps?.invoke()
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addAction(Intent.ACTION_PACKAGE_REMOVED)
-            addAction(Intent.ACTION_PACKAGE_REPLACED)
-            addDataScheme("package")
-        }
-        ContextCompat.registerReceiver( this, receiver, filter, ContextCompat.RECEIVER_EXPORTED )
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
-            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
-        )
-        window.attributes.setWallpaperTouchEventsEnabled(false)
-
         enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+
+        window.attributes.setWallpaperTouchEventsEnabled(false)
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+
         setContent {
-            window.insetsController?.hide(WindowInsets.Type.statusBars())
+            window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
-            val installedAppsState = remember { mutableStateOf<Map<Char, List<App>>>(emptyMap()) }
-            val groupedApps = installedAppsState.value
-            loadApps = {
-                val apps = getInstalledApps(context).sortedBy { it.name.lowercase() } .groupBy { it.name[0].uppercaseChar() }
-                Log.d("MainActivity", "Apps loaded: ${apps.size}")
-                installedAppsState.value = apps
-            }
-            LaunchedEffect(Unit) {
-                loadApps?.invoke()
-            }
+            val appsVM: AppsVM = viewModel()
+
+            val view by viewVM.view.collectAsState()
+            val appListData by appsVM.appListData.collectAsState()
+            val favorites by appsVM.favoriteApps.collectAsState()
+            val selectedApp by appsVM.selectedApp.collectAsState()
+            val shortcuts by appsVM.shortcutUiItems.collectAsState()
+
             val wallpaperManager = WallpaperManager.getInstance(context)
-            val wallpaperColors: WallpaperColors? =
-                remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
+            val wallpaperColors: WallpaperColors? = remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
+
 
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
             val primaryColor = remember { primaryColorInt?.let { Color(it) } ?: Color.Black }
@@ -179,61 +147,60 @@ class MainActivity : ComponentActivity() {
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
             val listState = rememberLazyListState()
 
-            val (appList, letterIndices) = remember(groupedApps) {
-                Log.d("AppListDebug", "Recomputing appList and letterIndices")
-                val items = mutableListOf<ListItem>()
-                val indices = mutableMapOf<Char, Int>()
-
-                groupedApps.entries.forEach { (letter, apps) ->
-                    Log.d("AppListDebug", "Adding section $letter with ${apps.size} apps")
-                    indices[letter] = items.size
-                    items.add(ListItem.Header(letter))
-                    apps.forEach { app ->
-                        items.add(ListItem.AppEntry(app))
-                    }
-                }
-                Pair(items, indices)
-            }
-            val currentLetterIndices by rememberUpdatedState(letterIndices)
-
-            val sharedPreferences by remember { mutableStateOf( context.getSharedPreferences( "launcher_prefs", Context.MODE_PRIVATE))}
-            var favorites by remember { mutableStateOf( sharedPreferences.getStringSet("favorites", emptySet())?.toSet() ?: emptySet())}
-
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
+            var anchorBounds by remember { mutableStateOf(Rect.Zero) }
+            fun selectAppWithBounds(app: App, bounds: Rect) {
+                anchorBounds = bounds
+                appsVM.selectApp(app)
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .border(1.dp, Color.White)
+//                    .border(1.dp, Color.White)
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
                                 if (dragAmount.y < 0) {
-                                    selectedLetter = null
+                                    viewVM.setView(View.Favorites)
                                     change.consume()
-                                } }, ) }
-            ) {
-                LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
+                                }
+                            },
+                        )
+                    }) {
 
+                LaunchedEffect(selectedApp, shortcuts) {
+                    Log.d("UI", "selectedApp=$selectedApp, shortcuts=${shortcuts.size}")
+                }
+                if (selectedApp != null) {
+                    Log.d("UI", "now there should be a pop up :)")
+                    ShortcutPopup(
+                        shortcuts = shortcuts,
+                        anchorBounds = anchorBounds,
+                        launch = { index -> appsVM.launchShortcut(index) },
+                        reset = { appsVM.selectApp(null) }
+                    )
+                }
+
+                LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
                 if (showSheetForApp != null) {
                     ModalBottomSheet(
                         onDismissRequest = { showSheetForApp = null },
                         sheetState = bottomSheetState,
                         containerColor = Color(0xFF121212),
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                        windowInsets = WindowInsets(0.dp)
                     ) {
                         val app = showSheetForApp!!
                         Column(Modifier.fillMaxWidth()) {
+                            // TODO: use material icons
                             SheetEntry(
-                                if (favorites.contains(app.packageName)) "Remove from favorites" else "Add to favorites"
+                                if (appsVM.isFavorite(app.packageName)) "Remove from favorites" else "Add to favorites"
                             ) {
-                                val newFavorites =
-                                    if (favorites.contains(app.packageName)) favorites - app.packageName else favorites + app.packageName
-                                sharedPreferences.edit { putStringSet("favorites", newFavorites) }
-                                favorites = newFavorites
+                                appsVM.toggleFavorite(app.packageName)
                                 showSheetForApp = null
                             }
                             SheetEntry("Uninstall") {
@@ -243,22 +210,24 @@ class MainActivity : ComponentActivity() {
                                 showSheetForApp = null
                             }
                             SheetEntry("App settings") {
-                                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                val intent =
+                                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                                 intent.data = "package:${app.packageName}".toUri()
                                 context.startActivity(intent)
                                 showSheetForApp = null
                             }
+                            Spacer(Modifier.height(42.dp))
                         }
                     }
                 }
 
-                if (selectedLetter == null) { // show favorites
-                    LazyColumn(
+                Log.d("MainActivity", "screenState: $view")
+                when (view) {
+                    is View.Favorites -> LazyColumn(
                         reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                            .clickable { /* No-op, just to claim touch priority */ }
                             .pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
@@ -272,30 +241,26 @@ class MainActivity : ComponentActivity() {
                                             }
                                     }
                                 }
-                            }
-                    ) {
-                        val appMap = groupedApps.values.flatten().associateBy { it.packageName }
-                        val favoriteAppList = favorites.mapNotNull { appMap[it] }
-                        items(
-                            favoriteAppList,
-                            key = { "fav-${it.packageName}" }) { app ->
+                            }) {
+                        items(favorites, key = { "fav-${it.packageName}" }) { app ->
                             AppRow(
-                                app = app,
-                                launchApp = { app.launch(context) },
+                                app = app, launchApp = { app.launch(context) },
                                 onLongPress = {
                                     showSheetForApp = app
                                     coroutineScope.launch { bottomSheetState.show() }
-                                })
+                                },
+                                onLongSwipe = ::selectAppWithBounds,
+                            )
                         }
                     }
-                } else { // show all apps
-                    LazyColumn(
+
+                    is View.AllApps -> LazyColumn(
                         modifier = Modifier, state = listState, contentPadding = PaddingValues(
                             top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
                             bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                         )
                     ) {
-                        itemsIndexed(appList) { _, item ->
+                        itemsIndexed(appListData.items) { _, item ->
                             when (item) {
                                 is ListItem.Header -> {
                                     Text(
@@ -316,21 +281,22 @@ class MainActivity : ComponentActivity() {
                                         onLongPress = {
                                             showSheetForApp = app
                                             coroutineScope.launch { bottomSheetState.show() }
-                                        })
+                                        },
+                                        onLongSwipe = ::selectAppWithBounds,
+                                    )
                                 }
                             }
                         }
                     }
                 }
                 LetterBar(
-                    sortedLetters = letterIndices.keys.toList(),
-                    selectedLetter = selectedLetter,
-                    setSelectedLetter = { newLetter ->
-                        selectedLetter = newLetter
-                        coroutineScope.launch {
-                            val targetIndex = currentLetterIndices[newLetter] ?: return@launch
-                            listState.scrollToItem(index = targetIndex, scrollOffset = 0)
-                        }
+                    sortedLetters = appListData.letterToIndex.keys.toList(),
+                    view = viewVM.view.collectAsState().value,
+                    update = { index ->
+                        appListData.letterToIndex.entries.elementAtOrNull(index)?.let { (letter, i) ->
+                            coroutineScope.launch { listState.scrollToItem(index = i, scrollOffset = 0) }
+                            viewVM.setView(View.AllApps(letter))
+                        } ?: viewVM.setView(View.Favorites)
                     },
                     color = primaryColor,
                     modifier = Modifier
@@ -339,21 +305,19 @@ class MainActivity : ComponentActivity() {
                         .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
                         .onGloballyPositioned { coordinates ->
                             letterBarBounds = coordinates.boundsInWindow()
-                        }
-                )
+                        })
             }
         }
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        selectedLetter = null
+        viewVM.setView(View.Favorites)
         Log.d("MainActivity", "new intent called")
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(receiver)
     }
 }
 
@@ -362,8 +326,8 @@ fun LetterBar(
     modifier: Modifier = Modifier,
     color: Color,
     sortedLetters: List<Char>,
-    selectedLetter: Char?,
-    setSelectedLetter: (Char?) -> Unit
+    view: View,
+    update: (Int) -> Unit
 ) {
     val currentSortedLetters by rememberUpdatedState(sortedLetters)
     Row(modifier = modifier) {
@@ -377,18 +341,14 @@ fun LetterBar(
                     detectDragGestures(
                         onDragStart = { isScrollbarTouched = true },
                         onDragEnd = { isScrollbarTouched = false },
-                        onDrag = { change, _ ->
-                            val letterIndex =
-                                (change.position.y / size.height * currentSortedLetters.size).toInt()
-                            setSelectedLetter(if (letterIndex in currentSortedLetters.indices) currentSortedLetters[letterIndex] else null)
-                        })
+                        onDrag = { change, _ -> update((change.position.y / size.height * currentSortedLetters.size).toInt()) })
                 }) {
-            sortedLetters.forEach { letter ->
-                if (selectedLetter != null) {
+            if (view is View.AllApps) {
+                sortedLetters.forEach { letter ->
                     Text(
                         text = letter.toString(),
-                        fontSize = if (letter == selectedLetter) 24.sp else 16.sp, // Make the selected letter bigger
-                        color = if (letter == selectedLetter) Color.White else color,
+                        fontSize = if (letter == view.letter) 24.sp else 16.sp, // Make the selected letter bigger
+                        color = if (letter == view.letter) Color.White else color,
                         modifier = Modifier
                     )
                 }
@@ -398,22 +358,28 @@ fun LetterBar(
 }
 
 @Composable
-fun AppRow(
-    app: App, modifier: Modifier = Modifier, launchApp: () -> Unit, onLongPress: () -> Unit
+fun MenuRow(
+    text: String,
+    modifier: Modifier = Modifier,
+    icon: ImageBitmap? = null,
+    onClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 48.dp)
-            .padding(vertical = 8.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
-            }) {
-        Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
-        Spacer(modifier = Modifier.width(32.dp))
+            .clickable { onClick() }
+            .padding(vertical = 12.dp) // Adjusted vertical padding
+    ) {
+        if (icon != null) {
+            Image(bitmap = icon, contentDescription = text, modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.width(32.dp))
+        } else {
+            // Spacer to align with AppRow's text when there's no icon
+            Spacer(modifier = Modifier.width(42.dp + 32.dp))
+        }
         Text(
-            text = app.name,
+            text = text,
             fontSize = 24.sp,
             color = Color.White,
             style = MaterialTheme.typography.labelMedium.copy(
@@ -426,20 +392,113 @@ fun AppRow(
 }
 
 @Composable
+fun AppRow(
+    app: App,
+    modifier: Modifier = Modifier,
+    launchApp: () -> Unit,
+    onLongPress: () -> Unit,
+    onLongSwipe: (App, Rect) -> Unit
+) {
+    var rowBounds by remember { mutableStateOf(Rect.Zero) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .onGloballyPositioned { coordinates ->
+                rowBounds = coordinates.boundsInWindow()
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    Log.d("MainActivity", "dragAmount: $dragAmount")
+                    if (dragAmount > 50f) onLongSwipe(app, rowBounds)
+                }
+            }) {
+        Row(modifier = Modifier.padding(start = 48.dp)) {
+            Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.width(32.dp))
+            Text(
+                text = app.name,
+                fontSize = 24.sp,
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
+                    )
+                )
+            )
+        }
+    }
+}
+
+@Composable
 fun SheetEntry(text: String, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(56.dp) // same as AppRow height
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .height(42.dp) // same as AppRow height
     ) {
         Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
-        Text(
-            text = text,
-            fontSize = 24.sp,
-            color = Color.White
-        )
+        Text(text = text, fontSize = 24.sp, color = Color.White)
+    }
+}
+
+@Composable
+fun ShortcutPopup(
+    shortcuts: List<UiShortcut>,
+    launch: (Int) -> Unit,
+    reset: () -> Unit,
+    anchorBounds: Rect
+) {
+    val density = LocalDensity.current
+    var rowHeightPx by remember { mutableIntStateOf(0) }
+
+    Popup(
+        properties = PopupProperties(focusable = true),
+        onDismissRequest = reset
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { reset() }
+                .padding(horizontal = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .offset(
+                        x = with(density) { anchorBounds.left.toDp() },
+                        y = with(density) { (anchorBounds.top - rowHeightPx).toDp() }
+                    )
+                    .width(with(density) { anchorBounds.width.toDp() })
+                    .background(Color(0xFF121212), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .align(Alignment.TopStart)
+            ) {
+                if (shortcuts.isNotEmpty()) {
+                    shortcuts.forEachIndexed { index, s ->
+                        MenuRow(
+                            text = s.label,
+                            icon = s.icon,
+                            onClick = { launch(index) },
+                            modifier = if (index == 0) Modifier.onGloballyPositioned {
+                                rowHeightPx = it.size.height
+                            } else Modifier
+                        )
+                    }
+                } else {
+                    val text = "No shortcuts found for this App"
+                    Text(text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
+                }
+            }
+        }
     }
 }
