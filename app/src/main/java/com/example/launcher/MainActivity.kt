@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -70,6 +71,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -168,6 +170,7 @@ class MainActivity : ComponentActivity() {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
                                 if (dragAmount.y < 0) {
+                                    Log.d("MainActivity", "dragAmount: $dragAmount")
                                     viewVM.setView(View.Favorites)
                                     change.consume()
                                 }
@@ -197,7 +200,7 @@ class MainActivity : ComponentActivity() {
                         sheetState = bottomSheetState,
                         containerColor = Color(0xFF121212),
                         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                        windowInsets = WindowInsets(0.dp)
+                        contentWindowInsets = { WindowInsets(0) } // New API
                     ) {
                         val app = showSheetForApp!!
                         Column(Modifier.fillMaxWidth()) {
@@ -232,7 +235,7 @@ class MainActivity : ComponentActivity() {
                         reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
-                            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+                            .padding(bottom = 1f / 8f * LocalWindowInfo.current.containerSize.height.dp)
                             .pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
@@ -261,8 +264,8 @@ class MainActivity : ComponentActivity() {
 
                     is View.AllApps -> LazyColumn(
                         modifier = Modifier, state = listState, contentPadding = PaddingValues(
-                            top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
-                            bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
+                            top = 1f / 3f * LocalWindowInfo.current.containerSize.height.dp,
+                            bottom = 2f / 3f * LocalWindowInfo.current.containerSize.height.dp
                         )
                     ) {
                         itemsIndexed(appListData.items) { _, item ->
@@ -299,6 +302,7 @@ class MainActivity : ComponentActivity() {
                     sortedLetters = appListData.letterToIndex.keys.toList(),
                     view = viewVM.view.collectAsState().value,
                     update = { index ->
+                        Log.d("MainActivity", "letterBar updated to $index")
                         appListData.letterToIndex.entries.elementAtOrNull(index)?.let { (letter, i) ->
                             coroutineScope.launch { listState.scrollToItem(index = i, scrollOffset = 0) }
                             if (letter != lastLetter) {
@@ -311,6 +315,7 @@ class MainActivity : ComponentActivity() {
                     color = primaryColor,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
+                        .background(Color.Blue)
                         .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
                         .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
                         .onGloballyPositioned { coordinates ->
@@ -320,10 +325,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        viewVM.setView(View.Favorites)
         Log.d("MainActivity", "new intent called")
+        viewVM.setView(View.Favorites)
     }
 
     override fun onDestroy() {
@@ -339,6 +344,7 @@ fun LetterBar(
     view: View,
     update: (Int) -> Unit
 ) {
+    Log.d("LetterBar", "I exist!!!!")
     val currentSortedLetters by rememberUpdatedState(sortedLetters)
     Row(modifier = modifier) {
         var isScrollbarTouched by remember { mutableStateOf(false) }
