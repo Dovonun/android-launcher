@@ -60,6 +60,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -68,6 +69,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -130,6 +132,7 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
             val appsVM: AppsVM = viewModel()
+            val haptic = LocalHapticFeedback.current
 
             val view by viewVM.view.collectAsState()
             val appListData by appsVM.appListData.collectAsState()
@@ -172,11 +175,12 @@ class MainActivity : ComponentActivity() {
                         )
                     }) {
 
-                LaunchedEffect(selectedApp, shortcuts) {
+                LaunchedEffect(selectedApp, shortcuts) { // TODO: remove this?
                     Log.d("UI", "selectedApp=$selectedApp, shortcuts=${shortcuts.size}")
                 }
                 if (selectedApp != null) {
                     Log.d("UI", "now there should be a pop up :)")
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     ShortcutPopup(
                         shortcuts = shortcuts,
                         anchorBounds = anchorBounds,
@@ -187,6 +191,7 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
                 if (showSheetForApp != null) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     ModalBottomSheet(
                         onDismissRequest = { showSheetForApp = null },
                         sheetState = bottomSheetState,
@@ -289,12 +294,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                var lastLetter by remember { mutableStateOf<Char?>(null) }
                 LetterBar(
                     sortedLetters = appListData.letterToIndex.keys.toList(),
                     view = viewVM.view.collectAsState().value,
                     update = { index ->
                         appListData.letterToIndex.entries.elementAtOrNull(index)?.let { (letter, i) ->
                             coroutineScope.launch { listState.scrollToItem(index = i, scrollOffset = 0) }
+                            if (letter != lastLetter) {
+                                lastLetter = letter
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
                             viewVM.setView(View.AllApps(letter))
                         } ?: viewVM.setView(View.Favorites)
                     },
