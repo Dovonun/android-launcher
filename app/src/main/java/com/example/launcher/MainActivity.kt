@@ -152,7 +152,8 @@ class MainActivity : ComponentActivity() {
             val shortcuts by appsVM.shortcutUiItems.collectAsState()
 
             val wallpaperManager = WallpaperManager.getInstance(context)
-            val wallpaperColors: WallpaperColors? = remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
+            val wallpaperColors: WallpaperColors? =
+                remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
 
 
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
@@ -207,8 +208,7 @@ class MainActivity : ComponentActivity() {
                         shortcuts = shortcuts,
                         anchorBounds = anchorBounds,
                         launch = { index -> appsVM.launchShortcut(index) },
-                        reset = { appsVM.selectApp(null) }
-                    )
+                        reset = { appsVM.selectApp(null) })
                 }
 
                 LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
@@ -323,14 +323,19 @@ class MainActivity : ComponentActivity() {
                     sortedLetters = appListData.letterToIndex.keys.toList(),
                     view = viewVM.view.collectAsState().value,
                     update = { index ->
-                        appListData.letterToIndex.entries.elementAtOrNull(index)?.let { (letter, i) ->
-                            coroutineScope.launch { listState.scrollToItem(index = i, scrollOffset = 0) }
-                            if (letter != lastLetter) {
-                                lastLetter = letter
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            }
-                            viewVM.setView(View.AllApps(letter))
-                        } ?: viewVM.setView(View.Favorites)
+                        appListData.letterToIndex.entries.elementAtOrNull(index)
+                            ?.let { (letter, i) ->
+                                coroutineScope.launch {
+                                    listState.scrollToItem(
+                                        index = i, scrollOffset = 0
+                                    )
+                                }
+                                if (letter != lastLetter) {
+                                    lastLetter = letter
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                                viewVM.setView(View.AllApps(letter))
+                            } ?: viewVM.setView(View.Favorites)
                     },
                     color = primaryColor,
                     modifier = Modifier
@@ -403,7 +408,7 @@ fun MenuRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 12.dp) // Adjusted vertical padding
+            .padding(vertical = 8.dp) // Adjusted vertical padding
     ) {
         if (icon != null) {
             Image(bitmap = icon, contentDescription = text, modifier = Modifier.size(42.dp))
@@ -444,7 +449,6 @@ fun AppRow(
             .onGloballyPositioned { coordinates ->
                 rowBounds = coordinates.boundsInWindow()
             }
-            .padding(vertical = 8.dp)
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
             }
@@ -454,7 +458,10 @@ fun AppRow(
                     if (dragAmount > 50f) onLongSwipe(app, rowBounds)
                 }
             }) {
-        Row(modifier = Modifier.padding(start = 48.dp)) {
+        Row(
+            modifier = Modifier.padding(start = 48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
             Spacer(modifier = Modifier.width(32.dp))
             Text(
@@ -488,39 +495,31 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
 
 @Composable
 fun ShortcutPopup(
-    shortcuts: List<UiShortcut>,
-    launch: (Int) -> Unit,
-    reset: () -> Unit,
-    anchorBounds: Rect
+    shortcuts: List<UiShortcut>, launch: (Int) -> Unit, reset: () -> Unit, anchorBounds: Rect
 ) {
     val density = LocalDensity.current
-    var rowHeightPx by remember { mutableIntStateOf(0) }
 
     Popup(
-        properties = PopupProperties(focusable = true),
-        onDismissRequest = reset
+        properties = PopupProperties(focusable = true), onDismissRequest = reset
     ) {
         Box(
             Modifier
                 .fillMaxSize()
                 .clickable(
                     indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { reset() }
-                .padding(horizontal = 24.dp)
-        ) {
+                    interactionSource = remember { MutableInteractionSource() }) { reset() }
+                .padding(horizontal = 24.dp)) {
             var popupHeight by remember { mutableIntStateOf(0) }
             Column(
                 modifier = Modifier
                     .onGloballyPositioned { popupHeight = it.size.height }
                     .offset(
-                        x = with(density) { anchorBounds.left.toDp() },
-                        y = with(density) { max(0f, anchorBounds.bottom - popupHeight).toDp()}// TODO: is add needed
+                        x = with(density) { anchorBounds.left.toDp() }, y = with(density) {
+                        max(
+                            0f, anchorBounds.bottom - popupHeight
+                        ).toDp() + 24.dp
+                    }// TODO: is add needed
                     )
-//                    .offset(
-//                        x = 0.dp,
-//                        y = 0.dp,
-//                    )
                     .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -533,14 +532,16 @@ fun ShortcutPopup(
                             text = s.label,
                             icon = s.icon,
                             onClick = { launch(shortcuts.size - 1 - index) },
-                            modifier = if (index == 0) Modifier.onGloballyPositioned {
-                                rowHeightPx = it.size.height
-                            } else Modifier
                         )
                     }
                 } else {
                     val text = "No shortcuts found for this App"
-                    Text(text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
+                    Text(
+                        text = text,
+                        fontSize = 17.sp,
+                        color = Color.Gray,
+                        fontStyle = FontStyle.Italic
+                    )
                 }
             }
         }
@@ -560,7 +561,6 @@ fun DebugBoundsOverlay(bounds: Rect, color: Color = Color.Green) {
                     topLeft = Offset(bounds.left, bounds.top),
                     size = Size(bounds.width, bounds.height)
                 )
-            }
-    )
+            })
 }
 
