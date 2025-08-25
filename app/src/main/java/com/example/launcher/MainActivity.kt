@@ -443,9 +443,11 @@ fun AppRow(
     var rowBounds by remember { mutableStateOf(Rect.Zero) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .padding(start = 48.dp)
             .onGloballyPositioned { coordinates ->
                 rowBounds = coordinates.boundsInWindow()
             }
@@ -458,23 +460,17 @@ fun AppRow(
                     if (dragAmount > 50f) onLongSwipe(app, rowBounds)
                 }
             }) {
-        Row(
-            modifier = Modifier.padding(start = 48.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
-            Spacer(modifier = Modifier.width(32.dp))
-            Text(
-                text = app.name,
-                fontSize = 24.sp,
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    shadow = Shadow(
-                        color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
-                    )
+        Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
+        Text(
+            text = app.name,
+            fontSize = 24.sp,
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium.copy(
+                shadow = Shadow(
+                    color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
                 )
             )
-        }
+        )
     }
 }
 
@@ -507,18 +503,19 @@ fun ShortcutPopup(
                 .fillMaxSize()
                 .clickable(
                     indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) { reset() }
-                .padding(horizontal = 24.dp)) {
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { reset() }
+        ) {
             var popupHeight by remember { mutableIntStateOf(0) }
             Column(
                 modifier = Modifier
                     .onGloballyPositioned { popupHeight = it.size.height }
                     .offset(
-                        x = with(density) { anchorBounds.left.toDp() }, y = with(density) {
-                        max(
-                            0f, anchorBounds.bottom - popupHeight
-                        ).toDp() + 24.dp
-                    }// TODO: is add needed
+                        x = 24.dp, y = with(density) {
+                            max(
+                                0f, anchorBounds.bottom - popupHeight
+                            ).toDp() + 24.dp
+                        }// TODO: is add needed
                     )
                     .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
