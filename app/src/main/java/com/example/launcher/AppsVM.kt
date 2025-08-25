@@ -115,6 +115,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }, user) ?: emptyList()
 
     fun launchShortcut(index: Int) {
+        selectApp(null)
         val shortcut = _lastShortcuts.value.getOrNull(index) ?: return
         launcherApps.startShortcut(shortcut.`package`, shortcut.id, null, null, user)
     }
