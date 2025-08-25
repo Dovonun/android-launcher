@@ -25,14 +25,20 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -55,8 +61,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
@@ -64,6 +72,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -71,6 +80,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -79,6 +89,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import kotlin.math.max
 import android.view.WindowInsets as ViewWindowInsets
 
 sealed interface View {
@@ -153,17 +164,28 @@ class MainActivity : ComponentActivity() {
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
+
+            // safeDrawing top as Dp, then px
+            val density = LocalDensity.current
+            val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+            val safeTopPx = with(density) { safeTopDp.toPx() }
             var anchorBounds by remember { mutableStateOf(Rect.Zero) }
+
             fun selectAppWithBounds(app: App, bounds: Rect) {
-                anchorBounds = bounds
+                anchorBounds = Rect(
+                    left = bounds.left,
+                    top = bounds.top - safeTopPx,
+                    right = bounds.right,
+                    bottom = bounds.bottom - safeTopPx
+                )
                 appsVM.selectApp(app)
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-//                    .border(1.dp, Color.White)
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
+//                    .border(1.dp, Color.White)
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
@@ -225,6 +247,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                DebugBoundsOverlay(anchorBounds)
+                DebugBoundsOverlay(Rect(0f, 0f, 1000f, 1000f), Color.Blue)
 
                 Log.d("MainActivity", "screenState: $view")
                 when (view) {
@@ -396,7 +420,9 @@ fun MenuRow(
                 shadow = Shadow(
                     color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
                 )
-            )
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -418,6 +444,7 @@ fun AppRow(
             .onGloballyPositioned { coordinates ->
                 rowBounds = coordinates.boundsInWindow()
             }
+            .padding(vertical = 8.dp)
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
             }
@@ -482,23 +509,30 @@ fun ShortcutPopup(
                 ) { reset() }
                 .padding(horizontal = 24.dp)
         ) {
+            var popupHeight by remember { mutableIntStateOf(0) }
             Column(
                 modifier = Modifier
+                    .onGloballyPositioned { popupHeight = it.size.height }
                     .offset(
                         x = with(density) { anchorBounds.left.toDp() },
-                        y = with(density) { (anchorBounds.top - rowHeightPx).toDp() }
+                        y = with(density) { max(0f, anchorBounds.bottom - popupHeight).toDp()}// TODO: is add needed
                     )
+//                    .offset(
+//                        x = 0.dp,
+//                        y = 0.dp,
+//                    )
                     .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .align(Alignment.TopStart)
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+//                    .align(Alignment.BottomStart),
+                verticalArrangement = Arrangement.Bottom
             ) {
                 if (shortcuts.isNotEmpty()) {
                     shortcuts.forEachIndexed { index, s ->
                         MenuRow(
                             text = s.label,
                             icon = s.icon,
-                            onClick = { launch(index) },
+                            onClick = { launch(shortcuts.size - 1 - index) },
                             modifier = if (index == 0) Modifier.onGloballyPositioned {
                                 rowHeightPx = it.size.height
                             } else Modifier
@@ -512,3 +546,21 @@ fun ShortcutPopup(
         }
     }
 }
+
+
+@Composable
+fun DebugBoundsOverlay(bounds: Rect, color: Color = Color.Green) {
+    val density = LocalDensity.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                drawRect(
+                    color = color.copy(alpha = 0.3f),
+                    topLeft = Offset(bounds.left, bounds.top),
+                    size = Size(bounds.width, bounds.height)
+                )
+            }
+    )
+}
+
