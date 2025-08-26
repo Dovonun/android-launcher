@@ -57,10 +57,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
@@ -84,7 +82,6 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import kotlin.math.max
 import android.view.WindowInsets as ViewWindowInsets
 
 sealed interface View {
@@ -242,10 +239,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                DebugBoundsOverlay(anchorBounds)
-                DebugBoundsOverlay(Rect(0f, 0f, 1000f, 1000f), Color.Blue)
-
-                Log.d("MainActivity", "screenState: $view")
                 when (view) {
                     is View.Favorites -> LazyColumn(
                         reverseLayout = true,
@@ -514,15 +507,14 @@ fun ShortcutPopup(
                     .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .padding(horizontal = 24.dp, vertical = 12.dp),
-//                    .align(Alignment.BottomStart),
                 verticalArrangement = Arrangement.Bottom
             ) {
                 if (shortcuts.isNotEmpty()) {
-                    shortcuts.forEachIndexed { index, s ->
+                    shortcuts.withIndex().reversed().forEach { (index, s) ->
                         MenuRow(
                             text = s.label,
                             icon = s.icon,
-                            onClick = { launch(shortcuts.size - 1 - index) },
+                            onClick = { launch(index) },
                         )
                     }
                 } else {
@@ -538,20 +530,3 @@ fun ShortcutPopup(
         }
     }
 }
-
-
-@Composable
-fun DebugBoundsOverlay(bounds: Rect, color: Color = Color.Green) {
-    val density = LocalDensity.current
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawBehind {
-                drawRect(
-                    color = color.copy(alpha = 0.3f),
-                    topLeft = Offset(bounds.left, bounds.top),
-                    size = Size(bounds.width, bounds.height)
-                )
-            })
-}
-
