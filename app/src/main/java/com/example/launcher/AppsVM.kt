@@ -105,7 +105,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectApp(app: App?) {
-        Log.d("AppsVM", "selectApp: $app")
         _selectedApp.value = app
     }
 
@@ -117,5 +116,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     fun launchShortcut(index: Int) {
         val shortcut = _lastShortcuts.value.getOrNull(index) ?: return
         launcherApps.startShortcut(shortcut.`package`, shortcut.id, null, null, user)
+        selectApp(null)
     }
 }

@@ -25,12 +25,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,6 +73,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -141,7 +144,8 @@ class MainActivity : ComponentActivity() {
             val shortcuts by appsVM.shortcutUiItems.collectAsState()
 
             val wallpaperManager = WallpaperManager.getInstance(context)
-            val wallpaperColors: WallpaperColors? = remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
+            val wallpaperColors: WallpaperColors? =
+                remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
 
 
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
@@ -153,17 +157,28 @@ class MainActivity : ComponentActivity() {
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             var showSheetForApp by remember { mutableStateOf<App?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
+
+            // safeDrawing top as Dp, then px
+            val density = LocalDensity.current
+            val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+            val safeTopPx = with(density) { safeTopDp.toPx() }
             var anchorBounds by remember { mutableStateOf(Rect.Zero) }
+
             fun selectAppWithBounds(app: App, bounds: Rect) {
-                anchorBounds = bounds
+                anchorBounds = Rect(
+                    left = bounds.left,
+                    top = bounds.top - safeTopPx,
+                    right = bounds.right,
+                    bottom = bounds.bottom - safeTopPx
+                )
                 appsVM.selectApp(app)
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-//                    .border(1.dp, Color.White)
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
+//                    .border(1.dp, Color.White)
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
@@ -185,8 +200,7 @@ class MainActivity : ComponentActivity() {
                         shortcuts = shortcuts,
                         anchorBounds = anchorBounds,
                         launch = { index -> appsVM.launchShortcut(index) },
-                        reset = { appsVM.selectApp(null) }
-                    )
+                        reset = { appsVM.selectApp(null) })
                 }
 
                 LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
@@ -225,8 +239,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-
-                Log.d("MainActivity", "screenState: $view")
                 when (view) {
                     is View.Favorites -> LazyColumn(
                         reverseLayout = true,
@@ -299,14 +311,19 @@ class MainActivity : ComponentActivity() {
                     sortedLetters = appListData.letterToIndex.keys.toList(),
                     view = viewVM.view.collectAsState().value,
                     update = { index ->
-                        appListData.letterToIndex.entries.elementAtOrNull(index)?.let { (letter, i) ->
-                            coroutineScope.launch { listState.scrollToItem(index = i, scrollOffset = 0) }
-                            if (letter != lastLetter) {
-                                lastLetter = letter
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            }
-                            viewVM.setView(View.AllApps(letter))
-                        } ?: viewVM.setView(View.Favorites)
+                        appListData.letterToIndex.entries.elementAtOrNull(index)
+                            ?.let { (letter, i) ->
+                                coroutineScope.launch {
+                                    listState.scrollToItem(
+                                        index = i, scrollOffset = 0
+                                    )
+                                }
+                                if (letter != lastLetter) {
+                                    lastLetter = letter
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                                viewVM.setView(View.AllApps(letter))
+                            } ?: viewVM.setView(View.Favorites)
                     },
                     color = primaryColor,
                     modifier = Modifier
@@ -379,7 +396,7 @@ fun MenuRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 12.dp) // Adjusted vertical padding
+            .padding(vertical = 8.dp) // Adjusted vertical padding
     ) {
         if (icon != null) {
             Image(bitmap = icon, contentDescription = text, modifier = Modifier.size(42.dp))
@@ -396,7 +413,9 @@ fun MenuRow(
                 shadow = Shadow(
                     color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
                 )
-            )
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -412,9 +431,11 @@ fun AppRow(
     var rowBounds by remember { mutableStateOf(Rect.Zero) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .padding(start = 48.dp)
             .onGloballyPositioned { coordinates ->
                 rowBounds = coordinates.boundsInWindow()
             }
@@ -427,20 +448,17 @@ fun AppRow(
                     if (dragAmount > 50f) onLongSwipe(app, rowBounds)
                 }
             }) {
-        Row(modifier = Modifier.padding(start = 48.dp)) {
-            Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
-            Spacer(modifier = Modifier.width(32.dp))
-            Text(
-                text = app.name,
-                fontSize = 24.sp,
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    shadow = Shadow(
-                        color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
-                    )
+        Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
+        Text(
+            text = app.name,
+            fontSize = 24.sp,
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium.copy(
+                shadow = Shadow(
+                    color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
                 )
             )
-        }
+        )
     }
 }
 
@@ -461,17 +479,12 @@ fun SheetEntry(text: String, onClick: () -> Unit) {
 
 @Composable
 fun ShortcutPopup(
-    shortcuts: List<UiShortcut>,
-    launch: (Int) -> Unit,
-    reset: () -> Unit,
-    anchorBounds: Rect
+    shortcuts: List<UiShortcut>, launch: (Int) -> Unit, reset: () -> Unit, anchorBounds: Rect
 ) {
     val density = LocalDensity.current
-    var rowHeightPx by remember { mutableIntStateOf(0) }
 
     Popup(
-        properties = PopupProperties(focusable = true),
-        onDismissRequest = reset
+        properties = PopupProperties(focusable = true), onDismissRequest = reset
     ) {
         Box(
             Modifier
@@ -480,33 +493,38 @@ fun ShortcutPopup(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) { reset() }
-                .padding(horizontal = 24.dp)
         ) {
+            var popupHeight by remember { mutableIntStateOf(0) }
             Column(
                 modifier = Modifier
+                    .onGloballyPositioned { popupHeight = it.size.height }
                     .offset(
-                        x = with(density) { anchorBounds.left.toDp() },
-                        y = with(density) { (anchorBounds.top - rowHeightPx).toDp() }
+                        x = 24.dp, y = with(density) {
+                            val y = anchorBounds.bottom - popupHeight
+                            if (y > 0f) y.toDp() + 24.dp else 0.dp
+                        }
                     )
                     .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .align(Alignment.TopStart)
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.Bottom
             ) {
                 if (shortcuts.isNotEmpty()) {
-                    shortcuts.forEachIndexed { index, s ->
+                    shortcuts.withIndex().reversed().forEach { (index, s) ->
                         MenuRow(
                             text = s.label,
                             icon = s.icon,
                             onClick = { launch(index) },
-                            modifier = if (index == 0) Modifier.onGloballyPositioned {
-                                rowHeightPx = it.size.height
-                            } else Modifier
                         )
                     }
                 } else {
                     val text = "No shortcuts found for this App"
-                    Text(text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
+                    Text(
+                        text = text,
+                        fontSize = 17.sp,
+                        color = Color.Gray,
+                        fontStyle = FontStyle.Italic
+                    )
                 }
             }
         }
