@@ -261,7 +261,11 @@ class MainActivity : ComponentActivity() {
                             }) {
                         items(favorites, key = { "fav-${it.packageName}" }) { app ->
                             AppRow(
-                                app = app, launchApp = { app.launch(context) },
+                                app = app,
+                                launchApp = {
+                                    viewVM.setLeveTimeStamp(System.currentTimeMillis())
+                                    app.launch(context)
+                                },
                                 onLongPress = {
                                     showSheetForApp = app
                                     coroutineScope.launch { bottomSheetState.show() }
@@ -294,7 +298,10 @@ class MainActivity : ComponentActivity() {
                                     val app = item.appInfo
                                     AppRow(
                                         app = app,
-                                        launchApp = { app.launch(context) },
+                                        launchApp = {
+                                            viewVM.setLeveTimeStamp(System.currentTimeMillis())
+                                            app.launch(context)
+                                        },
                                         onLongPress = {
                                             showSheetForApp = app
                                             coroutineScope.launch { bottomSheetState.show() }
@@ -339,7 +346,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        viewVM.setView(View.Favorites)
+        if (System.currentTimeMillis() - viewVM.leaveTimeStamp.value < 5000) viewVM.setLeveTimeStamp(
+            0L
+        ) else viewVM.setView(View.Favorites)
         Log.d("MainActivity", "new intent called")
     }
 
@@ -491,9 +500,7 @@ fun ShortcutPopup(
                 .fillMaxSize()
                 .clickable(
                     indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { reset() }
-        ) {
+                    interactionSource = remember { MutableInteractionSource() }) { reset() }) {
             var popupHeight by remember { mutableIntStateOf(0) }
             Column(
                 modifier = Modifier
@@ -502,8 +509,7 @@ fun ShortcutPopup(
                         x = 24.dp, y = with(density) {
                             val y = anchorBounds.bottom - popupHeight
                             if (y > 0f) y.toDp() + 24.dp else 0.dp
-                        }
-                    )
+                        })
                     .width(with(density) { anchorBounds.width.toDp() })
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .padding(horizontal = 24.dp, vertical = 12.dp),
