@@ -6,7 +6,6 @@ import android.content.pm.LauncherApps
 import android.content.pm.LauncherApps.ShortcutQuery
 import android.content.pm.ShortcutInfo
 import android.os.UserHandle
-import android.util.Log
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
