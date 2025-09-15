@@ -232,6 +232,10 @@ class MainActivity : ComponentActivity() {
                                 val intent =
                                     Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                                 intent.data = "package:${app.packageName}".toUri()
+                                intent.apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                }
                                 context.startActivity(intent)
                                 showSheetForApp = null
                             }
