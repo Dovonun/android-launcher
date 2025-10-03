@@ -14,7 +14,6 @@ class ViewVM: ViewModel() {
     val view: StateFlow<View> = _view
 
     fun setView(view: View) {
-        Log.d("ViewVM", "setView: $view")
         _view.value = view
     }
 

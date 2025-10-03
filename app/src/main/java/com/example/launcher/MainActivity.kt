@@ -94,12 +94,38 @@ data class UiShortcut(
     val icon: ImageBitmap,
 )
 
-data class App(
-    val name: String, val packageName: String, val icon: ImageBitmap
-)
+//data class NativeApp(
+//    val name: String, val packageName: String, val icon: ImageBitmap
+//)
+//fun NativeApp.launch(context: Context) {
+//    context.startActivity(context.packageManager.getLaunchIntentForPackage(packageName) ?: return)
+//}
+////
+////data class PwaApp(
+////    val name: String, val packageName: String, val id: String, val icon: ImageBitmap?
+////)
 
-fun App.launch(context: Context) {
-    context.startActivity(context.packageManager.getLaunchIntentForPackage(packageName) ?: return)
+//
+//sealed class App {
+//    val name: String
+//    data class Native(val app: NativeApp) : App()
+//    data class Pwa(val pwa: PwaApp) : App()
+//}
+sealed class App {
+    abstract val name: String
+    abstract val packageName: String
+    abstract val icon: ImageBitmap?
+
+    data class Native(
+        override val name: String, override val packageName: String, override val icon: ImageBitmap
+    ) : App()
+
+    data class Pwa(
+        override val name: String,
+        override val packageName: String,
+        val id: String,
+        override val icon: ImageBitmap?
+    ) : App()
 }
 
 sealed class ListItem {
@@ -268,7 +294,7 @@ class MainActivity : ComponentActivity() {
                                 app = app,
                                 launchApp = {
                                     viewVM.setLeveTimeStamp(System.currentTimeMillis())
-                                    app.launch(context)
+                                    appsVM.launch(context, app)
                                 },
                                 onLongPress = {
                                     showSheetForApp = app
@@ -300,11 +326,12 @@ class MainActivity : ComponentActivity() {
 
                                 is ListItem.AppEntry -> {
                                     val app = item.appInfo
+                                    if (app is App.Pwa) Log.d("Launcher_UI", "pwa: $app")
                                     AppRow(
                                         app = app,
                                         launchApp = {
                                             viewVM.setLeveTimeStamp(System.currentTimeMillis())
-                                            app.launch(context)
+                                            appsVM.launch(context, app)
                                         },
                                         onLongPress = {
                                             showSheetForApp = app
@@ -461,7 +488,9 @@ fun AppRow(
                     if (dragAmount > 50f) onLongSwipe(app, rowBounds)
                 }
             }) {
-        Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.size(42.dp))
+        if (app.icon != null) {
+            Image(bitmap = app.icon!!, contentDescription = app.name, modifier = Modifier.size(42.dp))
+        } else Spacer(modifier = Modifier.width(42.dp))
         Text(
             text = app.name,
             fontSize = 24.sp,
