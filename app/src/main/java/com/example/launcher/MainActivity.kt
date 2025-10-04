@@ -94,23 +94,6 @@ data class UiShortcut(
     val icon: ImageBitmap,
 )
 
-//data class NativeApp(
-//    val name: String, val packageName: String, val icon: ImageBitmap
-//)
-//fun NativeApp.launch(context: Context) {
-//    context.startActivity(context.packageManager.getLaunchIntentForPackage(packageName) ?: return)
-//}
-////
-////data class PwaApp(
-////    val name: String, val packageName: String, val id: String, val icon: ImageBitmap?
-////)
-
-//
-//sealed class App {
-//    val name: String
-//    data class Native(val app: NativeApp) : App()
-//    data class Pwa(val pwa: PwaApp) : App()
-//}
 sealed class App {
     abstract val name: String
     abstract val packageName: String

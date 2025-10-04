@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -52,42 +51,13 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // PWA stuff
     private val _pwaList = MutableStateFlow(loadPwaListFromPrefs())
-    val pwaList: StateFlow<List<App.Pwa>> = _pwaList.asStateFlow()
-    private fun loadPwaListFromPrefs(): List<App.Pwa> {
-        val prefs = sharedPreferences.getString("pwas", "[]") ?: error("Can't access system prefs!")
-        val array = JSONArray(prefs)
-        return List(array.length()) { i ->
-            val obj = array.getJSONObject(i)
-            App.Pwa(
-                name = obj.getString("label"),
-                id = obj.getString("id"),
-                packageName = obj.getString("packageName"),
-                icon = null,
-            )
-        }
-    }
-
-    fun savePwa(id: String, packageName: String, label: String) {
-        val list = _pwaList.value.toMutableList()
-        list.add(App.Pwa(label, packageName, id, null))
-        _pwaList.value = list
-        sharedPreferences.edit {
-            putString("pwas", JSONArray(list.map { pwa ->
-                JSONObject().apply {
-                    put("id", pwa.id)
-                    put("packageName", pwa.packageName)
-                    put("label", pwa.name)
-                }
-            }).toString())
-        }
-        refreshApps()
-    }
-
-
-    // apps and favs
-    private val _installedApps = MutableStateFlow<List<App>>(emptyList())
+    private val pwaList: StateFlow<List<App.Pwa>> = _pwaList.asStateFlow()
+    private val _nativeApps = MutableStateFlow<List<App.Native>>(emptyList())
+    private val _installedApps: StateFlow<List<App>> =
+        combine(_nativeApps, pwaList) { natives, pwas ->
+            (natives + pwas).sortedBy { it.name.lowercase() }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private val _favorites = MutableStateFlow(
         sharedPreferences.getStringSet("favorites", emptySet())?.toSet()
             ?: error("Can't access system prefs!")
@@ -122,16 +92,42 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refreshApps() {
-        val nativeApps = launcherApps.getActivityList(null, user).map { app ->
+        _nativeApps.value = launcherApps.getActivityList(null, user).map { app ->
             App.Native(
                 name = app.label.toString(),
                 packageName = app.componentName.packageName,
                 icon = app.getIcon(0).toBitmap().asImageBitmap()
             )
+        }.sortedBy { it.name.lowercase() }
+    }
+
+    private fun loadPwaListFromPrefs(): List<App.Pwa> {
+        val prefs = sharedPreferences.getString("pwas", "[]") ?: error("Can't access system prefs!")
+        val array = JSONArray(prefs)
+        return List(array.length()) { i ->
+            val obj = array.getJSONObject(i)
+            App.Pwa(
+                name = obj.getString("label"),
+                id = obj.getString("id"),
+                packageName = obj.getString("packageName"),
+                icon = null,
+            )
         }
-        Log.d("AppsVM", "nativeApps: $nativeApps")
-        Log.d("AppsVM", "pwaList: ${pwaList.value}")
-        _installedApps.value = (nativeApps + pwaList.value).sortedBy { it.name.lowercase() }
+    }
+
+    fun savePwa(id: String, packageName: String, label: String) {
+        val list = _pwaList.value.toMutableList()
+        list.add(App.Pwa(label, packageName, id, null))
+        _pwaList.value = list
+        sharedPreferences.edit {
+            putString("pwas", JSONArray(list.map { pwa ->
+                JSONObject().apply {
+                    put("id", pwa.id)
+                    put("packageName", pwa.packageName)
+                    put("label", pwa.name)
+                }
+            }).toString())
+        }
     }
 
     fun launch(context: Context, app: App) {
