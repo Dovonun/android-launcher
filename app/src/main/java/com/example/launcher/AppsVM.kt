@@ -2,9 +2,12 @@ package com.example.launcher
 
 import android.app.Application
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.LauncherApps.ShortcutQuery
 import android.content.pm.ShortcutInfo
+import android.graphics.drawable.Drawable
 import android.os.UserHandle
 import android.util.Log
 import androidx.compose.ui.graphics.asImageBitmap
@@ -18,138 +21,103 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.Any
+import kotlin.Unit
 
-data class AppListData(
-    val items: List<ListItem>,
-    val letterToIndex: Map<Char, Int>,
-)
+data class UiRow(val label: String, val icon: Drawable, val item: Any)
+typealias App = LauncherActivityInfo
+typealias Shortcut = ShortcutInfo
+
+fun createCallback(cb: () -> Unit) = object : LauncherApps.Callback() {
+    override fun onPackageAdded(packageName: String, user: UserHandle) = cb()
+    override fun onPackageRemoved(packageName: String?, user: UserHandle?) = cb()
+    override fun onPackageChanged(packageName: String?, user: UserHandle?) = cb()
+    override fun onPackagesAvailable(
+        packageNames: Array<String>, user: UserHandle, replacing: Boolean
+    ) = cb()
+
+    override fun onPackagesUnavailable(
+        packageNames: Array<String>, user: UserHandle, replacing: Boolean
+    ) = cb()
+}
+
 
 class AppsVM(application: Application) : AndroidViewModel(application) {
     private val launcherApps: LauncherApps = application.getSystemService(LauncherApps::class.java)
     private val user: UserHandle = android.os.Process.myUserHandle()
-    private val sharedPreferences =
-        application.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    private val callback = object : LauncherApps.Callback() {
-        override fun onPackageAdded(packageName: String?, user: UserHandle?) = refreshApps()
-        override fun onPackageRemoved(packageName: String?, user: UserHandle?) = refreshApps()
-        override fun onPackageChanged(packageName: String?, user: UserHandle?) = refreshApps()
-        override fun onPackagesAvailable(
-            packageNames: Array<out String?>?, user: UserHandle, replacing: Boolean
-        ) {
-            refreshApps()
-        }
 
-        override fun onPackagesUnavailable(
-            packageNames: Array<out String?>?, user: UserHandle?, replacing: Boolean
-        ) {
-            refreshApps()
-        }
+    init {
+        launcherApps.registerCallback(createCallback(::refreshApps))
+        refreshApps()
     }
 
-    private val _pwaList = MutableStateFlow(loadPwaListFromPrefs())
-    private val pwaList: StateFlow<List<App.Pwa>> = _pwaList.asStateFlow()
-    private val _nativeApps = MutableStateFlow<List<App.Native>>(emptyList())
-    private val _installedApps: StateFlow<List<App>> =
-        combine(_nativeApps, pwaList) { natives, pwas ->
-            (natives + pwas).sortedBy { it.name.lowercase() }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    private val _favorites = MutableStateFlow(
-        sharedPreferences.getStringSet("favorites", emptySet())?.toSet()
-            ?: error("Can't access system prefs!")
-    )
-    val appListData: StateFlow<AppListData> = _installedApps.map { apps ->
-        val items = mutableListOf<ListItem>()
-        val letterToIndex = mutableMapOf<Char, Int>()
-        var lastLetter: Char? = null
+    private val _nativeApps = MutableStateFlow<List<LauncherActivityInfo>>(emptyList())
+    private fun refreshApps() = _nativeApps.update { launcherApps.getActivityList(null, user) }
 
-        apps.forEach { app ->
-            if (app is App.Pwa) Log.d("AppsVM", "pwa: $app")
-            val firstChar = app.name.first().uppercaseChar()
-            if (firstChar != lastLetter) {
-                letterToIndex[firstChar] = items.size
-                items.add(ListItem.Header(firstChar))
-                lastLetter = firstChar
-            }
-            items.add(ListItem.AppEntry(app))
-        }
-        AppListData(items, letterToIndex)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, AppListData(emptyList(), emptyMap()))
-    val favoriteApps: StateFlow<List<App>> = combine(_installedApps, _favorites) { apps, favs ->
-        val appMap = apps.associateBy { it.packageName }
-        favs.mapNotNull { appMap[it] }
+
+    // TODO: implement
+    private val _allAppsList: StateFlow<List<Any>> = combine(_nativeApps) { natives ->
+        (natives + pwas).sortedBy { it.name.lowercase() }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    fun isFavorite(packageName: String) = _favorites.value.contains(packageName)
-    fun toggleFavorite(packageName: String) {
-        _favorites.value =
-            if (isFavorite(packageName)) _favorites.value - packageName else _favorites.value + packageName
-        sharedPreferences.edit { putStringSet("favorites", _favorites.value) }
+    private val favoriteList = {
+        val favoriteAppsTags: Any = Unit // TODO: get favorites from db
+        val favoriteShortcuts: Any = Unit // TODO: get favorites from db
+
+        val favoritesApps =
+            _nativeApps.value.filter { favoriteAppsTags.contains(it.componentName) } // TODO: get the LauncherActivityInfo for each app with favorite tag
+        val favoritesShortcuts<ShortcutInfo> = favoriteShortcuts.value.map { // TODO: get a list of ShortcutInfo for each shortcut with favorite tag
+                launcherApps.getShortcuts(ShortcutQuery().apply {
+                    setPackage(it.`package`)
+                    setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
+                }, user)
+            }
+
+        favoritesApps.map {
+            UiRow( it.label.toString(), it.activityInfo.icon, it )
+        } + favoritesShortcuts.map { UiRow(it.shortLable, it.icon, it) } // Map both to UiRow and combine them
     }
 
-    private fun refreshApps() {
-        _nativeApps.value = launcherApps.getActivityList(null, user).map { app ->
-            App.Native(
-                name = app.label.toString(),
-                packageName = app.componentName.packageName,
-                icon = app.getIcon(0).toBitmap().asImageBitmap()
-            )
-        }.sortedBy { it.name.lowercase() }
+//    val favoriteApps: StateFlow<List<Launchable>> = combine(_installedApps, _favorites) { apps, favs ->
+//        val appMap = apps.associateBy { it.packageName }
+//        favs.mapNotNull { appMap[it] }
+//    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun hasTag(item: Any, tag: Int) = when (item) {
+        is App -> favoriteList.value.contains(item.activityInfo.packageName)
+        is Shortcut -> favoriteList.value.contains(item.`package`)
+        else -> error("unreachable")
     }
 
-    private fun loadPwaListFromPrefs(): List<App.Pwa> {
-        val prefs = sharedPreferences.getString("pwas", "[]") ?: error("Can't access system prefs!")
-        val array = JSONArray(prefs)
-        return List(array.length()) { i ->
-            val obj = array.getJSONObject(i)
-            App.Pwa(
-                name = obj.getString("label"),
-                id = obj.getString("id"),
-                packageName = obj.getString("packageName"),
-                icon = null,
-            )
-        }
-    }
+//    fun toggleFavorite(packageName: String) {
+//        _favorites.value =
+//            if (isFavorite(packageName)) _favorites.value - packageName else _favorites.value + packageName
+//        sharedPreferences.edit { putStringSet("favorites", _favorites.value) }
+//    }
 
-    fun savePwa(id: String, packageName: String, label: String) {
-        val list = _pwaList.value.toMutableList()
-        list.add(App.Pwa(label, packageName, id, null))
-        _pwaList.value = list
-        sharedPreferences.edit {
-            putString("pwas", JSONArray(list.map { pwa ->
-                JSONObject().apply {
-                    put("id", pwa.id)
-                    put("packageName", pwa.packageName)
-                    put("label", pwa.name)
-                }
-            }).toString())
-        }
-    }
-
-    fun launch(context: Context, app: App) {
-        when (app) {
-            is App.Native -> context.startActivity(
-                context.packageManager.getLaunchIntentForPackage(
-                    app.packageName
-                )
-            )
-
-            is App.Pwa -> launcherApps.startShortcut(app.packageName, app.id, null, null, user)
-        }
+    fun launch(item: Any) = when (val i = item) {
+        is App -> launcherApps.startMainActivity(i.componentName, user, null, null)
+        is Shortcut -> launcherApps.startShortcut(i.`package`, i.id, null, null, user)
+        else -> error("Unreachable")
     }
 
     // shortcut popup
-    private val _selectedApp = MutableStateFlow<App?>(null)
-    val selectedApp: StateFlow<App?> = _selectedApp.asStateFlow()
+    private val _selectedLaunchable = MutableStateFlow<Launchable?>(null)
+    val selectedLaunchable: StateFlow<Launchable?> = _selectedLaunchable.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val _lastShortcuts: StateFlow<List<ShortcutInfo>> = _selectedApp.mapLatest { app ->
-        if (app == null) emptyList() else getShortcuts(app.packageName)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _lastShortcuts: StateFlow<List<ShortcutInfo>> =
+        _selectedLaunchable.mapLatest { app ->
+            if (app == null) emptyList() else getShortcuts(app.packageName)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val shortcutUiItems: StateFlow<List<UiShortcut>> = _lastShortcuts.map { list ->
         list.map { shortcut ->
             UiShortcut(
@@ -159,28 +127,13 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun selectApp(app: App?) {
-        _selectedApp.value = app
-    }
+//    fun selectApp(launchable: Launchable?) {
+//        _selectedLaunchable.value = launchable
+//    }
 
     fun getShortcuts(packageName: String) = launcherApps.getShortcuts(ShortcutQuery().apply {
         setPackage(packageName)
         setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
     }, user) ?: emptyList()
 
-    fun launchShortcut(index: Int) {
-        val shortcut = _lastShortcuts.value.getOrNull(index) ?: return
-        launcherApps.startShortcut(shortcut.`package`, shortcut.id, null, null, user)
-        selectApp(null)
-    }
-
-    init {
-        launcherApps.registerCallback(callback)
-        refreshApps()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        launcherApps.unregisterCallback(callback)
-    }
 }

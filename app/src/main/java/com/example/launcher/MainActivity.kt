@@ -89,31 +89,31 @@ sealed interface View {
     data class AllApps(val letter: Char) : View
 }
 
-data class UiShortcut(
-    val label: String,
-    val icon: ImageBitmap,
-)
+//data class UiShortcut(
+//    val label: String,
+//    val icon: ImageBitmap,
+//)
 
-sealed class App {
-    abstract val name: String
-    abstract val packageName: String
-    abstract val icon: ImageBitmap?
-
-    data class Native(
-        override val name: String, override val packageName: String, override val icon: ImageBitmap
-    ) : App()
-
-    data class Pwa(
-        override val name: String,
-        override val packageName: String,
-        val id: String,
-        override val icon: ImageBitmap?
-    ) : App()
-}
+//sealed class Launchable {
+//    abstract val name: String
+//    abstract val packageName: String
+//    abstract val icon: ImageBitmap?
+//
+//    data class App(
+//        override val name: String, override val packageName: String, override val icon: ImageBitmap
+//    ) : Launchable()
+//
+//    data class Shortcut(
+//        override val name: String,
+//        override val packageName: String,
+//        val id: String,
+//        override val icon: ImageBitmap
+//    ) : Launchable()
+//}
 
 sealed class ListItem {
     data class Header(val letter: Char) : ListItem()
-    data class AppEntry(val appInfo: App) : ListItem()
+    data class AppEntry(val label: String, val icon: ImageBitmap) : ListItem() // TODO: how do I know which entry was clicked? callback? index?
 }
 
 private fun expandNotificationShade(context: Context) {
@@ -147,9 +147,9 @@ class MainActivity : ComponentActivity() {
             val haptic = LocalHapticFeedback.current
 
             val view by viewVM.view.collectAsState()
-            val appListData by appsVM.appListData.collectAsState()
+            val appListData by appsVM.launchableListData.collectAsState()
             val favorites by appsVM.favoriteApps.collectAsState()
-            val selectedApp by appsVM.selectedApp.collectAsState()
+            val selectedApp by appsVM.selectedLaunchable.collectAsState()
             val shortcuts by appsVM.shortcutUiItems.collectAsState()
 
             val wallpaperManager = WallpaperManager.getInstance(context)
@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
             val listState = rememberLazyListState()
 
             val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-            var showSheetForApp by remember { mutableStateOf<App?>(null) }
+            var showSheetForLaunchable by remember { mutableStateOf<Launchable?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
 
             // safeDrawing top as Dp, then px
@@ -173,14 +173,14 @@ class MainActivity : ComponentActivity() {
             val safeTopPx = with(density) { safeTopDp.toPx() }
             var anchorBounds by remember { mutableStateOf(Rect.Zero) }
 
-            fun selectAppWithBounds(app: App, bounds: Rect) {
+            fun selectAppWithBounds(launchable: Launchable, bounds: Rect) {
                 anchorBounds = Rect(
                     left = bounds.left,
                     top = bounds.top - safeTopPx,
                     right = bounds.right,
                     bottom = bounds.bottom - safeTopPx
                 )
-                appsVM.selectApp(app)
+                appsVM.selectApp(launchable)
             }
 
             Box(
@@ -212,30 +212,30 @@ class MainActivity : ComponentActivity() {
                         reset = { appsVM.selectApp(null) })
                 }
 
-                LaunchedEffect(showSheetForApp) { if (showSheetForApp == null && bottomSheetState.isVisible) bottomSheetState.hide() }
-                if (showSheetForApp != null) {
+                LaunchedEffect(showSheetForLaunchable) { if (showSheetForLaunchable == null && bottomSheetState.isVisible) bottomSheetState.hide() }
+                if (showSheetForLaunchable != null) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     ModalBottomSheet(
-                        onDismissRequest = { showSheetForApp = null },
+                        onDismissRequest = { showSheetForLaunchable = null },
                         sheetState = bottomSheetState,
                         containerColor = Color(0xFF121212),
                         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                         windowInsets = WindowInsets(0.dp)
                     ) {
-                        val app = showSheetForApp!!
+                        val app = showSheetForLaunchable!!
                         Column(Modifier.fillMaxWidth()) {
                             // TODO: use material icons
                             SheetEntry(
                                 if (appsVM.isFavorite(app.packageName)) "Remove from favorites" else "Add to favorites"
                             ) {
                                 appsVM.toggleFavorite(app.packageName)
-                                showSheetForApp = null
+                                showSheetForLaunchable = null
                             }
                             SheetEntry("Uninstall") {
                                 val intent = Intent(Intent.ACTION_DELETE)
                                 intent.data = "package:${app.packageName}".toUri()
                                 context.startActivity(intent)
-                                showSheetForApp = null
+                                showSheetForLaunchable = null
                             }
                             SheetEntry("App settings") {
                                 val intent =
@@ -246,7 +246,7 @@ class MainActivity : ComponentActivity() {
                                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                                 }
                                 context.startActivity(intent)
-                                showSheetForApp = null
+                                showSheetForLaunchable = null
                             }
                             Spacer(Modifier.height(42.dp))
                         }
@@ -274,13 +274,13 @@ class MainActivity : ComponentActivity() {
                             }) {
                         items(favorites, key = { "fav-${it.packageName}" }) { app ->
                             AppRow(
-                                app = app,
+                                launchable = app,
                                 launchApp = {
                                     viewVM.setLeveTimeStamp(System.currentTimeMillis())
                                     appsVM.launch(context, app)
                                 },
                                 onLongPress = {
-                                    showSheetForApp = app
+                                    showSheetForLaunchable = app
                                     coroutineScope.launch { bottomSheetState.show() }
                                 },
                                 onLongSwipe = ::selectAppWithBounds,
@@ -308,16 +308,16 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 is ListItem.AppEntry -> {
-                                    val app = item.appInfo
-                                    if (app is App.Pwa) Log.d("Launcher_UI", "pwa: $app")
+                                    val app = item.launchableInfo
+                                    if (app is Launchable.Shortcut) Log.d("Launcher_UI", "pwa: $app")
                                     AppRow(
-                                        app = app,
+                                        launchable = app,
                                         launchApp = {
                                             viewVM.setLeveTimeStamp(System.currentTimeMillis())
                                             appsVM.launch(context, app)
                                         },
                                         onLongPress = {
-                                            showSheetForApp = app
+                                            showSheetForLaunchable = app
                                             coroutineScope.launch { bottomSheetState.show() }
                                         },
                                         onLongSwipe = ::selectAppWithBounds,
@@ -445,11 +445,11 @@ fun MenuRow(
 
 @Composable
 fun AppRow(
-    app: App,
+    launchable: Launchable,
     modifier: Modifier = Modifier,
     launchApp: () -> Unit,
     onLongPress: () -> Unit,
-    onLongSwipe: (App, Rect) -> Unit
+    onLongSwipe: (Launchable, Rect) -> Unit
 ) {
     var rowBounds by remember { mutableStateOf(Rect.Zero) }
     Row(
@@ -468,14 +468,14 @@ fun AppRow(
             .pointerInput(Unit) {
                 detectHorizontalDragGestures { _, dragAmount ->
                     Log.d("MainActivity", "dragAmount: $dragAmount")
-                    if (dragAmount > 50f) onLongSwipe(app, rowBounds)
+                    if (dragAmount > 50f) onLongSwipe(launchable, rowBounds)
                 }
             }) {
-        if (app.icon != null) {
-            Image(bitmap = app.icon!!, contentDescription = app.name, modifier = Modifier.size(42.dp))
+        if (launchable.icon != null) {
+            Image(bitmap = launchable.icon!!, contentDescription = launchable.name, modifier = Modifier.size(42.dp))
         } else Spacer(modifier = Modifier.width(42.dp))
         Text(
-            text = app.name,
+            text = launchable.name,
             fontSize = 24.sp,
             color = Color.White,
             style = MaterialTheme.typography.labelMedium.copy(
