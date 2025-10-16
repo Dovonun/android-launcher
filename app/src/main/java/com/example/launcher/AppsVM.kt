@@ -2,16 +2,22 @@ package com.example.launcher
 
 import android.app.Application
 import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.LauncherApps.ShortcutQuery
 import android.content.pm.ShortcutInfo
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.UserHandle
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.launcher.data.TaggedAppEntity
+import com.example.launcher.data.TaggedShortcutEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -20,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -27,11 +34,13 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlin.Any
 import kotlin.Unit
 import kotlin.collections.map
 
-data class UiRow(val label: String, val icon: Drawable, val item: Any)
+data class UiRow(val label: String, val icon: ImageBitmap, val item: Any)
+data class SheetRow(val label: String, val onTap: () -> Unit)
 typealias App = LauncherActivityInfo
 typealias Shortcut = ShortcutInfo
 
@@ -97,6 +106,17 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     // Maybe you don't need to treat IconCache and Db as separate things?
     // One cleanup interact with the system function to rule them all
 
+    // TODO: popup  list
+    val uiAllGrouped = combine(
+        apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG_PWA)
+    ) { apps, shortcuts, pwas ->
+        val uiApps = appsToRows(apps)
+        val uiPwas = shortcutsToRows(pwas.mapNotNull { pwa ->
+            shortcuts[pwa.packageName]?.firstOrNull { it.id == pwa.shortcutId }
+        })
+        (uiApps + uiPwas).sortedBy { it.label.lowercase() }
+            .groupBy { it.label.first().uppercaseChar() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap<Char, List<UiRow>>())
 
     fun uiList(tag: Long): StateFlow<List<UiRow>> = combine(
         apps, cachedShortcuts,
@@ -109,18 +129,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         taggedApps + taggedShortcuts
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyList<UiRow>())
 
-    fun hasTag(item: Any, tag: Int) = when (item) {
-        is App -> favoriteList.value.contains(item.activityInfo.packageName)
-        is Shortcut -> favoriteList.value.contains(item.`package`)
-        else -> error("unreachable")
-    }
-
-//    fun toggleFavorite(packageName: String) {
-//        _favorites.value =
-//            if (isFavorite(packageName)) _favorites.value - packageName else _favorites.value + packageName
-//        sharedPreferences.edit { putStringSet("favorites", _favorites.value) }
-//    }
-
     fun launch(item: Any) = when (val i = item) {
         is App -> launcherApps.startMainActivity(i.componentName, user, null, null)
         is Shortcut -> launcherApps.startShortcut(i.`package`, i.id, null, null, user)
@@ -128,38 +136,80 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     // shortcut popup
-    private val _selectedLaunchable = MutableStateFlow<Launchable?>(null)
-    val selectedLaunchable: StateFlow<Launchable?> = _selectedLaunchable.asStateFlow()
+//    private val _selectedLaunchable = MutableStateFlow<Launchable?>(null)
+//    val selectedLaunchable: StateFlow<Launchable?> = _selectedLaunchable.asStateFlow()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val _lastShortcuts: StateFlow<List<ShortcutInfo>> =
-        _selectedLaunchable.mapLatest { app ->
-            if (app == null) emptyList() else getShortcuts(app.packageName)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val shortcutUiItems: StateFlow<List<UiShortcut>> = _lastShortcuts.map { list ->
-        list.map { shortcut ->
-            UiShortcut(
-                label = (shortcut.shortLabel ?: shortcut.longLabel ?: shortcut.`package`) as String,
-                icon = launcherApps.getShortcutIconDrawable(shortcut, 0).toBitmap().asImageBitmap()
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+//    @OptIn(ExperimentalCoroutinesApi::class)
+//    private val _lastShortcuts: StateFlow<List<ShortcutInfo>> =
+//        _selectedLaunchable.mapLatest { app ->
+//            if (app == null) emptyList() else getShortcuts(app.packageName)
+//        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+//
+//    val shortcutUiItems: StateFlow<List<UiShortcut>> = _lastShortcuts.map { list ->
+//        list.map { shortcut ->
+//            UiShortcut(
+//                label = (shortcut.shortLabel ?: shortcut.longLabel ?: shortcut.`package`) as String,
+//                icon = launcherApps.getShortcutIconDrawable(shortcut, 0).toBitmap().asImageBitmap()
+//            )
+//        }
+//    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 //    fun selectApp(launchable: Launchable?) {
 //        _selectedLaunchable.value = launchable
 //    }
 
-    fun getShortcuts(packageName: String) = launcherApps.getShortcuts(ShortcutQuery().apply {
-        setPackage(packageName)
-        setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
-    }, user) ?: emptyList()
+//    fun getShortcuts(packageName: String) = launcherApps.getShortcuts(ShortcutQuery().apply {
+//        setPackage(packageName)
+//        setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
+//    }, user) ?: emptyList()
+
+    fun getContextEntries(item: Any): StateFlow<List<SheetRow>> = when (item) {
+        is App -> taggedAppDao.getPackagesForTag(TAG_FAV).map { favs ->
+            val dbTag = TaggedAppEntity(item.componentName.packageName, TAG_FAV)
+            val isFav = dbTag.packageName in favs
+            val favText = if (isFav) "Remove from favorites" else "Add to favorites"
+            val dbAction = if (isFav) taggedAppDao::delete else taggedAppDao::insert
+            buildList {
+                add(
+                    SheetRow(favText) { viewModelScope.launch { dbAction(dbTag) } })
+                add(SheetRow("Open Settings") {
+                    launcherApps.startAppDetailsActivity(item.componentName, user, null, null)
+                })
+                add(SheetRow("Uninstall") {
+                    val context = getApplication<Application>()
+                    context.startActivity(Intent(Intent.ACTION_DELETE).apply {
+                        data = "package:${item.componentName.packageName}".toUri()
+                    })
+                })
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        is Shortcut -> taggedShortcutDao.getShortcutsForTag(TAG_FAV).map { favs ->
+            val itemTag = TaggedShortcutEntity(item.`package`, item.id, TAG_FAV)
+            val isFav = favs.any { it.packageName == item.`package` && it.shortcutId == item.id }
+            val favText = if (isFav) "Remove from favorites" else "Add to favorites"
+            val dbAction = if (isFav) taggedShortcutDao::delete else taggedShortcutDao::insert
+            buildList {
+                add(SheetRow(favText) { viewModelScope.launch { dbAction(itemTag) } })
+                add(SheetRow("Open Settings") {
+                    launcherApps.startAppDetailsActivity(item.activity, user, null, null)
+                })
+                // TODO: add remove for PWAs
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        else -> error("unreachable")
+    }
 
     private fun appsToRows(list: List<LauncherActivityInfo>) = list.map {
-        UiRow(it.label.toString(), it.getIcon(0), it)
+        UiRow(it.label.toString(), it.getIcon(0).toBitmap().asImageBitmap(), it)
     }
 
     private fun shortcutsToRows(list: List<ShortcutInfo>) = list.map {
-        UiRow(it.shortLabel.toString(), launcherApps.getShortcutIconDrawable(it, 0), it)
+        UiRow(
+            it.shortLabel.toString(),
+            launcherApps.getShortcutIconDrawable(it, 0).toBitmap().asImageBitmap(),
+            it
+        )
     }
 }
