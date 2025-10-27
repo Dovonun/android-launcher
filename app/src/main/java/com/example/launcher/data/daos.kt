@@ -12,7 +12,7 @@ interface TagDao {
     suspend fun getByName(name: String): TagEntity?
 
     @Query("SELECT * FROM tags")
-    fun getAll(): Flow<List<TagEntity>>
+    fun getAll(): List<TagEntity>
 
     // Utility: insert or get existing tag
     suspend fun insertOrGet(name: String): TagEntity {

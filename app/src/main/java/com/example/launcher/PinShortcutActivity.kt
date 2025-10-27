@@ -1,14 +1,10 @@
 package com.example.launcher
 
-import android.app.Activity
-import android.content.Context
 import android.content.pm.LauncherApps
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
-import com.example.launcher.data.PwaEntity
 import com.example.launcher.data.TaggedShortcutEntity
 import kotlinx.coroutines.launch
 

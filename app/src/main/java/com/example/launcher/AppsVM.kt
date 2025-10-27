@@ -1,14 +1,11 @@
 package com.example.launcher
 
 import android.app.Application
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.LauncherApps.ShortcutQuery
 import android.content.pm.ShortcutInfo
-import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.UserHandle
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -16,36 +13,43 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.launcher.data.TagDao
+import com.example.launcher.data.TagEntity
 import com.example.launcher.data.TaggedAppEntity
 import com.example.launcher.data.TaggedShortcutEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.Any
-import kotlin.Unit
-import kotlin.collections.map
 
+data class Tag(val id: Long)
 data class UiRow(val label: String, val icon: ImageBitmap, val item: Any)
 data class SheetRow(val label: String, val onTap: () -> Unit)
 typealias App = LauncherActivityInfo
 typealias Shortcut = ShortcutInfo
 
-val TAG_FAV: Long = 1
-val TAG_PWA: Long = 2
+object TAG {
+    const val FAV: Long = 1
+    const val PWA: Long = 2
+}
+
+suspend fun ensureSystemTags(tagDao: TagDao) {
+    val existing = tagDao.getAll()
+    val tags =
+        listOf(TagEntity(id = TAG.FAV, name = "Favorite"), TagEntity(id = TAG.PWA, name = "PWA"))
+    tags.forEach { tag ->
+        if (existing.find { it.id == tag.id && it.name == tag.name } == null) tagDao.insert(tag)
+    }
+}
 
 data class IconCacheKey(val pkg: String, val id: String?)
 
@@ -91,24 +95,24 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
             }.mapValues { it.value.await() }
         }
-    }.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap<String, List<ShortcutInfo>>()
-    )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
+    private fun cleanup(pkg: String) = db.taggedAppDao() // TODO: delete all tags for this app
 
     init {
+        viewModelScope.launch(Dispatchers.IO) { ensureSystemTags(tagDao) }
         launcherApps.registerCallback(createCallback(::refreshApps, ::cleanup))
         refreshApps()
     }
 
-    private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
-    private fun cleanup(pkg: String) = db.taggedAppDao() // TODO: delete all tags for this app
 //    private fun deleteFromIconCache(pkg: String) = iconCache.keys.removeAll { it.pkg != pkg }
     // Maybe you don't need to treat IconCache and Db as separate things?
     // One cleanup interact with the system function to rule them all
 
-    // TODO: popup  list
+    // TODO: popup list
     val uiAllGrouped = combine(
-        apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG_PWA)
+        apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG.PWA)
     ) { apps, shortcuts, pwas ->
         val uiApps = appsToRows(apps)
         val uiPwas = shortcutsToRows(pwas.mapNotNull { pwa ->
@@ -136,6 +140,18 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     // shortcut popup
+    // it seems like the pattern does not work here.
+    // the lists you need are dynamic in two ways.
+    // Based on the type(app or list)
+    // after this is done it is dynamic based on the existing flows and the tag of the list
+    fun popupEntires(item: Any): StateFlow<List<UiRow>> = when (item) {
+        is App -> cachedShortcuts.map { shortcuts ->
+            shortcutsToRows(shortcuts[item.componentName.packageName] ?: emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyList())
+
+        is Tag -> uiList(item.id)
+        else -> error("Unreachable")
+    }
 //    private val _selectedLaunchable = MutableStateFlow<Launchable?>(null)
 //    val selectedLaunchable: StateFlow<Launchable?> = _selectedLaunchable.asStateFlow()
 
@@ -163,9 +179,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 //        setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
 //    }, user) ?: emptyList()
 
+    // TODO: How do you get the shortcuts of the app to the popup?
+    // Ideally in the future you want to show custom tags :)
     fun getContextEntries(item: Any): StateFlow<List<SheetRow>> = when (item) {
-        is App -> taggedAppDao.getPackagesForTag(TAG_FAV).map { favs ->
-            val dbTag = TaggedAppEntity(item.componentName.packageName, TAG_FAV)
+        is App -> taggedAppDao.getPackagesForTag(TAG.FAV).map { favs ->
+            val dbTag = TaggedAppEntity(item.componentName.packageName, TAG.FAV)
             val isFav = dbTag.packageName in favs
             val favText = if (isFav) "Remove from favorites" else "Add to favorites"
             val dbAction = if (isFav) taggedAppDao::delete else taggedAppDao::insert
@@ -184,8 +202,8 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        is Shortcut -> taggedShortcutDao.getShortcutsForTag(TAG_FAV).map { favs ->
-            val itemTag = TaggedShortcutEntity(item.`package`, item.id, TAG_FAV)
+        is Shortcut -> taggedShortcutDao.getShortcutsForTag(TAG.FAV).map { favs ->
+            val itemTag = TaggedShortcutEntity(item.`package`, item.id, TAG.FAV)
             val isFav = favs.any { it.packageName == item.`package` && it.shortcutId == item.id }
             val favText = if (isFav) "Remove from favorites" else "Add to favorites"
             val dbAction = if (isFav) taggedShortcutDao::delete else taggedShortcutDao::insert

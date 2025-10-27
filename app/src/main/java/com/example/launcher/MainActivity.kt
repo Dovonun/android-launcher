@@ -54,7 +54,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +82,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import android.view.WindowInsets as ViewWindowInsets
 
 sealed class RowAction {
@@ -99,7 +99,7 @@ sealed interface View {
 sealed interface MenuState {
     data object None : MenuState
     data class ListPopup(
-        val list: StateFlow<List<SheetRow>>, val yPos: Float, val reset: () -> Unit
+        val list: StateFlow<List<UiRow>>, val yPos: Float, val reset: () -> Unit
     ) : MenuState
 
     data class ContextSheet(val entries: StateFlow<List<SheetRow>>, val reset: () -> Unit) :
@@ -135,6 +135,7 @@ class MainActivity : ComponentActivity() {
         window.setBackgroundDrawableResource(R.color.transparent)
 
         setContent {
+            Text(text = "debug")
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
@@ -171,14 +172,16 @@ class MainActivity : ComponentActivity() {
             var menuState by remember { mutableStateOf<MenuState>(MenuState.None) }
             val resetMenu = { menuState = MenuState.None }
 
-
-            val favorites2 by appsVM.uiList(TAG_FAV).collectAsState()
+            val favorites2 by appsVM.uiList(TAG.FAV).collectAsState()
 
             fun rowAction(uiRow: UiRow, action: RowAction) {
                 when (action) {
                     is RowAction.Launch -> appsVM.launch(uiRow.item)
                     is RowAction.ShowPopup -> menuState = MenuState.ListPopup(
-                        appsVM.getContextEntries(uiRow.item), action.yPos - safeTopPx, resetMenu
+                        // TODO: How does it look like to pass a tag here?
+                        // Is the tag just wrapping the uiRow? Who unwraps?
+                        // launch function because unwarp is always index 0. Children are uiRows.
+                        appsVM.popupEntires(uiRow.item), action.yPos - safeTopPx, resetMenu
                     )
 
                     is RowAction.ShowSheet -> menuState = MenuState.ContextSheet(
@@ -229,7 +232,9 @@ class MainActivity : ComponentActivity() {
                 // TODO: add the haptic back in
 //                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 //                haptic.performHapticFeedback(HapticFeedbackType.LongPress) // for long menu
-                LaunchedEffect(resetMenu) {} // ?
+                LaunchedEffect(resetMenu) {} // ? // ?
+                // TODO: Flicker in favorites when popup appears in emulator
+                // no flicker in all apps list(lazycol?)
                 when (val state = menuState) {
                     is MenuState.ListPopup -> ShortcutPopup(state, ::rowAction)
                     is MenuState.ContextSheet -> ContextSheet(state) // move the context entries into the state?
@@ -256,7 +261,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }) {
-                        items(items = favorites2, key = { "fav-${it.label}" }) { IconRow( it, ::rowAction ) }
+                        items(items = favorites2, key = { "fav-${it.label}" }) {
+                            IconRow(it, ::rowAction)
+                        }
                     }
 
                     is View.AllApps -> LazyColumn(
@@ -278,9 +285,7 @@ class MainActivity : ComponentActivity() {
                             }
                             // TODO: What happens when 2 apps have the same name?
                             items(items = list, key = { "all-${it.label}" }) { row ->
-                                IconRow(
-                                    row, ::rowAction
-                                )
+                                IconRow(row, ::rowAction)
                             }
                         }
 
@@ -319,35 +324,51 @@ class MainActivity : ComponentActivity() {
 //                        }
                     }
                 }
-                var lastLetter by remember { mutableStateOf<Char?>(null) }
-//                LetterBar(
-////                    sortedLetters = appListData.letterToIndex.keys.toList(),
-//                    view = viewVM.view.collectAsState().value,
-//                    update = { index ->
-////                        appListData.letterToIndex.entries.elementAtOrNull(index)
-////                            ?.let { (letter, i) ->
-////                                coroutineScope.launch {
-////                                    listState.scrollToItem(
-////                                        index = i, scrollOffset = 0
-////                                    )
-////                                }
-//
-////                                // This should be able to life in the Bar if you pass the haptic...
-////                                if (letter != lastLetter) {
-////                                    lastLetter = letter
-////                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-////                                }
-////                                viewVM.setView(View.AllApps(letter))
-////                            } ?: viewVM.setView(View.Favorites)
-//                    },
-//                    color = primaryColor,
-//                    modifier = Modifier
-//                        .align(Alignment.CenterEnd)
-//                        .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
-//                        .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
-//                        .onGloballyPositioned { coordinates ->
-//                            letterBarBounds = coordinates.boundsInWindow()
-//                        })
+//                var lastLetter by remember { mutableStateOf<Char?>(null) }
+                LaunchedEffect(view) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                LetterBar(
+//                    sortedLetters = appListData.letterToIndex.keys.toList(),
+                    letters = allAppsBarIndex.keys.toList(),
+                    view = view,
+                    update = { index ->
+                        // I get the index of the letter in the list of letters
+                        // I now need to take the letter to lookup the index of the Char in the all apps map
+                        // Can I not just skip the letter conversion and use the index to lookup the index in the map?
+                        val selection = allAppsBarIndex.entries.elementAtOrNull(index)
+                        if (selection == null) {
+                            viewVM.setView(View.Favorites)
+                            return@LetterBar
+                        }
+                        coroutineScope.launch { listState.scrollToItem(selection.value, 0) }
+                        viewVM.setView(View.AllApps(selection.key))
+
+
+//                        appListData.letterToIndex.entries.elementAtOrNull(index)
+//                            ?.let { (letter, i) ->
+//                                coroutineScope.launch {
+//                                    listState.scrollToItem(
+//                                        index = i, scrollOffset = 0
+//                                    )
+//                                }
+
+//                                // This should be able to life in the Bar if you pass the haptic...
+//                                if (letter != lastLetter) {
+//                                    lastLetter = letter
+//                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+//                                }
+//                                viewVM.setView(View.AllApps(letter))
+//                            } ?: viewVM.setView(View.Favorites)
+                    },
+                    color = primaryColor,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
+                        .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
+                        .onGloballyPositioned { coordinates ->
+                            // TODO: hard code this padding into the down swipe detection
+                            // that would simplify this a lot
+                            letterBarBounds = coordinates.boundsInWindow()
+                        })
             }
         }
     }
@@ -367,35 +388,29 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LetterBar(
-    modifier: Modifier = Modifier,
-    color: Color,
-    sortedLetters: List<Char>,
-    view: View,
-    update: (Int) -> Unit
+    modifier: Modifier = Modifier, color: Color, // TODO: can this handled via a theme?
+    letters: List<Char>, view: View, update: (Int) -> Unit
 ) {
-    val currentSortedLetters by rememberUpdatedState(sortedLetters)
-    Row(modifier = modifier) {
-        var isScrollbarTouched by remember { mutableStateOf(false) }
-        Column(
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(if (isScrollbarTouched) 96.dp else 48.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { isScrollbarTouched = true },
-                        onDragEnd = { isScrollbarTouched = false },
-                        onDrag = { change, _ -> update((change.position.y / size.height * currentSortedLetters.size).toInt()) })
-                }) {
-            if (view is View.AllApps) {
-                sortedLetters.forEach { letter ->
-                    Text(
-                        text = letter.toString(),
-                        fontSize = if (letter == view.letter) 24.sp else 16.sp, // Make the selected letter bigger
-                        color = if (letter == view.letter) Color.White else color,
-                        modifier = Modifier
-                    )
-                }
+    var isScrollbarTouched by remember { mutableStateOf(false) }
+    Column(
+        verticalArrangement = Arrangement.SpaceBetween,
+        modifier = modifier
+            .fillMaxHeight()
+            .width(if (isScrollbarTouched) 96.dp else 48.dp)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { isScrollbarTouched = true },
+                    onDragEnd = { isScrollbarTouched = false },
+                    onDrag = { change, _ -> update((change.position.y / size.height * letters.size).toInt()) })
+            }) {
+        if (view is View.AllApps) {
+            letters.forEach { letter ->
+                Text(
+                    text = letter.toString(),
+                    fontSize = if (letter == view.letter) 24.sp else 16.sp, // Make the selected letter bigger
+                    color = if (letter == view.letter) Color.White else color,
+                    modifier = Modifier
+                )
             }
         }
     }
@@ -519,10 +534,12 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
+// TODO: no shortcuts sometimes appears at top right of the screen instead of finger pos
+// Next thing? Log the popup stuff
 @Composable
 fun ShortcutPopup(menu: MenuState.ListPopup, rowAction: (UiRow, RowAction) -> Unit) {
     val entries by menu.list.collectAsState()
-
+    // TODO: Chrome shows no shortcuts | No app shows shortcuts :D
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = menu.reset) {
         Box(
             Modifier
@@ -539,8 +556,8 @@ fun ShortcutPopup(menu: MenuState.ListPopup, rowAction: (UiRow, RowAction) -> Un
                             if (y > 0f) y.toDp() + 24.dp else 0.dp
                         })
 //                    .width(with(density) { anchorBounds.width.toDp() }) // hard code this no?
-                // TODO: Does this work? main column has no width too
-                .background(Color(0xFF121212), RoundedCornerShape(12.dp))
+                    // TODO: Does this work? main column has no width too
+                    .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .padding(horizontal = 24.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.Bottom
             ) {
