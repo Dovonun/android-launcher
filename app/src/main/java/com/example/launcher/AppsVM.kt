@@ -7,6 +7,7 @@ import android.content.pm.LauncherApps
 import android.content.pm.LauncherApps.ShortcutQuery
 import android.content.pm.ShortcutInfo
 import android.os.UserHandle
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
@@ -80,6 +81,14 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val apps = MutableStateFlow<List<LauncherActivityInfo>>(emptyList())
 
     //    private val iconCache = mutableMapOf<IconCacheKey, Drawable>()
+    // when do I write to this?
+    // currently I don't...
+    // Because I have not tagged shortcuts the cache is empty
+    // i need to fill the cache with the shortcuts for the app before calling the popup.
+
+    // Maybe this should be renamed
+    // This should be renamed
+    // It is packages of used shortcuts
     private val usedShortcuts = MutableStateFlow(emptyList<String>())
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -90,7 +99,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             pkgs.associateWith { pkg ->
                 async {
                     launcherApps.getShortcuts(
-                        ShortcutQuery().apply { setPackage(pkg) }, user
+                        ShortcutQuery().apply {
+                            setPackage(pkg)
+                            setQueryFlags(
+                                ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
+                            )
+                        }, user
                     ).orEmpty()
                 }
             }.mapValues { it.value.await() }
@@ -144,13 +158,21 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     // the lists you need are dynamic in two ways.
     // Based on the type(app or list)
     // after this is done it is dynamic based on the existing flows and the tag of the list
-    fun popupEntires(item: Any): StateFlow<List<UiRow>> = when (item) {
-        is App -> cachedShortcuts.map { shortcuts ->
-            shortcutsToRows(shortcuts[item.componentName.packageName] ?: emptyList())
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyList())
+    fun popupEntires(item: Any): StateFlow<List<UiRow>> {
+        return when (item) {
+            is App -> {
+                val pkg = item.componentName.packageName
+                if (pkg !in usedShortcuts.value) usedShortcuts.update { it + pkg }
 
-        is Tag -> uiList(item.id)
-        else -> error("Unreachable")
+                cachedShortcuts.map { shortcuts ->
+                    Log.d("AppsVM", "popupEntires called $shortcuts")
+                    shortcutsToRows(shortcuts[pkg] ?: emptyList())
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyList())
+            }
+
+            is Tag -> uiList(item.id)
+            else -> error("Unreachable")
+        }
     }
 //    private val _selectedLaunchable = MutableStateFlow<Launchable?>(null)
 //    val selectedLaunchable: StateFlow<Launchable?> = _selectedLaunchable.asStateFlow()

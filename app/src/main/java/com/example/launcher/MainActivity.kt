@@ -246,6 +246,7 @@ class MainActivity : ComponentActivity() {
                         reverseLayout = true,
                         modifier = Modifier
                             .fillMaxHeight()
+                            .padding(start = 48.dp)
                             .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
                             .pointerInput(Unit) {
                                 while (true) {
@@ -267,7 +268,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     is View.AllApps -> LazyColumn(
-                        modifier = Modifier, state = listState, contentPadding = PaddingValues(
+                        modifier = Modifier.padding(start = 48.dp), state = listState, contentPadding = PaddingValues(
                             top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
                             bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                         )
@@ -429,7 +430,7 @@ fun IconRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .padding(start = 48.dp)
+//            .padding(start = 48.dp)
             .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -535,11 +536,14 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
 }
 
 // TODO: no shortcuts sometimes appears at top right of the screen instead of finger pos
-// Next thing? Log the popup stuff
 @Composable
 fun ShortcutPopup(menu: MenuState.ListPopup, rowAction: (UiRow, RowAction) -> Unit) {
     val entries by menu.list.collectAsState()
-    // TODO: Chrome shows no shortcuts | No app shows shortcuts :D
+    Log.d("MainActivity", "ShortcutPopup: $entries")
+    Log.d("MainActivity", "Popup Menu State: $menu")
+    // TODO: POPup does not close after launch
+    // This is extra crazy if you open the popup for an app in all apps
+    // after clicking the shortcut and going home you are in the favorites but the popup for the app is still open at the same position
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = menu.reset) {
         Box(
             Modifier
