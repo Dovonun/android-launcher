@@ -52,6 +52,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -75,41 +76,31 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import android.view.WindowInsets as ViewWindowInsets
 
-sealed class RowAction {
-    data object Launch : RowAction()
-    data class ShowPopup(val yPos: Float) : RowAction()
-    data object ShowSheet : RowAction()
-}
+//sealed class RowAction {
+//    data object Launch : RowAction()
+//    data class ShowPopup(val yPos: Float) : RowAction()
+//    data object ShowSheet : RowAction()
+//}
 
 sealed interface View {
     data object Favorites : View
-    data class AllApps(val letter: Char) : View
+    data class AllApps(val letter: Char, val index: Int) : View
 }
 
 sealed interface MenuState {
     data object None : MenuState
-    data class ListPopup(
-        val list: StateFlow<List<UiRow>>, val yPos: Float, val reset: () -> Unit
-    ) : MenuState
-
-    data class ContextSheet(val entries: StateFlow<List<SheetRow>>, val reset: () -> Unit) :
-        MenuState
+    data class Sheet(val item: Any) : MenuState
+    data class Popup(val item: Any, val yPos: Float) : MenuState
 }
-
-//sealed class ListItem {
-//    data class Header(val letter: Char) : ListItem()
-//    data class AppEntry(val label: String, val icon: ImageBitmap) : ListItem() // TODO: how do I know which entry was clicked? callback? index?
-//}
 
 private fun expandNotificationShade(context: Context) {
     try {
@@ -121,6 +112,31 @@ private fun expandNotificationShade(context: Context) {
         Log.e("MainActivity", "Failed to expand notifications: ${e.message}")
     }
 }
+
+private fun buildBarIndex(apps: Map<Char, List<UiRow>>): List<Int> = buildList {
+    apps.values.fold(0) { acc, list ->
+        add(acc)
+        acc + list.size + 1 // +1 for the header
+    }
+}
+
+//private fun buildRowAction(
+//    appsVM: AppsVM, safeTopPx: Float, setMenu: (MenuState) -> Unit, reset: () -> Unit
+//) = { uiRow: UiRow, action: RowAction ->
+//    when (action) {
+//        is RowAction.Launch -> appsVM.launch(uiRow.item)
+//        // TODO: How does it look like to pass a tag here?
+//        // Is the tag just wrapping the uiRow? Who unwraps?
+//        // launch function because unwarp is always index 0. Children are uiRows.
+//        is RowAction.ShowPopup -> setMenu(
+//            MenuState.Popup(appsVM.popupEntries(uiRow.item), action.yPos - safeTopPx, reset)
+//        )
+//
+//        is RowAction.ShowSheet -> setMenu(
+//            MenuState.Sheet(appsVM.getContextEntries(uiRow.item), reset)
+//        )
+//    }
+//}
 
 class MainActivity : ComponentActivity() {
     private val viewVM: ViewVM by viewModels()
@@ -138,86 +154,61 @@ class MainActivity : ComponentActivity() {
             Text(text = "debug")
             window.insetsController?.hide(ViewWindowInsets.Type.statusBars())
             val context = LocalContext.current
-            val coroutineScope = rememberCoroutineScope()
-            val appsVM: AppsVM = viewModel()
+            val density = LocalDensity.current
             val haptic = LocalHapticFeedback.current
-
-            val view by viewVM.view.collectAsState()
-//            val appListData by appsVM.launchableListData.collectAsState()
-//            val favorites by appsVM.favoriteApps.collectAsState()
-//            val selectedApp by appsVM.selectedLaunchable.collectAsState()
-//
-//            val shortcuts by appsVM.shortcutUiItems.collectAsState()
-
+            val appsVM: AppsVM = viewModel()
+            val coroutineScope = rememberCoroutineScope()
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? =
                 remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
 
-
             val primaryColorInt: Int? = remember { wallpaperColors?.primaryColor?.toArgb() }
             val primaryColor = remember { primaryColorInt?.let { Color(it) } ?: Color.Black }
+            val listState = rememberLazyListState()
 //            val primaryColorHsv = remember { FloatArray(3) }
 //            val bright_primaryColor = remember { Color.hsv(primaryColor.hue, 1f, 1f) }
-            val listState = rememberLazyListState()
 
-//            var showSheetForLaunchable by remember { mutableStateOf<Launchable?>(null) }
             var letterBarBounds by remember { mutableStateOf(Rect.Zero) }
+            var menuState by remember { mutableStateOf<MenuState>(MenuState.None) }
+            val setMenu = { newState: MenuState -> menuState = newState }
 
+            val view by viewVM.view.collectAsState()
             // safeDrawing top as Dp, then px
             // TODO: Can't I cache this?
-            val density = LocalDensity.current
             val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
             val safeTopPx = with(density) { safeTopDp.toPx() }
+//            val rowAction = buildRowAction(appsVM, safeTopPx, { menuState = it }, resetMenu)
 
-            var menuState by remember { mutableStateOf<MenuState>(MenuState.None) }
-            val resetMenu = { menuState = MenuState.None }
+            val allApps by appsVM.uiAllGrouped.collectAsState()
+            val barIndexes by remember(allApps) { derivedStateOf { buildBarIndex(allApps) } }
+            val favorites by appsVM.favorites.collectAsState()
 
-            val favorites2 by appsVM.uiList(TAG.FAV).collectAsState()
-
-            fun rowAction(uiRow: UiRow, action: RowAction) {
-                when (action) {
-                    is RowAction.Launch -> appsVM.launch(uiRow.item)
-                    is RowAction.ShowPopup -> menuState = MenuState.ListPopup(
-                        // TODO: How does it look like to pass a tag here?
-                        // Is the tag just wrapping the uiRow? Who unwraps?
-                        // launch function because unwarp is always index 0. Children are uiRows.
-                        appsVM.popupEntires(uiRow.item), action.yPos - safeTopPx, resetMenu
-                    )
-
-                    is RowAction.ShowSheet -> menuState = MenuState.ContextSheet(
-                        appsVM.getContextEntries(uiRow.item), resetMenu
-                    )
+            LaunchedEffect(menuState) {
+                when (menuState) {
+                    is MenuState.Popup -> haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    is MenuState.Sheet -> haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    is MenuState.None -> Unit
+                }
+            }
+            LaunchedEffect(view) {
+                val v = view
+                if (v is View.AllApps) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    listState.scrollToItem(v.index, 0)
+                    // does it make sense to add the index to the state?
                 }
             }
 
-
-//            fun selectAppWithBounds(launchable: Launchable, bounds: Rect) {
-//                anchorBounds = Rect(
-//                    left = bounds.left,
-//                    top = bounds.top - safeTopPx,
-//                    right = bounds.right,
-//                    bottom = bounds.bottom - safeTopPx
-//                )
-//                appsVM.selectApp(launchable)
-//            }
-            val allApps by appsVM.uiAllGrouped.collectAsState()
-            val allAppsBarIndex by remember(allApps) {
-                derivedStateOf {
-                    buildMap<Char, Int> {
-                        var total = 0
-                        allApps.forEach { (letter, list) ->
-                            put(letter, total)
-                            total += list.size + 1 // +1 for the header
-                        }
-                    }
-                }
+            when (val state = menuState) {
+                is MenuState.Popup -> ShortcutPopup(state, appsVM, setMenu)
+                is MenuState.Sheet -> ContextSheet(state, appsVM) { setMenu(MenuState.None) }
+                is MenuState.None -> Unit
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
-//                    .border(1.dp, Color.White)
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
@@ -228,18 +219,6 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                     }) {
-
-                // TODO: add the haptic back in
-//                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                haptic.performHapticFeedback(HapticFeedbackType.LongPress) // for long menu
-                LaunchedEffect(resetMenu) {} // ? // ?
-                // TODO: Flicker in favorites when popup appears in emulator
-                // no flicker in all apps list(lazycol?)
-                when (val state = menuState) {
-                    is MenuState.ListPopup -> ShortcutPopup(state, ::rowAction)
-                    is MenuState.ContextSheet -> ContextSheet(state) // move the context entries into the state?
-                    is MenuState.None -> Unit
-                }
 
                 when (view) {
                     is View.Favorites -> LazyColumn(
@@ -254,6 +233,7 @@ class MainActivity : ComponentActivity() {
                                         Log.d("MainActivity", "pointerInput called")
                                         awaitPointerEvent(pass = PointerEventPass.Initial).changes.firstOrNull()
                                             ?.let {
+                                                // TODO: Next improve this :) can you hardcode
                                                 if (!letterBarBounds.contains(it.position) && it.positionChange().y > 50f) {
                                                     expandNotificationShade(context)
                                                     it.consume() // Block children from handling
@@ -262,13 +242,15 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }) {
-                        items(items = favorites2, key = { "fav-${it.label}" }) {
-                            IconRow(it, ::rowAction)
+                        items(items = favorites, key = { "fav-${it.label}" }) {
+                            IconRow(it, appsVM, setMenu)
                         }
                     }
 
                     is View.AllApps -> LazyColumn(
-                        modifier = Modifier.padding(start = 48.dp), state = listState, contentPadding = PaddingValues(
+                        modifier = Modifier.padding(start = 48.dp),
+                        state = listState,
+                        contentPadding = PaddingValues(
                             top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
                             bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                         )
@@ -286,79 +268,25 @@ class MainActivity : ComponentActivity() {
                             }
                             // TODO: What happens when 2 apps have the same name?
                             items(items = list, key = { "all-${it.label}" }) { row ->
-                                IconRow(row, ::rowAction)
+                                IconRow(row, appsVM, setMenu)
                             }
                         }
 
-//                        itemsIndexed(appListData.items) { _, item ->
-//                            when (item) {
-//                                is ListItem.Header -> {
-//                                    Text(
-//                                        text = item.letter.toString(),
-//                                        fontSize = 24.sp,
-//                                        color = primaryColor,
-//                                        modifier = Modifier
-//                                            .padding(16.dp)
-//                                            .padding(start = 64.dp)
-//                                    )
-//                                }
-
-//                                is ListItem.AppEntry -> {
-//                                    val app = item.launchableInfo
-//                                    if (app is Launchable.Shortcut) Log.d(
-//                                        "Launcher_UI", "pwa: $app"
-//                                    )
-//                                    AppRow(
-//                                        launchable = app,
-//                                        launchApp = {
-//                                            viewVM.setLeveTimeStamp(System.currentTimeMillis())
-//                                            appsVM.launch(app)
-//                                        },
-//                                        onLongPress = {
-//                                            showSheetForLaunchable = app
-//                                            coroutineScope.launch { bottomSheetState.show() }
-//                                        },
-//                                        onLongSwipe = ::selectAppWithBounds,
-//                                    )
-//                                }
-//                            }
-//                        }
                     }
                 }
-//                var lastLetter by remember { mutableStateOf<Char?>(null) }
-                LaunchedEffect(view) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
                 LetterBar(
-//                    sortedLetters = appListData.letterToIndex.keys.toList(),
-                    letters = allAppsBarIndex.keys.toList(),
+                    letters = allApps.keys.toList(),
                     view = view,
                     update = { index ->
-                        // I get the index of the letter in the list of letters
-                        // I now need to take the letter to lookup the index of the Char in the all apps map
-                        // Can I not just skip the letter conversion and use the index to lookup the index in the map?
-                        val selection = allAppsBarIndex.entries.elementAtOrNull(index)
-                        if (selection == null) {
+                        val i = barIndexes.elementAtOrNull(index)
+                        if (i == null) {
                             viewVM.setView(View.Favorites)
-                            return@LetterBar
+                        } else {
+                            viewVM.setView(
+                                View.AllApps(allApps.keys.elementAtOrElse(index) { 'P' }, i)
+                            )
+//                        coroutineScope.launch { listState.scrollToItem(selection.value, 0) }
                         }
-                        coroutineScope.launch { listState.scrollToItem(selection.value, 0) }
-                        viewVM.setView(View.AllApps(selection.key))
-
-
-//                        appListData.letterToIndex.entries.elementAtOrNull(index)
-//                            ?.let { (letter, i) ->
-//                                coroutineScope.launch {
-//                                    listState.scrollToItem(
-//                                        index = i, scrollOffset = 0
-//                                    )
-//                                }
-
-//                                // This should be able to life in the Bar if you pass the haptic...
-//                                if (letter != lastLetter) {
-//                                    lastLetter = letter
-//                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                                }
-//                                viewVM.setView(View.AllApps(letter))
-//                            } ?: viewVM.setView(View.Favorites)
                     },
                     color = primaryColor,
                     modifier = Modifier
@@ -376,13 +304,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        if (System.currentTimeMillis() - viewVM.leaveTimeStamp.value < 5000) viewVM.setLeveTimeStamp(
-            0L
-        ) else viewVM.setView(View.Favorites)
+        if (System.currentTimeMillis() - viewVM.leaveTime.value < 5000) viewVM.setLeaveTime(0L)
+        else viewVM.setView(View.Favorites)
         Log.d("MainActivity", "new intent called")
     }
 
-    override fun onDestroy() {
+    override fun onDestroy() { // TODO: I should be able to delete this because it does not differ from the parent class
         super.onDestroy()
     }
 }
@@ -420,7 +347,8 @@ fun LetterBar(
 @Composable
 fun IconRow(
     uiRow: UiRow,
-    action: (UiRow, RowAction) -> Unit,
+    appVM: AppsVM,
+    setMenu: (MenuState) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var layoutCoordinates: LayoutCoordinates? = null
@@ -433,17 +361,17 @@ fun IconRow(
 //            .padding(start = 48.dp)
             .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { action(uiRow, RowAction.Launch) },
-                    onLongPress = { action(uiRow, RowAction.ShowSheet) })
+                detectTapGestures(onTap = {
+                    appVM.launch(uiRow.item)
+                    setMenu(MenuState.None)
+                }, onLongPress = { setMenu(MenuState.Sheet(uiRow.item)) })
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures { _, drag ->
-                    if (drag > 50f) action(
-                        uiRow, RowAction.ShowPopup(
-                            layoutCoordinates?.boundsInWindow()?.bottom ?: error("no loc")
-                        )
-                    )
+                    if (drag > 50f) {
+                        val y = layoutCoordinates?.boundsInWindow()?.bottom ?: error("no loc")
+                        setMenu(MenuState.Popup(uiRow.item, y))
+                    }
                 }
             }) {
         RowIcon(uiRow.icon)
@@ -469,53 +397,6 @@ fun RowLabel(text: String) = Text(
     overflow = TextOverflow.Ellipsis,
 )
 
-//@Composable
-//fun AppRow(
-//    launchable: Launchable,
-//    modifier: Modifier = Modifier,
-//    launchApp: () -> Unit,
-//    onLongPress: () -> Unit,
-//    onLongSwipe: (Launchable, Rect) -> Unit
-//) {
-//    var rowBounds by remember { mutableStateOf(Rect.Zero) }
-//    Row(
-//        verticalAlignment = Alignment.CenterVertically,
-//        horizontalArrangement = Arrangement.spacedBy(24.dp),
-//        modifier = modifier
-//            .fillMaxWidth()
-//            .padding(vertical = 8.dp)
-//            .padding(start = 48.dp)
-//            .onGloballyPositioned { coordinates ->
-//                rowBounds = coordinates.boundsInWindow()
-//            }
-//            .pointerInput(Unit) {
-//                detectTapGestures(onTap = { launchApp() }, onLongPress = { onLongPress() })
-//            }
-//            .pointerInput(Unit) {
-//                detectHorizontalDragGestures { _, dragAmount ->
-//                    Log.d("MainActivity", "dragAmount: $dragAmount")
-//                    if (dragAmount > 50f) onLongSwipe(launchable, rowBounds)
-//                }
-//            }) {
-//        if (launchable.icon != null) {
-//            Image(
-//                bitmap = launchable.icon!!,
-//                contentDescription = launchable.name,
-//                modifier = Modifier.size(42.dp)
-//            )
-//        } else Spacer(modifier = Modifier.width(42.dp))
-//        Text(
-//            text = launchable.name,
-//            fontSize = 24.sp,
-//            color = Color.White,
-//            style = MaterialTheme.typography.labelMedium.copy(
-//                shadow = Shadow(
-//                    color = Color.Black, offset = Offset(0.01f, 0.01f), blurRadius = 5f
-//                )
-//            )
-//        )
-//    }
-//}
 
 @Composable
 fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
@@ -535,38 +416,38 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-// TODO: no shortcuts sometimes appears at top right of the screen instead of finger pos
 @Composable
-fun ShortcutPopup(menu: MenuState.ListPopup, rowAction: (UiRow, RowAction) -> Unit) {
-    val entries by menu.list.collectAsState()
+fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -> Unit) {
+    val entries by produceState<List<UiRow>>(initialValue = emptyList(), state.item) {
+        value = appsVM.popupEntries(state.item)
+    }
+    val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     Log.d("MainActivity", "ShortcutPopup: $entries")
-    Log.d("MainActivity", "Popup Menu State: $menu")
     // TODO: POPup does not close after launch
-    // This is extra crazy if you open the popup for an app in all apps
-    // after clicking the shortcut and going home you are in the favorites but the popup for the app is still open at the same position
-    Popup(properties = PopupProperties(focusable = true), onDismissRequest = menu.reset) {
+    // It closes now, but the launch is slow in the emulator
+    val reset = { setMenu(MenuState.None) }
+    Popup(properties = PopupProperties(focusable = true), onDismissRequest = reset) {
         Box(
             Modifier
                 .fillMaxSize()
-                .clickable(remember { MutableInteractionSource() }, null, onClick = menu.reset)
+                .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
         ) {
             var popupHeight by remember { mutableIntStateOf(0) }
-            Column(
-                modifier = Modifier
-                    .onGloballyPositioned { popupHeight = it.size.height }
-                    .offset(
-                        x = 24.dp, y = with(LocalDensity.current) {
-                            val y = menu.yPos - popupHeight
-                            if (y > 0f) y.toDp() + 24.dp else 0.dp
-                        })
+            Column(modifier = Modifier
+                .onGloballyPositioned { popupHeight = it.size.height }
+                .offset {
+                    val y = ((state.yPos - popupHeight).toDp() - safeTopDp).coerceAtLeast(0.dp)
+                    IntOffset(x = 24.dp.roundToPx(), y = y.toPx().toInt() + 24.dp.roundToPx())
+                }
+                .background(Color(0xFF121212), RoundedCornerShape(12.dp))
 //                    .width(with(density) { anchorBounds.width.toDp() }) // hard code this no?
-                    // TODO: Does this work? main column has no width too
-                    .background(Color(0xFF121212), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.Bottom
-            ) {
+                // TODO: Does this work? main column has no width too
+                // No, it now takes the same with as the parent but because it is shifted it is to big
+                .background(Color(0xFF121212), RoundedCornerShape(12.dp))
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.Bottom) {
                 if (entries.isNotEmpty()) {
-                    entries.reversed().forEach { item -> IconRow(item, rowAction) }
+                    entries.reversed().forEach { item -> IconRow(item, appsVM, setMenu) }
                 } else {
                     val text = "No shortcuts found for this App"
                     Text(
@@ -583,19 +464,20 @@ fun ShortcutPopup(menu: MenuState.ListPopup, rowAction: (UiRow, RowAction) -> Un
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContextSheet(state: MenuState.ContextSheet) {
+fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val entries by state.entries.collectAsState()
-
+    val entries by produceState<List<SheetRow>>(initialValue = emptyList(), state.item) {
+        value = appsVM.SheetEntires(state.item)
+    }
     ModalBottomSheet(
-        onDismissRequest = state.reset,
+        onDismissRequest = reset,
         sheetState = sheetState,
         containerColor = Color(0xFF121212),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         windowInsets = WindowInsets(0.dp)
     ) {
         Column(Modifier.fillMaxWidth()) {
-            entries.forEach { entry -> SheetEntry(entry.label, entry.onTap, state.reset) }
+            entries.forEach { entry -> SheetEntry(entry.label, entry.onTap, reset) }
             Spacer(Modifier.height(42.dp))
         }
     }
