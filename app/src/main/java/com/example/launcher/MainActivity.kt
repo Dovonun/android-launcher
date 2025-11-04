@@ -4,10 +4,8 @@ import android.R.color.transparent
 import android.annotation.SuppressLint
 import android.app.WallpaperColors
 import android.app.WallpaperManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -204,10 +202,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        if (System.currentTimeMillis() - viewVM.leaveTime.value < 5000) viewVM.setLeaveTime(0L) else viewVM.setView(
-            View.Favorites
-        )
-        viewVM.setMenu(MenuState.None)
+        viewVM.softReset()
     }
 }
 
@@ -267,8 +262,7 @@ fun IconRow(
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     appVM.launch(uiRow.item)
-                    viewVM.setLeaveTime(System.currentTimeMillis())
-                    viewVM.setMenu(MenuState.None)
+                    viewVM.leave()
                 }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
             }
             .pointerInput(Unit) {

@@ -1,8 +1,12 @@
 package com.example.launcher
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 sealed interface View {
     data object Favorites : View
@@ -15,13 +19,27 @@ sealed interface MenuState {
     data class Popup(val item: Any, val yPos: Float) : MenuState
 }
 
-class ViewVM: ViewModel() {
-    private val _leaveTimeStamp = MutableStateFlow(0L)
-    val leaveTime: StateFlow<Long> = _leaveTimeStamp
+class ViewVM : ViewModel() {
+    private var leaveJob: Job? = null
     private val _view = MutableStateFlow<View>(View.Favorites)
-    private var _menu =  MutableStateFlow<MenuState>(MenuState.None)
+    private var _menu = MutableStateFlow<MenuState>(MenuState.None)
     val view: StateFlow<View> = _view
     val menu: StateFlow<MenuState> = _menu
+
+    fun leave() {
+        setMenu(MenuState.None)
+        leaveJob?.cancel()
+        leaveJob = viewModelScope.launch {
+            delay(5000)
+            setView(View.Favorites)
+        }
+    }
+
+    fun softReset() {
+        leaveJob?.cancel()
+        leaveJob = null
+        setMenu(MenuState.None)
+    }
 
     fun setView(view: View) {
         _view.value = view
@@ -29,8 +47,5 @@ class ViewVM: ViewModel() {
 
     fun setMenu(menuState: MenuState) {
         _menu.value = menuState
-    }
-    fun setLeaveTime(timeStamp: Long) {
-        _leaveTimeStamp.value = timeStamp
     }
 }
