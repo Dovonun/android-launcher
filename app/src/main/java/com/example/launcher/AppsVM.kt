@@ -99,7 +99,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
     private fun cleanup(pkg: String) = db.taggedAppDao()
-    // TODO: delete all tags for this app
+    // TODO: delete all tags for this app on uninstall
 
     init {
         viewModelScope.launch(Dispatchers.IO) { ensureSystemTags(tagDao) }

@@ -83,28 +83,6 @@ import android.view.WindowInsets as ViewWindowInsets
 const val H_PAD = 24
 const val H_PAD2 = 2 * H_PAD
 
-sealed interface View {
-    data object Favorites : View
-    data class AllApps(val index: Int) : View
-}
-
-sealed interface MenuState {
-    data object None : MenuState
-    data class Sheet(val item: Any) : MenuState
-    data class Popup(val item: Any, val yPos: Float) : MenuState
-}
-
-private fun expandNotificationShade(context: Context) {
-    try {
-        val statusBarService = context.getSystemService("statusbar")
-        val statusBarManager = Class.forName("android.app.StatusBarManager")
-        val expandMethod = statusBarManager.getMethod("expandNotificationsPanel")
-        expandMethod.invoke(statusBarService)
-    } catch (e: Exception) {
-        Log.e("MainActivity", "Failed to expand notifications: ${e.message}")
-    }
-}
-
 private fun buildBarIndex(apps: Map<Char, List<UiRow>>): List<Int> = buildList {
     apps.values.fold(0) { acc, list ->
         add(acc)
@@ -127,6 +105,7 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val haptic = LocalHapticFeedback.current
             val appsVM: AppsVM = viewModel()
+            val systemVM: SystemVM = viewModel()
             val wallpaperManager = WallpaperManager.getInstance(context)
             val wallpaperColors: WallpaperColors? =
                 remember { wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
@@ -145,18 +124,17 @@ class MainActivity : ComponentActivity() {
                     listState.scrollToItem(v.index, 0)
                 }
             }
-            var menuState by remember { mutableStateOf<MenuState>(MenuState.None) }
-            val setMenu = { newState: MenuState -> menuState = newState }
-            LaunchedEffect(menuState) {
-                when (menuState) {
+            val menu by viewVM.menu.collectAsState()
+            LaunchedEffect(menu) {
+                when (menu) {
                     is MenuState.Popup -> haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     is MenuState.Sheet -> haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     is MenuState.None -> Unit
                 }
             }
-            when (val state = menuState) {
-                is MenuState.Popup -> ShortcutPopup(state, appsVM, setMenu)
-                is MenuState.Sheet -> ContextSheet(state, appsVM) { setMenu(MenuState.None) }
+            when (val state = menu) {
+                is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM::setMenu)
+                is MenuState.Sheet -> ContextSheet(state, appsVM) { viewVM.setMenu(MenuState.None) }
                 is MenuState.None -> Unit
             }
             val allApps by appsVM.uiAllGrouped.collectAsState()
@@ -178,10 +156,10 @@ class MainActivity : ComponentActivity() {
                                 detectVerticalDragGestures(
                                     onVerticalDrag = { change, dragAmount ->
                                         if (change.isConsumed) return@detectVerticalDragGestures
-                                        if (dragAmount > 60f) expandNotificationShade(context)
+                                        if (dragAmount > 60f) systemVM.expandNotificationShade()
                                     })
                             }) {
-                        favorites.forEach { fav -> IconRow(fav, appsVM, setMenu) }
+                        favorites.forEach { fav -> IconRow(fav, appsVM, viewVM::setMenu) }
                     }
 
                     is View.AllApps -> LazyColumn(
@@ -205,7 +183,7 @@ class MainActivity : ComponentActivity() {
                             }
                             // TODO: What happens when 2 apps have the same name?
                             items(items = list, key = { "all-${it.label}" }) { row ->
-                                IconRow(row, appsVM, setMenu)
+                                IconRow(row, appsVM, viewVM::setMenu)
                             }
                         }
                     }
@@ -226,10 +204,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        if (System.currentTimeMillis() - viewVM.leaveTime.value < 5000) viewVM.setLeaveTime(0L)
-        else viewVM.setView(View.Favorites)
-        // TODO: NEXT reset menu state
-        Log.d("MainActivity", "new intent called")
+        if (System.currentTimeMillis() - viewVM.leaveTime.value < 5000) viewVM.setLeaveTime(0L) else viewVM.setView(
+            View.Favorites
+        )
+        viewVM.setMenu(MenuState.None)
     }
 }
 
@@ -296,9 +274,10 @@ fun IconRow(
                 detectHorizontalDragGestures { change, drag ->
                     if (change.isConsumed) return@detectHorizontalDragGestures
                     if (drag > 50f) {
-                        change.consume()
-                        val y = layoutCoordinates?.boundsInWindow()?.bottom ?: error("no loc")
-                        setMenu(MenuState.Popup(uiRow.item, y))
+                        layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
+                            change.consume()
+                            setMenu(MenuState.Popup(uiRow.item, n))
+                        } ?: return@detectHorizontalDragGestures
                     }
                 }
             }) {
@@ -359,14 +338,15 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -
                 .fillMaxSize()
                 .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
         ) {
-            val height = 58.dp * entries.size
+            val height = 58.dp * entries.size // icon is 42dp and padding is 2 * 8dp
             Column(
                 modifier = Modifier
-                    .offset(x = H_PAD.dp,y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
+                    .offset(x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .widthIn(max = maxWidth)
                     .padding(horizontal = H_PAD.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.Bottom) {
+                verticalArrangement = Arrangement.Bottom
+            ) {
                 if (entries.isNotEmpty()) {
                     entries.reversed().forEach { item -> IconRow(item, appsVM, setMenu) }
                 } else {
