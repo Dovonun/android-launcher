@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             when (val state = menu) {
-                is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM::setMenu)
+                is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM)
                 is MenuState.Sheet -> ContextSheet(state, appsVM) { viewVM.setMenu(MenuState.None) }
                 is MenuState.None -> Unit
             }
@@ -159,7 +159,7 @@ class MainActivity : ComponentActivity() {
                                         if (dragAmount > 60f) systemVM.expandNotificationShade()
                                     })
                             }) {
-                        favorites.forEach { fav -> IconRow(fav, appsVM, viewVM::setMenu) }
+                        favorites.forEach { fav -> IconRow(fav, appsVM, viewVM) }
                     }
 
                     is View.AllApps -> LazyColumn(
@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
                             }
                             // TODO: What happens when 2 apps have the same name?
                             items(items = list, key = { "all-${it.label}" }) { row ->
-                                IconRow(row, appsVM, viewVM::setMenu)
+                                IconRow(row, appsVM, viewVM)
                             }
                         }
                     }
@@ -253,7 +253,7 @@ fun LetterBar(
 fun IconRow(
     uiRow: UiRow,
     appVM: AppsVM,
-    setMenu: (MenuState) -> Unit,
+    viewVM: ViewVM,
     modifier: Modifier = Modifier,
 ) {
     var layoutCoordinates: LayoutCoordinates? = null
@@ -267,8 +267,9 @@ fun IconRow(
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     appVM.launch(uiRow.item)
-                    setMenu(MenuState.None)
-                }, onLongPress = { setMenu(MenuState.Sheet(uiRow.item)) })
+                    viewVM.setLeaveTime(System.currentTimeMillis())
+                    viewVM.setMenu(MenuState.None)
+                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures { change, drag ->
@@ -276,7 +277,7 @@ fun IconRow(
                     if (drag > 50f) {
                         layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
                             change.consume()
-                            setMenu(MenuState.Popup(uiRow.item, n))
+                            viewVM.setMenu(MenuState.Popup(uiRow.item, n))
                         } ?: return@detectHorizontalDragGestures
                     }
                 }
@@ -323,7 +324,7 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -> Unit) {
+fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
     val entries by produceState(initialValue = emptyList(), state.item) {
         value = appsVM.popupEntries(state.item)
     }
@@ -331,7 +332,7 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -
     val yDp = with(LocalDensity.current) { state.yPos.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp
-    val reset = { setMenu(MenuState.None) }
+    val reset = { viewVM.setMenu(MenuState.None) }
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = reset) {
         Box(
             Modifier
@@ -341,14 +342,16 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -
             val height = 58.dp * entries.size // icon is 42dp and padding is 2 * 8dp
             Column(
                 modifier = Modifier
-                    .offset(x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
+                    .offset(
+                        x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
+                    )
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .widthIn(max = maxWidth)
                     .padding(horizontal = H_PAD.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.Bottom
             ) {
                 if (entries.isNotEmpty()) {
-                    entries.reversed().forEach { item -> IconRow(item, appsVM, setMenu) }
+                    entries.reversed().forEach { item -> IconRow(item, appsVM, viewVM) }
                 } else {
                     val text = "No shortcuts found for this App"
                     Text(
