@@ -51,7 +51,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -69,10 +68,10 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -87,7 +86,6 @@ const val H_PAD2 = 2 * H_PAD
 sealed interface View {
     data object Favorites : View
     data class AllApps(val index: Int) : View
-    // TODO: Is char still needed?
 }
 
 sealed interface MenuState {
@@ -180,7 +178,7 @@ class MainActivity : ComponentActivity() {
                                 detectVerticalDragGestures(
                                     onVerticalDrag = { change, dragAmount ->
                                         if (change.isConsumed) return@detectVerticalDragGestures
-                                        if (dragAmount > 70f) expandNotificationShade(context)
+                                        if (dragAmount > 60f) expandNotificationShade(context)
                                     })
                             }) {
                         favorites.forEach { fav -> IconRow(fav, appsVM, setMenu) }
@@ -217,9 +215,11 @@ class MainActivity : ComponentActivity() {
                     view = view,
                     letters = allApps.keys.toList(),
                     update = { index ->
-                        val scrollI =scrollIndexes.elementAtOrNull(index)
+                        val scrollI = scrollIndexes.elementAtOrNull(index)
                         viewVM.setView(if (scrollI == null) View.Favorites else View.AllApps(scrollI))
-                    })
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
             }
         }
     }
@@ -228,6 +228,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (System.currentTimeMillis() - viewVM.leaveTime.value < 5000) viewVM.setLeaveTime(0L)
         else viewVM.setView(View.Favorites)
+        // TODO: NEXT reset menu state
         Log.d("MainActivity", "new intent called")
     }
 }
@@ -324,7 +325,6 @@ fun RowLabel(text: String) = Text(
     overflow = TextOverflow.Ellipsis,
 )
 
-
 @Composable
 fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     Row(
@@ -349,11 +349,9 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -
         value = appsVM.popupEntries(state.item)
     }
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+    val yDp = with(LocalDensity.current) { state.yPos.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp
-    Log.d("MainActivity", "ShortcutPopup: $entries")
-    // TODO: POPup does not close after launch
-    // It closes now, but the launch is slow in the emulator
     val reset = { setMenu(MenuState.None) }
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = reset) {
         Box(
@@ -361,16 +359,10 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, setMenu: (MenuState) -
                 .fillMaxSize()
                 .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
         ) {
-            var popupHeight by remember { mutableIntStateOf(0) }
+            val height = 58.dp * entries.size
             Column(
                 modifier = Modifier
-                    .onGloballyPositioned { popupHeight = it.size.height }
-                    .offset {
-                        val y = ((state.yPos - popupHeight).toDp() - safeTopDp).coerceAtLeast(0.dp)
-                        IntOffset(
-                            x = H_PAD.dp.roundToPx(), y = y.toPx().toInt() + H_PAD.dp.roundToPx()
-                        )
-                    }
+                    .offset(x = H_PAD.dp,y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
                     .background(Color(0xFF121212), RoundedCornerShape(12.dp))
                     .widthIn(max = maxWidth)
                     .padding(horizontal = H_PAD.dp, vertical = 12.dp),
