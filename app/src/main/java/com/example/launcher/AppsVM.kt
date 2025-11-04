@@ -98,7 +98,8 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
-    private fun cleanup(pkg: String) = db.taggedAppDao() // TODO: delete all tags for this app
+    private fun cleanup(pkg: String) = db.taggedAppDao()
+    // TODO: delete all tags for this app
 
     init {
         viewModelScope.launch(Dispatchers.IO) { ensureSystemTags(tagDao) }
@@ -115,7 +116,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         })
         (uiApps + uiPwas).sortedBy { it.label.lowercase() }
             .groupBy { it.label.first().uppercaseChar() }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap<Char, List<UiRow>>())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
 
     val favorites = uiList(TAG.FAV).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -157,8 +158,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         else -> error("Unreachable")
     }
 
-    // TODO: do I also make these async
-    suspend fun SheetEntires(item: Any): List<SheetRow> = when (item) {
+    suspend fun sheetEntries(item: Any): List<SheetRow> = when (item) {
         is App -> {
             val favPkgs = taggedAppDao.getPackagesForTag(TAG.FAV).first()
             val dbTag = TaggedAppEntity(item.componentName.packageName, TAG.FAV)
