@@ -1,17 +1,16 @@
 package com.example.launcher
 
-import android.R
 import android.annotation.SuppressLint
-import android.app.WallpaperColors
-import android.app.WallpaperManager
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,10 +34,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -66,10 +65,13 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -106,6 +108,21 @@ class MainActivity : ComponentActivity() {
         controller.hide(WindowInsetsCompat.Type.systemBars())
         setContent {
             LauncherTheme {
+                val density = LocalDensity.current
+                val style = TextStyle(
+                    fontSize = 5.8213773.sp,
+                    lineHeight = 1.sp,
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Top,
+                        trim = LineHeightStyle.Trim.Both
+                    )
+                )
+
+                // TODO: Next how big is 5.sp in px on 2x scale?
+                Box(modifier = Modifier.padding(50.dp)){
+                    Text("Launcher", style = style )
+
+                }
                 val appsVM: AppsVM = viewModel()
                 val systemVM: SystemVM = viewModel()
                 val listState = rememberLazyListState()
@@ -159,7 +176,9 @@ class MainActivity : ComponentActivity() {
                                         text = letter.toString(),
                                         style = MaterialTheme.typography.headlineLarge.copy(
                                             shadow = Shadow(
-                                                color = MaterialTheme.colorScheme.primary, offset = Offset(0.01f, 0.01f), blurRadius = 5f
+                                                color = MaterialTheme.colorScheme.primary,
+                                                offset = Offset(0.01f, 0.01f),
+                                                blurRadius = 5f
                                             )
                                         ),
                                         color = MaterialTheme.colorScheme.onPrimary,
@@ -198,47 +217,201 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+//@Composable
+//fun LetterBar(
+//    letters: List<Char>, view: View, update: (Int) -> Unit, modifier: Modifier = Modifier
+//) {
+//    val context = LocalContext.current
+//    val density = LocalDensity.current
+//    val haptic = LocalHapticFeedback.current
+//    var isScrollbarTouched by remember { mutableStateOf(false) }
+//    var selectedLetter by remember { mutableStateOf<Char?>(null) }
+//
+//    val textMeasurer = rememberTextMeasurer()
+//    val textStyle = MaterialTheme.typography.headlineSmall
+//    val textLayout = textMeasurer.measure(
+//        text = AnnotatedString("A"),
+//        style = textStyle
+//    )
+//    val letterHeightPx = textLayout.size.height.toFloat()
+//    val totalHeightPx = letterHeightPx * letters.size
+//    val totalHeightDp = with(density) { totalHeightPx.toDp() }
+//
+//    var layoutHeightPx by remember { mutableFloatStateOf(0f) }
+//    Column(
+//        verticalArrangement = Arrangement.SpaceBetween,
+//        modifier = modifier
+//            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
+//            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
+//            .fillMaxHeight()
+//            .width(if (isScrollbarTouched) (2 * H_PAD2).dp else H_PAD2.dp)
+//            .pointerInput(Unit) {
+//                detectVerticalDragGestures(
+//                    onDragStart = { isScrollbarTouched = true },
+//                    onDragEnd = { isScrollbarTouched = false },
+//                    onVerticalDrag = { change, _ ->
+//                        change.consume()
+//                        val index = (change.position.y / size.height * letters.size).toInt()
+//                        val letter = letters.getOrNull(index)
+//                        if (letter != selectedLetter) {
+//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+//                            selectedLetter = letter
+//                            update(index)
+//                        }
+//                    })
+//            }) {
+//        if (view is View.AllApps) {
+//            letters.forEach { letter ->
+//                val isSelected = selectedLetter == letter
+//                Text(
+//                    text = letter.toString(),
+//                    style = if (isSelected) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineSmall,
+//                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+//                )
+//            }
+//        }
+//    }
+//}
+
 @Composable
 fun LetterBar(
-    letters: List<Char>, view: View, update: (Int) -> Unit, modifier: Modifier = Modifier
+    letters: List<Char>,
+    view: View,
+    update: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
-    var isScrollbarTouched by remember { mutableStateOf(false) }
+
+    val slotFillFraction: Float = 0.85f; // fraction of slot to try to fill (0.65..0.85)
+    val minTextSp = 5.sp;
+    val maxTextSp = 32.sp;
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+
+    var barHeightPx by remember { mutableStateOf(0) }
+    var chosenSp by remember { mutableStateOf(24.sp) } // fallback
+
+    // compute chosenSp whenever letters or size changes
+    LaunchedEffect(letters, barHeightPx, slotFillFraction) {
+        if (barHeightPx <= 0 || letters.isEmpty()) return@LaunchedEffect
+        val n = letters.size
+        val slotPx = barHeightPx.toFloat() / n.toFloat()
+
+        // initial candidate in px -> convert to sp respecting density
+        val candidatePx = slotPx * slotFillFraction
+        val minPx = with(density) { minTextSp.toPx() }
+        val maxPx = with(density) { maxTextSp.toPx() }
+        chosenSp = with(density) { candidatePx.coerceIn(minPx, maxPx).toSp() }
+
+        // clamp candidateSp to min/max in px
+//        candidatePx = candidatePx.coerceIn(minPx, maxPx)
+//        Log.d("LetterBar", "slot px: $slotPx")
+//        Log.d("LetterBar", "initial candidate px: $candidatePx")
+//        Log.d("LetterBar", "minPx: $minPx")
+//        Log.d("LetterBar", "maxPx: $maxPx")
+
+//        repeat(8) { // limited iterations
+//            val candidateSpScaled = with(density) { candidatePx.toSp() }
+//            val style = TextStyle(
+//                fontSize = candidateSpScaled,
+////                lineHeight = candidateSpScaled
+////                lineHeightStyle = LineHeighttyle(
+////                    alignment = LineHeightStyle.Alignment.Top,
+////                    trim = LineHeightStyle.Trim.Both
+////                )
+//            )
+//            val layout = measurer.measure(AnnotatedString("M"), style = style)
+//            val measuredHeight = layout.size.height.toFloat()
+//            Log.d("LetterBar", "measured height px: $measuredHeight")
+//            Log.d("LetterBar", "fontScale=${density.fontScale}")
+//            if (measuredHeight <= slotPx) return@LaunchedEffect run {
+//                chosenSp = with(density) { candidatePx.toSp() }
+//                val amount = barHeightPx / measuredHeight
+//                Log.d("LetterBar", "amount calc: $amount")
+//                Log.d("LetterBar", "amount letters: ${letters.size}")
+//                Log.d("LetterBar", "chosenSp in return: $chosenSp")
+//                Log.d("LetterBar", "chosenPx in return: $candidatePx")
+//            }
+//            // shrink: reduce candidate by proportion of overflow but keep it geometric
+//            val ratio = (slotPx / measuredHeight).coerceIn(0.5f, 0.95f)
+//            Log.d("LetterBar", "NEVER CALLED: $ratio")
+//            candidatePx *= ratio
+//            candidatePx = candidatePx.coerceAtLeast(minPx)
+//        }
+
+        // fallback if still too large
+//        chosenSp = with(density) { candidatePx.toSp() }
+//        Log.d("LetterBar", "fallback chosenSp: $chosenSp")
+    }
+    LaunchedEffect(chosenSp) {
+        Log.d("LetterBar", "chosenSp: $chosenSp")
+    }
+
+    var isTouched by remember { mutableStateOf(false) }
     var selectedLetter by remember { mutableStateOf<Char?>(null) }
+    var coords: LayoutCoordinates? = null
+
     Column(
         verticalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
-            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
-            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
+            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp)
+            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
             .fillMaxHeight()
-            .width(if (isScrollbarTouched) (2 * H_PAD2).dp else H_PAD2.dp)
-            .pointerInput(Unit) {
+            .width(if (isTouched) (2 * H_PAD2).dp else H_PAD2.dp)
+            .onGloballyPositioned { layoutCoordinates ->
+                coords = layoutCoordinates
+                barHeightPx = layoutCoordinates.size.height
+            }
+            .pointerInput(letters) {
                 detectVerticalDragGestures(
-                    onDragStart = { isScrollbarTouched = true },
-                    onDragEnd = { isScrollbarTouched = false },
+                    onDragStart = { isTouched = true },
+                    onDragEnd = { isTouched = false; selectedLetter = null },
                     onVerticalDrag = { change, _ ->
                         change.consume()
-                        val index = (change.position.y / size.height * letters.size).toInt()
-                        val letter = letters.getOrNull(index)
-                        if (letter != selectedLetter) {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            selectedLetter = letter
-                            update(index)
-                        }
+                        val localY =
+                            change.position.y.coerceIn(0f, ((coords?.size?.height ?: 1).toFloat()))
+                        val h = coords?.size?.height?.toFloat() ?: 1f
+                        val idx =
+                            ((localY / h) * letters.size).toInt().coerceIn(0, letters.lastIndex)
+                        selectedLetter = letters[idx]
+                        update(idx)
                     })
-            }) {
+            }
+    ) {
         if (view is View.AllApps) {
+            val style = TextStyle(
+                fontSize = chosenSp,
+//                lineHeight = 0.sp,
+//                lineHeightStyle = LineHeightStyle(
+//                    alignment = LineHeightStyle.Alignment.Top,
+//                    trim = LineHeightStyle.Trim.Both
+//                )
+            )
             letters.forEach { letter ->
-                val isSelected = selectedLetter == letter
                 Text(
                     text = letter.toString(),
-                    style = if (isSelected) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineSmall,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    style = style,
+//                    lineHeight = 1f,
+//                    lineHeeightStyle = LineHeightStyle(
+//                        alignment = LineHeightStyle.Alignment.Top,
+//                        trim = LineHeightStyle.Trim.Both
+//                    ),
+                    color = if (letter == selectedLetter) Color.White else Color.Red,
+                    modifier = Modifier.wrapContentSize(Alignment.Center)
+//                        .border(1.dp, Color.Red)
                 )
             }
         }
     }
+    val h = with(density) { barHeightPx.toDp() }
+    Box(
+        modifier = Modifier
+            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp)
+            .height(h)
+            .width(5.dp)
+            .background(Color.Red)
+    )
 }
+
 
 @Composable
 fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, modifier: Modifier = Modifier) {
@@ -282,7 +455,9 @@ fun RowLabel(text: String) = Text(
     color = MaterialTheme.colorScheme.onSurface,
     style = MaterialTheme.typography.headlineMedium.copy(
         shadow = Shadow(
-            color = MaterialTheme.colorScheme.surface, offset = Offset(0.01f, 0.01f), blurRadius = 5f
+            color = MaterialTheme.colorScheme.surface,
+            offset = Offset(0.01f, 0.01f),
+            blurRadius = 5f
         )
     ),
     maxLines = 1,
@@ -303,7 +478,11 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
             .height(42.dp) // same as AppRow height
     ) {
         Spacer(modifier = Modifier.width(74.dp)) // for icon space (42 + 32 spacing)
-        Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -331,7 +510,7 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
                     .offset(
                         x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
                     )
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.large)
                     .widthIn(max = maxWidth)
                     .padding(horizontal = H_PAD.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.Bottom
