@@ -10,7 +10,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -51,7 +50,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,12 +65,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -81,17 +77,9 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
 
 const val H_PAD = 24
 const val H_PAD2 = 2 * H_PAD
-
-private fun buildBarIndex(apps: Map<Char, List<UiRow>>): List<Int> = buildList {
-    apps.values.fold(0) { acc, list ->
-        add(acc)
-        acc + list.size + 1 // +1 for the header
-    }
-}
 
 // TODO: Next AI chat about themes | Material3 in compose
 // TODO: Next Make it look nice. Can you do the outline thing on text?
@@ -108,21 +96,6 @@ class MainActivity : ComponentActivity() {
         controller.hide(WindowInsetsCompat.Type.systemBars())
         setContent {
             LauncherTheme {
-                val density = LocalDensity.current
-                val style = TextStyle(
-                    fontSize = 5.8213773.sp,
-                    lineHeight = 1.sp,
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Top,
-                        trim = LineHeightStyle.Trim.Both
-                    )
-                )
-
-                // TODO: Next how big is 5.sp in px on 2x scale?
-                Box(modifier = Modifier.padding(50.dp)){
-                    Text("Launcher", style = style )
-
-                }
                 val appsVM: AppsVM = viewModel()
                 val systemVM: SystemVM = viewModel()
                 val listState = rememberLazyListState()
@@ -137,9 +110,11 @@ class MainActivity : ComponentActivity() {
                     is MenuState.None -> Unit
                 }
                 val allApps by appsVM.uiAllGrouped.collectAsState()
-                val scrollIndexes by remember(allApps) { derivedStateOf { buildBarIndex(allApps) } }
                 val favorites by appsVM.favorites.collectAsState()
                 val view by viewVM.view.collectAsState()
+                LaunchedEffect(view) {
+                    val v = view; if (v is View.AllApps) listState.scrollToItem(v.index)
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -194,18 +169,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    val coroutineScope = rememberCoroutineScope()
-                    LetterBar(
-                        view = view, letters = allApps.keys.toList(), update = { index ->
-                            val scrollI = scrollIndexes.elementAtOrNull(index)
-                            if (scrollI == null) viewVM.setView(View.Favorites) else {
-                                viewVM.setView(View.AllApps(scrollI))
-                                coroutineScope.launch {
-                                    listState.scrollToItem(scrollI)
-                                }
-                            }
-                        }, modifier = Modifier.align(Alignment.CenterEnd)
-                    )
+                    LetterBar(allApps, viewVM, modifier = Modifier.align(Alignment.BottomEnd))
                 }
             }
         }
@@ -217,199 +181,67 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-//@Composable
-//fun LetterBar(
-//    letters: List<Char>, view: View, update: (Int) -> Unit, modifier: Modifier = Modifier
-//) {
-//    val context = LocalContext.current
-//    val density = LocalDensity.current
-//    val haptic = LocalHapticFeedback.current
-//    var isScrollbarTouched by remember { mutableStateOf(false) }
-//    var selectedLetter by remember { mutableStateOf<Char?>(null) }
-//
-//    val textMeasurer = rememberTextMeasurer()
-//    val textStyle = MaterialTheme.typography.headlineSmall
-//    val textLayout = textMeasurer.measure(
-//        text = AnnotatedString("A"),
-//        style = textStyle
-//    )
-//    val letterHeightPx = textLayout.size.height.toFloat()
-//    val totalHeightPx = letterHeightPx * letters.size
-//    val totalHeightDp = with(density) { totalHeightPx.toDp() }
-//
-//    var layoutHeightPx by remember { mutableFloatStateOf(0f) }
-//    Column(
-//        verticalArrangement = Arrangement.SpaceBetween,
-//        modifier = modifier
-//            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp) // Start 1/3 from the top
-//            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp) // End 1/8 from the bottom
-//            .fillMaxHeight()
-//            .width(if (isScrollbarTouched) (2 * H_PAD2).dp else H_PAD2.dp)
-//            .pointerInput(Unit) {
-//                detectVerticalDragGestures(
-//                    onDragStart = { isScrollbarTouched = true },
-//                    onDragEnd = { isScrollbarTouched = false },
-//                    onVerticalDrag = { change, _ ->
-//                        change.consume()
-//                        val index = (change.position.y / size.height * letters.size).toInt()
-//                        val letter = letters.getOrNull(index)
-//                        if (letter != selectedLetter) {
-//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                            selectedLetter = letter
-//                            update(index)
-//                        }
-//                    })
-//            }) {
-//        if (view is View.AllApps) {
-//            letters.forEach { letter ->
-//                val isSelected = selectedLetter == letter
-//                Text(
-//                    text = letter.toString(),
-//                    style = if (isSelected) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineSmall,
-//                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-//                )
-//            }
-//        }
-//    }
-//}
-
 @Composable
-fun LetterBar(
-    letters: List<Char>,
-    view: View,
-    update: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-
-    val slotFillFraction: Float = 0.85f; // fraction of slot to try to fill (0.65..0.85)
-    val minTextSp = 5.sp;
-    val maxTextSp = 32.sp;
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-
-    var barHeightPx by remember { mutableStateOf(0) }
-    var chosenSp by remember { mutableStateOf(24.sp) } // fallback
-
-    // compute chosenSp whenever letters or size changes
-    LaunchedEffect(letters, barHeightPx, slotFillFraction) {
-        if (barHeightPx <= 0 || letters.isEmpty()) return@LaunchedEffect
-        val n = letters.size
-        val slotPx = barHeightPx.toFloat() / n.toFloat()
-
-        // initial candidate in px -> convert to sp respecting density
-        val candidatePx = slotPx * slotFillFraction
-        val minPx = with(density) { minTextSp.toPx() }
-        val maxPx = with(density) { maxTextSp.toPx() }
-        chosenSp = with(density) { candidatePx.coerceIn(minPx, maxPx).toSp() }
-
-        // clamp candidateSp to min/max in px
-//        candidatePx = candidatePx.coerceIn(minPx, maxPx)
-//        Log.d("LetterBar", "slot px: $slotPx")
-//        Log.d("LetterBar", "initial candidate px: $candidatePx")
-//        Log.d("LetterBar", "minPx: $minPx")
-//        Log.d("LetterBar", "maxPx: $maxPx")
-
-//        repeat(8) { // limited iterations
-//            val candidateSpScaled = with(density) { candidatePx.toSp() }
-//            val style = TextStyle(
-//                fontSize = candidateSpScaled,
-////                lineHeight = candidateSpScaled
-////                lineHeightStyle = LineHeighttyle(
-////                    alignment = LineHeightStyle.Alignment.Top,
-////                    trim = LineHeightStyle.Trim.Both
-////                )
-//            )
-//            val layout = measurer.measure(AnnotatedString("M"), style = style)
-//            val measuredHeight = layout.size.height.toFloat()
-//            Log.d("LetterBar", "measured height px: $measuredHeight")
-//            Log.d("LetterBar", "fontScale=${density.fontScale}")
-//            if (measuredHeight <= slotPx) return@LaunchedEffect run {
-//                chosenSp = with(density) { candidatePx.toSp() }
-//                val amount = barHeightPx / measuredHeight
-//                Log.d("LetterBar", "amount calc: $amount")
-//                Log.d("LetterBar", "amount letters: ${letters.size}")
-//                Log.d("LetterBar", "chosenSp in return: $chosenSp")
-//                Log.d("LetterBar", "chosenPx in return: $candidatePx")
-//            }
-//            // shrink: reduce candidate by proportion of overflow but keep it geometric
-//            val ratio = (slotPx / measuredHeight).coerceIn(0.5f, 0.95f)
-//            Log.d("LetterBar", "NEVER CALLED: $ratio")
-//            candidatePx *= ratio
-//            candidatePx = candidatePx.coerceAtLeast(minPx)
-//        }
-
-        // fallback if still too large
-//        chosenSp = with(density) { candidatePx.toSp() }
-//        Log.d("LetterBar", "fallback chosenSp: $chosenSp")
+fun LetterBar(content: Map<Char, List<UiRow>>, viewVM: ViewVM, modifier: Modifier = Modifier) {
+    val view by viewVM.view.collectAsState()
+    val letters by remember(content) { derivedStateOf { content.keys.toList() } }
+    val scrollIndexes by remember(content) {
+        derivedStateOf {
+            buildList {
+                content.values.fold(0) { acc, list ->
+                    add(acc)
+                    acc + list.size + 1 // +1 for the header
+                }
+            }
+        }
     }
-    LaunchedEffect(chosenSp) {
-        Log.d("LetterBar", "chosenSp: $chosenSp")
+
+    val density = LocalDensity.current
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val (height, botOffset, letterSize) = remember(density, letters, screenHeight) {
+        val slotFillFraction = 0.85f; // fraction of slot to try to fill (0.65..0.85)
+        val botOffset = 1f / 8f * screenHeight
+        val barHeight = screenHeight - 1f / 3f * screenHeight - botOffset
+        val letterSizeInDp = barHeight / letters.size * slotFillFraction
+        val letterSizeInSp = with(density) { letterSizeInDp.coerceAtMost(48.dp).toSp() }
+        Triple(barHeight, botOffset, letterSizeInSp)
     }
 
     var isTouched by remember { mutableStateOf(false) }
     var selectedLetter by remember { mutableStateOf<Char?>(null) }
-    var coords: LayoutCoordinates? = null
-
     Column(
         verticalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
-            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp)
-            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-            .fillMaxHeight()
+            .padding(bottom = botOffset)
+            .height(height)
             .width(if (isTouched) (2 * H_PAD2).dp else H_PAD2.dp)
-            .onGloballyPositioned { layoutCoordinates ->
-                coords = layoutCoordinates
-                barHeightPx = layoutCoordinates.size.height
-            }
             .pointerInput(letters) {
                 detectVerticalDragGestures(
                     onDragStart = { isTouched = true },
-                    onDragEnd = { isTouched = false; selectedLetter = null },
+                    onDragEnd = { isTouched = false },
                     onVerticalDrag = { change, _ ->
                         change.consume()
-                        val localY =
-                            change.position.y.coerceIn(0f, ((coords?.size?.height ?: 1).toFloat()))
-                        val h = coords?.size?.height?.toFloat() ?: 1f
                         val idx =
-                            ((localY / h) * letters.size).toInt().coerceIn(0, letters.lastIndex)
-                        selectedLetter = letters[idx]
-                        update(idx)
+                            if (change.position.y < 0) -1 else ((change.position.y / size.height) * letters.size).toInt()
+                        selectedLetter = letters.getOrNull(idx)
+                        viewVM.setView(
+                            if (letters.getOrNull(idx) == null) View.Favorites else View.AllApps(
+                                scrollIndexes[idx]
+                            )
+                        )
                     })
-            }
-    ) {
+            }) {
         if (view is View.AllApps) {
-            val style = TextStyle(
-                fontSize = chosenSp,
-//                lineHeight = 0.sp,
-//                lineHeightStyle = LineHeightStyle(
-//                    alignment = LineHeightStyle.Alignment.Top,
-//                    trim = LineHeightStyle.Trim.Both
-//                )
-            )
             letters.forEach { letter ->
                 Text(
                     text = letter.toString(),
-                    style = style,
-//                    lineHeight = 1f,
-//                    lineHeeightStyle = LineHeightStyle(
-//                        alignment = LineHeightStyle.Alignment.Top,
-//                        trim = LineHeightStyle.Trim.Both
-//                    ),
+                    style = TextStyle(fontSize = letterSize),
                     color = if (letter == selectedLetter) Color.White else Color.Red,
                     modifier = Modifier.wrapContentSize(Alignment.Center)
-//                        .border(1.dp, Color.Red)
                 )
             }
         }
     }
-    val h = with(density) { barHeightPx.toDp() }
-    Box(
-        modifier = Modifier
-            .padding(top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp)
-            .height(h)
-            .width(5.dp)
-            .background(Color.Red)
-    )
 }
 
 
