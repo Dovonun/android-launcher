@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 
 sealed interface View {
     data object Favorites : View
-    data class AllApps(val index: Int) : View
+    data object AllApps : View
 }
 
 sealed interface MenuState {
