@@ -9,6 +9,7 @@ import android.content.pm.ShortcutInfo
 import android.os.UserHandle
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
@@ -31,8 +32,52 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// DrawableExtensions.kt
+import android.graphics.drawable.Drawable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.geometry.Size
+
+// DrawableExtensions.kt
+import androidx.compose.runtime.Stable
+import androidx.compose.ui.graphics.nativeCanvas
+
+private class RememberedDrawablePainter(val drawable: Drawable) : Painter() {
+    // mutate() + wrap so each Painter has its own state (tint, alpha, etc.)
+    private val mutated = drawable.mutate()
+
+    override val intrinsicSize get() =
+        androidx.compose.ui.geometry.Size(
+            mutated.intrinsicWidth.toFloat(),
+            mutated.intrinsicHeight.toFloat()
+        )
+
+    override fun DrawScope.onDraw() {
+        mutated.setBounds(0, 0, size.width.toInt(), size.height.toInt())
+        mutated.draw(drawContext.canvas.nativeCanvas)
+    }
+}
+
+@Stable
+fun Drawable.toPainterRemembered(): Painter = RememberedDrawablePainter(this)
+
+@Composable
+fun Drawable.toPainter(): Painter = remember(this) {
+    object : Painter() {
+        override val intrinsicSize: Size
+            get() = Size(width = intrinsicWidth.toFloat(), height = intrinsicHeight.toFloat())
+
+        override fun DrawScope.onDraw() {
+            this@toPainter.setBounds(0, 0, size.width.toInt(), size.height.toInt())
+            this@toPainter.draw(drawContext.canvas.nativeCanvas)
+        }
+    }
+}
+
 data class Tag(val id: Long)
-data class UiRow(val label: String, val icon: ImageBitmap, val item: Any)
+data class UiRow(val label: String, val icon: ImageBitmap, val iconPainter: Painter, val item: Any)
 data class SheetRow(val label: String, val onTap: () -> Unit)
 typealias App = LauncherActivityInfo
 typealias Shortcut = ShortcutInfo
@@ -199,13 +244,15 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     private fun appsToRows(list: List<LauncherActivityInfo>) = list.map {
-        UiRow(it.label.toString(), it.getIcon(0).toBitmap().asImageBitmap(), it)
+        val icon = it.getIcon(0)!!
+        UiRow(it.label.toString(), icon.toBitmap().asImageBitmap(), icon.toPainterRemembered(), it)
     }
 
     private fun shortcutsToRows(list: List<ShortcutInfo>) = list.map {
         UiRow(
             it.shortLabel.toString(),
             launcherApps.getShortcutIconDrawable(it, 0).toBitmap().asImageBitmap(),
+            launcherApps.getShortcutIconDrawable(it, 0).toPainterRemembered(),
             it
         )
     }

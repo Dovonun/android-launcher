@@ -2,7 +2,6 @@ package com.example.launcher
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.res.Resources
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -14,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -38,7 +36,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -71,14 +68,12 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,10 +83,8 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
-import kotlin.math.roundToInt
 
 const val H_PAD = 16
 const val H_PAD2 = 2 * H_PAD
@@ -133,21 +126,29 @@ class MainActivity : ComponentActivity() {
                         .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                 ) {
                     when (view) {
-                        is View.Favorites -> Column(
-                            verticalArrangement = Arrangement.Bottom,
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .padding(start = H_PAD2.dp)
-                                .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                                .pointerInput(Unit) {
-                                    detectVerticalDragGestures(
-                                        onVerticalDrag = { change, dragAmount ->
-                                            if (change.isConsumed) return@detectVerticalDragGestures
-                                            if (dragAmount > 60f) systemVM.expandNotificationShade()
-                                        })
-                                }) {
-                            favorites.forEach { fav -> IconRow(fav, appsVM, viewVM) }
+                        is View.Favorites -> LazyColumn {
+                            Log.d("MainActivity", "recompose")
+                            for (i in 1..100) {
+                                item {
+                                    Text("Item $i", color = Color.White)
+                                }
+                            }
                         }
+//                        is View.Favorites -> Column(
+//                            verticalArrangement = Arrangement.Bottom,
+//                            modifier = Modifier
+//                                .fillMaxHeight()
+//                                .padding(start = H_PAD2.dp)
+//                                .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+//                                .pointerInput(Unit) {
+//                                    detectVerticalDragGestures(
+//                                        onVerticalDrag = { change, dragAmount ->
+//                                            if (change.isConsumed) return@detectVerticalDragGestures
+//                                            if (dragAmount > 60f) systemVM.expandNotificationShade()
+//                                        })
+//                                }) {
+//                            favorites.forEach { fav -> IconRow(fav, appsVM, viewVM, false) }
+//                        }
 
                         is View.AllApps -> LazyColumn(
                             modifier = Modifier.padding(start = H_PAD2.dp),
@@ -157,6 +158,7 @@ class MainActivity : ComponentActivity() {
                                 bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                             )
                         ) {
+                            Log.d("MainActivity", "recompose")
                             appsVM.uiAllGrouped.value.forEach { (letter, list) ->
                                 item {
                                     Box(
@@ -167,14 +169,14 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         Text(
                                             text = letter.toString(),
-                                            style = MaterialTheme.typography.headlineSmall.copy(
-                                                shadow = Shadow(
-                                                    color = MaterialTheme.colorScheme.surface.copy(
-                                                        alpha = 0.7f
-                                                    ), offset = Offset(0f, 0f), blurRadius = 8f
-                                                ),
-                                                fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
-                                            ),
+//                                            style = MaterialTheme.typography.headlineSmall.copy(
+//                                                shadow = Shadow(
+//                                                    color = MaterialTheme.colorScheme.surface.copy(
+//                                                        alpha = 0.7f
+//                                                    ), offset = Offset(0f, 0f), blurRadius = 8f
+//                                                ),
+//                                                fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
+//                                            ),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             textAlign = TextAlign.Center
                                         )
@@ -183,9 +185,9 @@ class MainActivity : ComponentActivity() {
                                 }
                                 // TODO: What happens when 2 apps have the same name?
                                 items(items = list, key = { "all-${it.label}" }) { row ->
-                                    IconRow(row, appsVM, viewVM)
+                                    IconRow(row, appsVM, viewVM, true)
                                 }
-                                item { Spacer(modifier = Modifier.height(48.dp)) }
+//                                item { Spacer(modifier = Modifier.height(48.dp)) }
                             }
                         }
                     }
@@ -211,6 +213,8 @@ fun LetterBar(
     modifier: Modifier = Modifier
 ) {
     val view by viewVM.view.collectAsState()
+    val scope = rememberCoroutineScope()
+
     val letters by remember(content) { derivedStateOf { content.keys.toList() } }
     val scrollIndexes by remember(content) {
         derivedStateOf {
@@ -221,6 +225,17 @@ fun LetterBar(
                 }
             }
         }
+    }
+    val letterToIndex = remember(content) {
+        val map = mutableMapOf<Char, Int>()
+        var idx = 0
+        content.forEach { (letter, apps) ->
+            map[letter] = idx   // index of the header item
+            idx += 1            // header
+            idx += apps.size    // apps
+            idx += 1            // spacer
+        }
+        map
     }
 
     val haptic = LocalHapticFeedback.current
@@ -233,111 +248,61 @@ fun LetterBar(
         val letterSizeInDp = (barHeight / letters.size * slotFillFraction).coerceAtMost(48.dp)
         Triple(barHeight, botOffset, letterSizeInDp)
     }
-
+    var rowHeight = remember(density) { with(density) { 42.dp.toPx() } }
     var isTouched by remember { mutableStateOf(false) }
-    var selectedLetter by remember { mutableStateOf<Char?>(null) }
-    var y by remember { mutableStateOf<Float?>(null) }
-    var targetIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        var lastApplied = -1
-        while (true) {
-            val idx = targetIndex
-            if (idx != lastApplied) {
-                listState.scrollToItem(idx)
-                lastApplied = idx
-            }
-            yield()
-        }
-    }
+    var scrollJob by remember { mutableStateOf<Job?>(null) }
+    var lastIdx by remember { mutableIntStateOf(0) }
+
+//    fun scroll(idx: Int) {
+//        scrollJob?.cancel()
+//        scrollJob = scope.launch {
+//            listState.scrollToItem(idx)
+//        }
+//    }
+
     Column(
         verticalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
             .padding(bottom = botOffset)
             .height(height)
             .width(if (isTouched) (2.5 * H_PAD2).dp else H_PAD2.dp)
-//            .pointerInput(letters) {
-//                detectDragGestures(
-//
-////                detectVerticalDragGestures(
-////                )
-//                    onDragStart = { isTouched = true },
-//                    onDragEnd = { isTouched = false },
-////                    onVerticalDrag = { change, _ ->
-//                    onDrag = { change, _ ->
-//                        change.consume()
-//                        val idx =
-//                            if (change.position.y < 0) -1 else ((change.position.y / size.height) * letters.size).toInt()
-//                        val letter = letters.getOrNull(idx)
-//                        if (letter != selectedLetter) {
-//                            selectedLetter = letters.getOrNull(idx)
-//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                        }
-//                        viewVM.setView(
-//                            if (letter == null) View.Favorites else View.AllApps(scrollIndexes[idx])
-//                        )
-//                    })
             .pointerInput(letters) {
-//                awaitPointerEventScope {
-//                    isTouched = true
-//                    while (true) {
-//                        val event = awaitPointerEvent()
-//                        val pos = event.changes.first().position.y
-//                        y = pos
-//                        val idx = (pos / size.height * letters.size).toInt()
-//                        // TODO: handle out of bounds error
-//                        val letter = letters.getOrNull(idx)
-//                        if (letter != selectedLetter) {
-//                            coroutineScope.launch { listState.scrollToItem(scrollIndexes[idx]) }
-//                            selectedLetter = letter
-//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-////                            viewVM.setView(View.AllApps(scrollIndexes[idx]))
-//                        }
-//                    }
-//                }
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    viewVM.setView(View.AllApps)
                     isTouched = true
-                    val initialIdx = (down.position.y / size.height * letters.size).toInt()
-                    targetIndex = scrollIndexes.getOrNull(initialIdx) ?: 0
-                    y = down.position.y
-//                    val initialLetter = letters.getOrNull(initialIdx)
-//                    selectedLetter = initialLetter
+                    viewVM.setView(View.AllApps)
+//                    val initialIdx = (down.position.y / size.height * letters.size).toInt()
+//                    lastIdx = scrollIndexes.getOrNull(initialIdx) ?: 0
+//                    scrollJob = scope.launch { listState.scrollToItem(lastIdx) }
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                    viewVM.setView(View.AllApps(scrollIndexes[initialIdx]))
-
-                    // Now track drag
                     drag(down.id) { change ->
-                        change.consume()
                         val idx = ((change.position.y / size.height) * letters.size).toInt()
                         val scrollIdx = scrollIndexes.getOrNull(idx) ?: 0
-                        y = change.position.y
-//                        val letter = letters.getOrNull(idx)
-                        if (targetIndex != scrollIdx) {
-//                            selectedLetter = letter
-                            targetIndex = scrollIdx
-//                            coroutineScope.launch { listState.scrollToItem(scrollIndexes[idx]) }
+                        if (lastIdx != scrollIdx) {
+                            val progress = change.position.y
+                            val totalContentHeightPx = listState.layoutInfo.totalItemsCount * rowHeight
+                            val targetOffset = progress * totalContentHeightPx - rowHeight/2
+                            Log.d("MainActivity", "targetOffset: $targetOffset")
+                            Log.d("MainActivity", "total Height: $totalContentHeightPx")
+//                            scope.launch { listState.scroll { scrollBy(targetOffset - listState.firstVisibleItemScrollOffset) } }
+//                            val fraction = change.position.y / size.height
+//                            val letterIndex = (fraction * letters.size).toInt().coerceIn(0, letters.size - 1)
+//                            val targetIndex = letterToIndex[letters[letterIndex]] ?: 0
+                            scope.launch {
+                                listState.scrollToItem(scrollIdx)   // this is smooth and instant-feel
+                            }
+//                            scrollJob?.cancel()
+//                            scrollJob = scope.launch { listState.requestScrollToItem(scrollIdx) }
+//                            scroll(scrollIdx)
+                            lastIdx = scrollIdx
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         }
                     }
-
-                    // Gesture finished
                     isTouched = false
                 }
             }
-
     )
-//            })
     {
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .background(Color.Red)
-                .offset {
-                    IntOffset(0, y?.roundToInt() ?: 0)
-                }) {
-            Text(text = y.toString(), color = Color.White)
-        }
         if (view is View.AllApps) {
             letters.forEach { letter ->
                 Box(
@@ -365,33 +330,36 @@ fun LetterBar(
 }
 
 @Composable
-fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, modifier: Modifier = Modifier) {
+fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, fast: Boolean, modifier: Modifier = Modifier) {
     var layoutCoordinates: LayoutCoordinates? = null
+    val modifier = modifier
+        .fillMaxWidth()
+        .padding(vertical = 8.dp)
+        .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
+        .pointerInput(Unit) {
+            detectTapGestures(onTap = {
+                appVM.launch(uiRow.item)
+                viewVM.leave()
+            }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
+        }
+        .pointerInput(Unit) {
+            detectHorizontalDragGestures { change, drag ->
+                if (change.isConsumed) return@detectHorizontalDragGestures
+                if (drag > 50f) {
+                    layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
+                        change.consume()
+                        viewVM.setMenu(MenuState.Popup(uiRow.item, n))
+                    } ?: return@detectHorizontalDragGestures
+                }
+            }
+        }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    appVM.launch(uiRow.item)
-                    viewVM.leave()
-                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
-            }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { change, drag ->
-                    if (change.isConsumed) return@detectHorizontalDragGestures
-                    if (drag > 50f) {
-                        layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
-                            change.consume()
-                            viewVM.setMenu(MenuState.Popup(uiRow.item, n))
-                        } ?: return@detectHorizontalDragGestures
-                    }
-                }
-            }) {
-        RowIcon(uiRow.icon)
+        modifier = modifier) {
+//        RowIcon(uiRow.icon)
+//        Image(uiRow.iconPainter, modifier = Modifier.size(40.dp), contentDescription = null)
         RowLabel(uiRow.label)
     }
 }
@@ -404,11 +372,11 @@ fun RowIcon(icon: ImageBitmap) =
 fun RowLabel(text: String) = Text(
     text = text,
     color = MaterialTheme.colorScheme.onSurface,
-    style = MaterialTheme.typography.labelLarge.copy(
-        shadow = Shadow(
-            color = MaterialTheme.colorScheme.surface, offset = Offset(0f, 0f), blurRadius = 8f
-        )
-    ),
+//    style = MaterialTheme.typography.labelLarge.copy(
+//        shadow = Shadow(
+//            color = MaterialTheme.colorScheme.surface, offset = Offset(0f, 0f), blurRadius = 8f
+//        )
+//    ),
     maxLines = 1,
     overflow = TextOverflow.Ellipsis,
 )
@@ -467,7 +435,7 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
                 verticalArrangement = Arrangement.Bottom
             ) {
                 if (entries.isNotEmpty()) {
-                    entries.reversed().forEach { item -> IconRow(item, appsVM, viewVM) }
+                    entries.reversed().forEach { item -> IconRow(item, appsVM, viewVM, false) }
                 } else {
                     val text = "No shortcuts found for this App"
                     Text(
