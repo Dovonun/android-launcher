@@ -59,6 +59,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -88,10 +89,15 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.debounce
 import kotlinx.coroutines.yield
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 const val H_PAD = 16
 const val H_PAD2 = 2 * H_PAD
@@ -203,6 +209,171 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+//@Composable
+//fun LetterBar(
+//    content: Map<Char, List<UiRow>>,
+//    viewVM: ViewVM,
+//    listState: LazyListState,
+//    modifier: Modifier = Modifier
+//) {
+//    val view by viewVM.view.collectAsState()
+//    val letters by remember(content) { derivedStateOf { content.keys.toList() } }
+//    val scrollIndexes by remember(content) {
+//        derivedStateOf {
+//            buildList {
+//                content.values.fold(0) { acc, list ->
+//                    add(acc)
+//                    acc + list.size + 2 // +1 for the header +1 for the spacer
+//                }
+//            }
+//        }
+//    }
+
+//    val haptic = LocalHapticFeedback.current
+//    val density = LocalDensity.current
+//    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+//    val (height, botOffset, letterSizeDp) = remember(density, letters, screenHeight) {
+//        val slotFillFraction = 0.85f; // fraction of slot to try to fill (0.65..0.85)
+//        val botOffset = 1f / 8f * screenHeight
+//        val barHeight = screenHeight - 1f / 3f * screenHeight - botOffset
+//        val letterSizeInDp = (barHeight / letters.size * slotFillFraction).coerceAtMost(48.dp)
+//        Triple(barHeight, botOffset, letterSizeInDp)
+//    }
+
+//    var isTouched by remember { mutableStateOf(false) }
+//    var selectedLetter by remember { mutableStateOf<Char?>(null) }
+//    var y by remember { mutableStateOf<Float?>(null) }
+//    var targetIndex by remember { mutableIntStateOf(0) }
+//    LaunchedEffect(Unit) {
+//        var lastApplied = -1
+//        while (true) {
+//            val idx = targetIndex
+//            if (idx != lastApplied) {
+//                listState.scrollToItem(idx)
+//                lastApplied = idx
+//            }
+//            yield()
+//        }
+//    }
+//    Column(
+//        verticalArrangement = Arrangement.SpaceBetween,
+//        modifier = modifier
+//            .padding(bottom = botOffset)
+//            .height(height)
+//            .width(if (isTouched) (2.5 * H_PAD2).dp else H_PAD2.dp)
+////            .pointerInput(letters) {
+////                detectDragGestures(
+////
+//////                detectVerticalDragGestures(
+//////                )
+////                    onDragStart = { isTouched = true },
+////                    onDragEnd = { isTouched = false },
+//////                    onVerticalDrag = { change, _ ->
+////                    onDrag = { change, _ ->
+////                        change.consume()
+////                        val idx =
+////                            if (change.position.y < 0) -1 else ((change.position.y / size.height) * letters.size).toInt()
+////                        val letter = letters.getOrNull(idx)
+////                        if (letter != selectedLetter) {
+////                            selectedLetter = letters.getOrNull(idx)
+////                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+////                        }
+////                        viewVM.setView(
+////                            if (letter == null) View.Favorites else View.AllApps(scrollIndexes[idx])
+////                        )
+////                    })
+//            .pointerInput(letters) {
+////                awaitPointerEventScope {
+////                    isTouched = true
+////                    while (true) {
+////                        val event = awaitPointerEvent()
+////                        val pos = event.changes.first().position.y
+////                        y = pos
+////                        val idx = (pos / size.height * letters.size).toInt()
+////                        // TODO: handle out of bounds error
+////                        val letter = letters.getOrNull(idx)
+////                        if (letter != selectedLetter) {
+////                            coroutineScope.launch { listState.scrollToItem(scrollIndexes[idx]) }
+////                            selectedLetter = letter
+////                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+//////                            viewVM.setView(View.AllApps(scrollIndexes[idx]))
+////                        }
+////                    }
+////                }
+//                awaitEachGesture {
+//                    val down = awaitFirstDown(requireUnconsumed = false)
+//                    viewVM.setView(View.AllApps)
+//                    isTouched = true
+//                    val initialIdx = (down.position.y / size.height * letters.size).toInt()
+//                    targetIndex = scrollIndexes.getOrNull(initialIdx) ?: 0
+//                    y = down.position.y
+////                    val initialLetter = letters.getOrNull(initialIdx)
+////                    selectedLetter = initialLetter
+//                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+////                    viewVM.setView(View.AllApps(scrollIndexes[initialIdx]))
+
+//                    // Now track drag
+//                    drag(down.id) { change ->
+//                        change.consume()
+//                        val idx = ((change.position.y / size.height) * letters.size).toInt()
+//                        val scrollIdx = scrollIndexes.getOrNull(idx) ?: 0
+//                        y = change.position.y
+////                        val letter = letters.getOrNull(idx)
+//                        if (targetIndex != scrollIdx) {
+////                            selectedLetter = letter
+//                            targetIndex = scrollIdx
+////                            coroutineScope.launch { listState.scrollToItem(scrollIndexes[idx]) }
+//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+//                        }
+//                    }
+
+//                    // Gesture finished
+//                    isTouched = false
+//                }
+//            }
+
+//    )
+////            })
+//    {
+//        Box(
+//            modifier = Modifier
+//                .size(100.dp)
+//                .background(Color.Red)
+//                .offset {
+//                    IntOffset(0, y?.roundToInt() ?: 0)
+//                }) {
+//            Text(text = y.toString(), color = Color.White)
+//        }
+//        if (view is View.AllApps) {
+//            letters.forEach { letter ->
+//                Box(
+//                    modifier = Modifier
+//                        .width(letterSizeDp)
+//                        .height(letterSizeDp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Text(
+//                        text = letter.toString(),
+//                        style = TextStyle(
+//                            fontSize = with(density) { letterSizeDp.toSp() }, shadow = Shadow(
+//                                color = MaterialTheme.colorScheme.surface,
+//                                offset = Offset(0f, 0f),
+//                                blurRadius = 4f
+//                            )
+//                        ),
+////                        color = if (letter == selectedLetter) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,
+//                        color = MaterialTheme.colorScheme.onSurface,
+//                    )
+//                }
+//            }
+//        }
+//    }
+//}
+
+// I don't believe it but let's try
+// Went better than expected. Don't fully understand it. The Cold flow :)
+// TODO: NEXT remove duplicate letterbar and allow for overflow to go back to favorites
+@OptIn(FlowPreview::class)
 @Composable
 fun LetterBar(
     content: Map<Char, List<UiRow>>,
@@ -217,7 +388,7 @@ fun LetterBar(
             buildList {
                 content.values.fold(0) { acc, list ->
                     add(acc)
-                    acc + list.size + 2 // +1 for the header +1 for the spacer
+                    acc + list.size + 2 // +1 for the header +1 for the space - Last index not used
                 }
             }
         }
@@ -227,117 +398,57 @@ fun LetterBar(
     val density = LocalDensity.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val (height, botOffset, letterSizeDp) = remember(density, letters, screenHeight) {
-        val slotFillFraction = 0.85f; // fraction of slot to try to fill (0.65..0.85)
-        val botOffset = 1f / 8f * screenHeight
-        val barHeight = screenHeight - 1f / 3f * screenHeight - botOffset
+        val slotFillFraction = 0.85f // fraction of slot to try to fill (0.65..0.85)
+        val botOffset = (1f / 8f) * screenHeight
+        val barHeight = screenHeight - (1f / 3f) * screenHeight - botOffset
         val letterSizeInDp = (barHeight / letters.size * slotFillFraction).coerceAtMost(48.dp)
         Triple(barHeight, botOffset, letterSizeInDp)
     }
-
     var isTouched by remember { mutableStateOf(false) }
     var selectedLetter by remember { mutableStateOf<Char?>(null) }
-    var y by remember { mutableStateOf<Float?>(null) }
     var targetIndex by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
-        var lastApplied = -1
-        while (true) {
-            val idx = targetIndex
-            if (idx != lastApplied) {
+        snapshotFlow { targetIndex }
+            .debounce(80.milliseconds)
+            .distinctUntilChanged()
+            .collect { idx ->
                 listState.scrollToItem(idx)
-                lastApplied = idx
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
-            yield()
-        }
     }
     Column(
         verticalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
             .padding(bottom = botOffset)
             .height(height)
-            .width(if (isTouched) (2.5 * H_PAD2).dp else H_PAD2.dp)
-//            .pointerInput(letters) {
-//                detectDragGestures(
-//
-////                detectVerticalDragGestures(
-////                )
-//                    onDragStart = { isTouched = true },
-//                    onDragEnd = { isTouched = false },
-////                    onVerticalDrag = { change, _ ->
-//                    onDrag = { change, _ ->
-//                        change.consume()
-//                        val idx =
-//                            if (change.position.y < 0) -1 else ((change.position.y / size.height) * letters.size).toInt()
-//                        val letter = letters.getOrNull(idx)
-//                        if (letter != selectedLetter) {
-//                            selectedLetter = letters.getOrNull(idx)
-//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                        }
-//                        viewVM.setView(
-//                            if (letter == null) View.Favorites else View.AllApps(scrollIndexes[idx])
-//                        )
-//                    })
-            .pointerInput(letters) {
-//                awaitPointerEventScope {
-//                    isTouched = true
-//                    while (true) {
-//                        val event = awaitPointerEvent()
-//                        val pos = event.changes.first().position.y
-//                        y = pos
-//                        val idx = (pos / size.height * letters.size).toInt()
-//                        // TODO: handle out of bounds error
-//                        val letter = letters.getOrNull(idx)
-//                        if (letter != selectedLetter) {
-//                            coroutineScope.launch { listState.scrollToItem(scrollIndexes[idx]) }
-//                            selectedLetter = letter
-//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-////                            viewVM.setView(View.AllApps(scrollIndexes[idx]))
-//                        }
-//                    }
-//                }
+            .width(if (isTouched) (2.5 * H_PAD2).dp else 2.5 * H_PAD2.dp) // Assuming H_PAD2 is defined elsewhere
+            .pointerInput(letters, scrollIndexes) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    viewVM.setView(View.AllApps)
-                    isTouched = true
-                    val initialIdx = (down.position.y / size.height * letters.size).toInt()
-                    targetIndex = scrollIndexes.getOrNull(initialIdx) ?: 0
-                    y = down.position.y
-//                    val initialLetter = letters.getOrNull(initialIdx)
-//                    selectedLetter = initialLetter
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-//                    viewVM.setView(View.AllApps(scrollIndexes[initialIdx]))
-
-                    // Now track drag
+                    viewVM.setView(View.AllApps) // Assuming View.AllApps doesn't need params; adjust if it does
+//                    val touchY = down.position.y.coerceIn(0f, size.height.toFloat())
+                    val initialIdx = ((down.position.y / size.height) * letters.size).toInt() // I should be able to use the y pos directly
+                    targetIndex = scrollIndexes[initialIdx]
+                    selectedLetter = letters[initialIdx]
+//                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // Moved to scroll
                     drag(down.id) { change ->
+                        isTouched = true
                         change.consume()
+//                        val dragY = change.position.y.coerceIn(0f, size.height.toFloat())
                         val idx = ((change.position.y / size.height) * letters.size).toInt()
-                        val scrollIdx = scrollIndexes.getOrNull(idx) ?: 0
-                        y = change.position.y
-//                        val letter = letters.getOrNull(idx)
-                        if (targetIndex != scrollIdx) {
-//                            selectedLetter = letter
-                            targetIndex = scrollIdx
-//                            coroutineScope.launch { listState.scrollToItem(scrollIndexes[idx]) }
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        }
+                        scrollIndexes.getOrNull(idx)?.let { target ->
+                            viewVM.setView(View.AllApps) // Assuming View.AllApps doesn't need params; adjust if it does
+                            if (targetIndex != target) {
+                                targetIndex = target
+                                selectedLetter = letters[idx]
+//                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                        } ?: viewVM.setView(View.Favorites)
                     }
-
-                    // Gesture finished
                     isTouched = false
                 }
             }
-
-    )
-//            })
-    {
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .background(Color.Red)
-                .offset {
-                    IntOffset(0, y?.roundToInt() ?: 0)
-                }) {
-            Text(text = y.toString(), color = Color.White)
-        }
+    ) {
         if (view is View.AllApps) {
             letters.forEach { letter ->
                 Box(
@@ -349,14 +460,14 @@ fun LetterBar(
                     Text(
                         text = letter.toString(),
                         style = TextStyle(
-                            fontSize = with(density) { letterSizeDp.toSp() }, shadow = Shadow(
+                            fontSize = with(density) { letterSizeDp.toSp() },
+                            shadow = Shadow(
                                 color = MaterialTheme.colorScheme.surface,
                                 offset = Offset(0f, 0f),
                                 blurRadius = 4f
                             )
                         ),
-//                        color = if (letter == selectedLetter) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = if (letter == selectedLetter) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,
                     )
                 }
             }
