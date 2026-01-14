@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class Tag(val id: Long)
-data class UiRow(val label: String, val icon: ImageBitmap, val item: Any)
+data class UiRow(val label: String, val icon: ImageBitmap?, val item: Any)
 data class SheetRow(val label: String, val onTap: () -> Unit)
 typealias App = LauncherActivityInfo
 typealias Shortcut = ShortcutInfo
@@ -140,19 +140,19 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     suspend fun popupEntries(item: Any): List<UiRow> = when (item) {
         is Tag -> uiList(item.id).first()
+        is Shortcut -> emptyList()
         is App -> {
             val pkg = item.componentName.packageName
             val cache = cachedShortcuts.value
-            if (pkg in cache) shortcutsToRows(cache[pkg] ?: emptyList()) else shortcutsToRows(
+            val shortcuts = cache.getOrElse(pkg) {
                 launcherApps.getShortcuts(
                     ShortcutQuery().apply {
                         setPackage(pkg)
-                        setQueryFlags(
-                            ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
-                        )
+                        setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
                     }, user
                 ).orEmpty()
-            )
+            }
+            shortcutsToRows(shortcuts)
         }
 
         else -> error("Unreachable")
@@ -205,7 +205,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private fun shortcutsToRows(list: List<ShortcutInfo>) = list.map {
         UiRow(
             it.shortLabel.toString(),
-            launcherApps.getShortcutIconDrawable(it, 0).toBitmap().asImageBitmap(),
+            launcherApps.getShortcutIconDrawable(it, 0)?.toBitmap()?.asImageBitmap(),
             it
         )
     }
