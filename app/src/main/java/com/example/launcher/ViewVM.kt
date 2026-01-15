@@ -1,24 +1,51 @@
 package com.example.launcher
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
-class ViewVM: ViewModel() {
+sealed interface View {
+    data object Favorites : View
+    data object AllApps : View
+}
 
-    // Backing mutable state
-    private val _leaveTimeStamp = MutableStateFlow(0L)
-    val leaveTimeStamp: StateFlow<Long> = _leaveTimeStamp
+sealed interface MenuState {
+    data object None : MenuState
+    data class Sheet(val item: Any) : MenuState
+    data class Popup(val item: Any, val yPos: Float) : MenuState
+}
+
+class ViewVM : ViewModel() {
+    private var leaveJob: Job? = null
     private val _view = MutableStateFlow<View>(View.Favorites)
+    private var _menu = MutableStateFlow<MenuState>(MenuState.None)
     val view: StateFlow<View> = _view
+    val menu: StateFlow<MenuState> = _menu
+
+    fun leave() {
+        setMenu(MenuState.None)
+        leaveJob?.cancel()
+        leaveJob = viewModelScope.launch {
+            delay(5000)
+            setView(View.Favorites)
+        }
+    }
+
+    fun softReset() {
+        leaveJob?.cancel()
+        leaveJob = null
+        setMenu(MenuState.None)
+    }
 
     fun setView(view: View) {
-        Log.d("ViewVM", "setView: $view")
         _view.value = view
     }
 
-    fun setLeveTimeStamp(timeStamp: Long) {
-        _leaveTimeStamp.value = timeStamp
+    fun setMenu(menuState: MenuState) {
+        _menu.value = menuState
     }
 }
