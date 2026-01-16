@@ -43,13 +43,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -136,7 +139,11 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     containerColor = Color.Transparent,
                     contentColor = Color.Transparent,
-                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    snackbarHost = {
+                        SnackbarHost(snackbarHostState) { data ->
+                            CustomLauncherSnackbar(data)
+                        }
+                    },
                 ) { innerPadding ->
                     Box(
                         modifier = Modifier
@@ -158,7 +165,14 @@ class MainActivity : ComponentActivity() {
                                                 if (dragAmount > 60f) systemVM.expandNotificationShade()
                                             })
                                     }) {
-                                favorites.forEach { fav -> IconRow(fav, appsVM, viewVM, snackbarHostState) }
+                                favorites.forEach { fav ->
+                                    IconRow(
+                                        fav,
+                                        appsVM,
+                                        viewVM,
+                                        snackbarHostState
+                                    )
+                                }
                             }
 
                             is View.AllApps -> LazyColumn(
@@ -313,8 +327,15 @@ fun LetterBar(
 }
 
 @Composable
-fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, snackbarHostState: SnackbarHostState, modifier: Modifier = Modifier) {
+fun IconRow(
+    uiRow: UiRow,
+    appVM: AppsVM,
+    viewVM: ViewVM,
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier
+) {
     val scope = rememberCoroutineScope()
+    var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -330,10 +351,13 @@ fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, snackbarHostState: Snac
                 }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
             }
             .pointerInput(Unit) {
-                detectHorizontalDragGestures { change, drag ->
-                    if (change.isConsumed) return@detectHorizontalDragGestures
+                detectHorizontalDragGestures(
+                    onDragStart = { fired = false }
+                ) { change, drag ->
+                    if (fired) return@detectHorizontalDragGestures
                     if (drag > 50f) {
                         layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
+                            fired = true
                             change.consume()
                             scope.launch {
                                 val entries = appVM.popupEntries(uiRow.item)
@@ -393,6 +417,83 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
+@Composable
+fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 64.dp), // Extra "floating" gap from the bottom
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Surface(
+            modifier = Modifier
+                .graphicsLayer {
+                    shadowElevation = 12f
+                    shape = RoundedCornerShape(28.dp)
+                    clip = true
+                },
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 12.dp), // More breathing room
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = snackbarData.visuals.message,
+                    // Decreased size: labelMedium is smaller than labelLarge
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.3f),
+                            offset = Offset(0f, 4f),
+                            blurRadius = 10f
+                        )
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+//@Composable
+//fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
+//    // Customizing the container
+//    Surface(
+//        modifier = Modifier
+//            .padding(16.dp)
+//            .graphicsLayer {
+//                // Applying a shadow/glow similar to your RowLabel
+//                shadowElevation = 8f
+//                shape = RoundedCornerShape(24.dp) // Pill shaped
+//                clip = true
+//            },
+//        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), // Slightly translucent
+//        shape = RoundedCornerShape(24.dp),
+//        tonalElevation = 4.dp
+//    ) {
+//        Row(
+//            modifier = Modifier
+//                .padding(horizontal = 16.dp, vertical = 10.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Text(
+//                text = snackbarData.visuals.message,
+//                style = MaterialTheme.typography.labelLarge.copy(
+//                    // Reusing your shadow style for consistency
+//                    shadow = Shadow(
+//                        color = MaterialTheme.colorScheme.surface,
+//                        offset = Offset(0f, 0f),
+//                        blurRadius = 8f
+//                    )
+//                ),
+//                color = MaterialTheme.colorScheme.onSurface
+//            )
+//        }
+//    }
+//}
+
 fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
     this
         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
@@ -427,7 +528,12 @@ fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
 }
 
 @Composable
-fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM, snackbarHostState: SnackbarHostState) {
+fun ShortcutPopup(
+    state: MenuState.Popup,
+    appsVM: AppsVM,
+    viewVM: ViewVM,
+    snackbarHostState: SnackbarHostState
+) {
     val haptic = LocalHapticFeedback.current
     val entries = state.entries
 //    val entries by produceState(initialValue = emptyList(), state.item) {
