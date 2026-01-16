@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -50,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -57,10 +61,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -224,16 +234,14 @@ fun LetterBar(
     var isTouched by remember { mutableStateOf(false) }
     var letterIndex by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(scrollIndexes) {
-        snapshotFlow { letterIndex }
-            .distinctUntilChanged()
-            .collect { idx ->
-                idx?.let {
-                    scrollIndexes.getOrNull(idx)?.let { target ->
-                        listState.scrollToItem(target)
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
+        snapshotFlow { letterIndex }.distinctUntilChanged().collect { idx ->
+            idx?.let {
+                scrollIndexes.getOrNull(idx)?.let { target ->
+                    listState.scrollToItem(target)
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }
             }
+        }
     }
     Column(
         verticalArrangement = Arrangement.SpaceBetween,
@@ -260,8 +268,7 @@ fun LetterBar(
                     }
                     isTouched = false
                 }
-            }
-    ) {
+            }) {
         if (view is View.AllApps) {
             letters.forEachIndexed { i, letter ->
                 Box(
@@ -273,8 +280,7 @@ fun LetterBar(
                     Text(
                         text = letter.toString(),
                         style = TextStyle(
-                            fontSize = with(density) { letterSizeDp.toSp() },
-                            shadow = Shadow(
+                            fontSize = with(density) { letterSizeDp.toSp() }, shadow = Shadow(
                                 color = MaterialTheme.colorScheme.surface,
                                 offset = Offset(0f, 0f),
                                 blurRadius = 4f
@@ -321,7 +327,9 @@ fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, modifier: Modifier = Mo
 }
 
 @Composable
-fun RowIcon(icon: ImageBitmap?) = if (icon != null) Image(bitmap = icon, modifier = Modifier.size(40.dp), contentDescription = null) else {
+fun RowIcon(icon: ImageBitmap?) = if (icon != null) Image(
+    bitmap = icon, modifier = Modifier.size(40.dp), contentDescription = null
+) else {
     Spacer(modifier = Modifier.size(40.dp))
 }
 
@@ -360,6 +368,72 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
+fun Modifier.fadingEdges(
+    listState: LazyListState,
+    fadeHeightPx: Float = 32f,
+) = composed {
+//    var isFirstComposition by remember { mutableStateOf(true) }
+//    var tweenDuration by remember { mutableIntStateOf(1) }
+//    var count by remember { mutableStateOf(listState.layoutInfo) }
+    val hasContent by remember { derivedStateOf { listState.layoutInfo.totalItemsCount > 0 } }
+    val topAlpha by animateFloatAsState(
+        targetValue = if (listState.canScrollForward) 0f else if (hasContent) 1f else 0f,
+        animationSpec = tween(500)
+//                tween(durationMillis = tweenDuration)
+    )
+    val bottomAlpha by animateFloatAsState(
+        targetValue = if (listState.canScrollBackward) 0f else 1f, animationSpec = tween(500)
+//                tween(durationMillis = tweenDuration)
+    )
+
+
+    this
+        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+        .drawWithCache {
+            Log.d("ShortcutPopup", "drawing")
+            onDrawWithContent {
+                drawContent()
+                val fraction = fadeHeightPx / size.height
+                val topStops = listOf(
+                    0.00f to Color.Transparent.copy(alpha = 0f + (1f - 0f) * topAlpha),                  // edge: base=0
+                    0.25f * fraction to Color.Transparent.copy(alpha = 0.10f + (1f - 0.10f) * topAlpha), // slow start
+                    0.50f * fraction to Color.Transparent.copy(alpha = 0.35f + (1f - 0.35f) * topAlpha), // accelerating
+                    0.75f * fraction to Color.Transparent.copy(alpha = 0.70f + (1f - 0.70f) * topAlpha), // near full
+                    1.00f * fraction to Color.Black                                                       // inward: always full keep
+                )
+                drawRect(
+                    brush = Brush.verticalGradient(*topStops.toTypedArray()),
+                    blendMode = BlendMode.DstIn
+                )
+
+                // WORKS
+                // But my perfectionist wants cubic curves...
+//                drawRect(
+//                    brush = Brush.verticalGradient(
+//                        0f to mask.copy(alpha = topAlpha), (fadeHeightPx / size.height) to mask
+//                    ), blendMode = BlendMode.DstIn
+//                )
+                val bottomStops = listOf(
+                    (1f - fraction) to Color.Black,                                                        // inward: full keep
+                    (1f - fraction) + 0.25f * fraction to Color.Transparent.copy(alpha = 0.70f + (1f - 0.70f) * bottomAlpha),
+                    (1f - fraction) + 0.50f * fraction to Color.Transparent.copy(alpha = 0.35f + (1f - 0.35f) * bottomAlpha),
+                    (1f - fraction) + 0.75f * fraction to Color.Transparent.copy(alpha = 0.10f + (1f - 0.10f) * bottomAlpha),
+                    1f to Color.Transparent.copy(alpha = 0f + (1f - 0f) * bottomAlpha)                   // edge: base=0
+                )
+                drawRect(
+                    brush = Brush.verticalGradient(*bottomStops.toTypedArray()),
+                    blendMode = BlendMode.DstIn
+                )
+//                drawRect(
+//                    brush = Brush.verticalGradient(
+//                        ((size.height - fadeHeightPx) / size.height) to mask,
+//                        1f to mask.copy(alpha = bottomAlpha)
+//                    ), blendMode = BlendMode.DstIn
+//                )
+            }
+        }
+}
+
 @Composable
 fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
     Log.d("ShortcutPopup", "start for item ${state.item}")
@@ -379,32 +453,44 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
                 .fillMaxSize()
                 .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
         ) {
-            val height = 58.dp * entries.size // icon is 42dp and padding is 2 * 8dp
-            // TODO: NEXT Replace with lazy column to limit shown shortcuts
-            Column(
-                modifier = Modifier
-                    .offset(
-                        x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
-                    )
-                    .background(
-                        MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
-                    )
-                    .widthIn(max = maxWidth)
-                    .padding(horizontal = H_PAD.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                if (entries.isNotEmpty()) {
-                    entries.reversed().forEach { item -> IconRow(item, appsVM, viewVM) }
-                } else {
-                    val text = "No shortcuts found for this App"
-                    Text(
-                        text = text,
-                        fontSize = 17.sp,
-                        color = Color.Gray,
-                        fontStyle = FontStyle.Italic
-                    )
+            val maxVisible = 5
+            val rowHeight = 58.dp
+            val maxHeight = rowHeight * maxVisible - rowHeight / 3
+            // NOTE: icon is 42dp and padding is 2 * 8dp
+            val height = if (entries.size >= maxVisible) maxHeight else 58.dp * entries.size
+            val fadeHeight = rowHeight / 2
+
+            val listState = rememberLazyListState()
+            if (entries.isNotEmpty()) {
+//                Log.d("ShortcutPopup", "list content: ${listState.layoutInfo.totalItemsCount}")
+                LazyColumn(
+                    state = listState,
+                    reverseLayout = true,
+                    modifier = Modifier
+                        .heightIn(max = maxHeight)
+                        .offset(x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
+                        .background(
+                            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
+                        )
+                        .widthIn(max = maxWidth)
+                        .padding(horizontal = H_PAD.dp, vertical = 12.dp)
+                        .fadingEdges(listState)
+                ) {
+                    items(entries) { item ->
+                        IconRow(item, appsVM, viewVM)
+                    }
                 }
+            } else {
+                val text = "No shortcuts found for this App"
+                Text(
+                    text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic
+                )
             }
+//            LaunchedEffect(entries) {
+//                if (entries.isNotEmpty()) {
+//                    listState.scrollToItem(0)
+//                }
+//            }
         }
     }
 }
