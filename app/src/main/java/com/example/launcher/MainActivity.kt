@@ -46,6 +46,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -57,6 +61,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -93,6 +98,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 const val H_PAD = 16
 const val H_PAD2 = 2 * H_PAD
@@ -112,10 +119,11 @@ class MainActivity : ComponentActivity() {
                 val appsVM: AppsVM = viewModel()
                 val systemVM: SystemVM = viewModel()
                 val listState = rememberLazyListState()
+                val snackbarHostState = remember { SnackbarHostState() }
 
                 val menu by viewVM.menu.collectAsState()
                 when (val state = menu) {
-                    is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM)
+                    is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM, snackbarHostState)
                     is MenuState.Sheet -> ContextSheet(
                         state, appsVM
                     ) { viewVM.setMenu(MenuState.None) }
@@ -125,71 +133,81 @@ class MainActivity : ComponentActivity() {
                 val allApps by appsVM.uiAllGrouped.collectAsState()
                 val favorites by appsVM.favorites.collectAsState()
                 val view by viewVM.view.collectAsState()
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
-                ) {
-                    when (view) {
-                        is View.Favorites -> Column(
-                            verticalArrangement = Arrangement.Bottom,
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .padding(start = H_PAD2.dp)
-                                .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                                .pointerInput(Unit) {
-                                    detectVerticalDragGestures(
-                                        onVerticalDrag = { change, dragAmount ->
-                                            if (change.isConsumed) return@detectVerticalDragGestures
-                                            if (dragAmount > 60f) systemVM.expandNotificationShade()
-                                        })
-                                }) {
-                            favorites.forEach { fav -> IconRow(fav, appsVM, viewVM) }
-                        }
+                Scaffold(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.Transparent,
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
+                    ) {
+                        when (view) {
+                            is View.Favorites -> Column(
+                                verticalArrangement = Arrangement.Bottom,
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(start = H_PAD2.dp)
+                                    .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+                                    .pointerInput(Unit) {
+                                        detectVerticalDragGestures(
+                                            onVerticalDrag = { change, dragAmount ->
+                                                if (change.isConsumed) return@detectVerticalDragGestures
+                                                if (dragAmount > 60f) systemVM.expandNotificationShade()
+                                            })
+                                    }) {
+                                favorites.forEach { fav -> IconRow(fav, appsVM, viewVM, snackbarHostState) }
+                            }
 
-                        is View.AllApps -> LazyColumn(
-                            modifier = Modifier.padding(start = H_PAD2.dp),
-                            state = listState,
-                            contentPadding = PaddingValues(
-                                top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
-                                bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
-                            )
-                        ) {
-                            appsVM.uiAllGrouped.value.forEach { (letter, list) ->
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(40.dp)
-                                            .height(40.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = letter.toString(),
-                                            style = MaterialTheme.typography.headlineSmall.copy(
-                                                shadow = Shadow(
-                                                    color = MaterialTheme.colorScheme.surface.copy(
-                                                        alpha = 0.7f
-                                                    ), offset = Offset(0f, 0f), blurRadius = 8f
+                            is View.AllApps -> LazyColumn(
+                                modifier = Modifier.padding(start = H_PAD2.dp),
+                                state = listState,
+                                contentPadding = PaddingValues(
+                                    top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
+                                    bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
+                                )
+                            ) {
+                                appsVM.uiAllGrouped.value.forEach { (letter, list) ->
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(40.dp)
+                                                .height(40.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = letter.toString(),
+                                                style = MaterialTheme.typography.headlineSmall.copy(
+                                                    shadow = Shadow(
+                                                        color = MaterialTheme.colorScheme.surface.copy(
+                                                            alpha = 0.7f
+                                                        ), offset = Offset(0f, 0f), blurRadius = 8f
+                                                    ),
+                                                    fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
                                                 ),
-                                                fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
-                                            ),
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            textAlign = TextAlign.Center
-                                        )
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                textAlign = TextAlign.Center
+                                            )
 
+                                        }
                                     }
+                                    // TODO: What happens when 2 apps have the same name?
+                                    items(items = list, key = { "all-${it.label}" }) { row ->
+                                        IconRow(row, appsVM, viewVM, snackbarHostState)
+                                    }
+                                    item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
-                                // TODO: What happens when 2 apps have the same name?
-                                items(items = list, key = { "all-${it.label}" }) { row ->
-                                    IconRow(row, appsVM, viewVM)
-                                }
-                                item { Spacer(modifier = Modifier.height(48.dp)) }
                             }
                         }
+                        LetterBar(
+                            allApps,
+                            viewVM,
+                            listState,
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        )
                     }
-                    LetterBar(
-                        allApps, viewVM, listState, modifier = Modifier.align(Alignment.BottomEnd)
-                    )
                 }
             }
         }
@@ -295,7 +313,8 @@ fun LetterBar(
 }
 
 @Composable
-fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, modifier: Modifier = Modifier) {
+fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, snackbarHostState: SnackbarHostState, modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
     var layoutCoordinates: LayoutCoordinates? = null
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -316,7 +335,13 @@ fun IconRow(uiRow: UiRow, appVM: AppsVM, viewVM: ViewVM, modifier: Modifier = Mo
                     if (drag > 50f) {
                         layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
                             change.consume()
-                            viewVM.setMenu(MenuState.Popup(uiRow.item, n))
+                            scope.launch {
+                                val entries = appVM.popupEntries(uiRow.item)
+                                if (entries.isEmpty()) snackbarHostState.showSnackbar(
+                                    "Nothing to show for this item",
+                                    duration = SnackbarDuration.Short
+                                ) else viewVM.setMenu(MenuState.Popup(entries, n))
+                            }
                         } ?: return@detectHorizontalDragGestures
                     }
                 }
@@ -402,12 +427,12 @@ fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
 }
 
 @Composable
-fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
-    Log.d("ShortcutPopup", "start for item ${state.item}")
+fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM, snackbarHostState: SnackbarHostState) {
     val haptic = LocalHapticFeedback.current
-    val entries by produceState(initialValue = emptyList(), state.item) {
-        value = appsVM.popupEntries(state.item)
-    }
+    val entries = state.entries
+//    val entries by produceState(initialValue = emptyList(), state.item) {
+//        value = appsVM.popupEntries(state.item)
+//    }
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val yDp = with(LocalDensity.current) { state.yPos.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -441,7 +466,7 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
                         .fadingEdges()
                 ) {
                     items(entries) { item ->
-                        IconRow(item, appsVM, viewVM)
+                        IconRow(item, appsVM, viewVM, snackbarHostState)
                     }
                 }
             } else {
