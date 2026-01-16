@@ -368,29 +368,18 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-fun Modifier.fadingEdges(
-    listState: LazyListState,
-    fadeHeightPx: Float = 32f,
-) = composed {
-//    var isFirstComposition by remember { mutableStateOf(true) }
-//    var tweenDuration by remember { mutableIntStateOf(1) }
-//    var count by remember { mutableStateOf(listState.layoutInfo) }
+fun Modifier.fadingEdges(listState: LazyListState, fadeHeightPx: Float = 24f) = composed {
     val hasContent by remember { derivedStateOf { listState.layoutInfo.totalItemsCount > 0 } }
     val topAlpha by animateFloatAsState(
         targetValue = if (listState.canScrollForward) 0f else if (hasContent) 1f else 0f,
-        animationSpec = tween(500)
-//                tween(durationMillis = tweenDuration)
+        animationSpec = tween(150)
     )
     val bottomAlpha by animateFloatAsState(
-        targetValue = if (listState.canScrollBackward) 0f else 1f, animationSpec = tween(500)
-//                tween(durationMillis = tweenDuration)
+        targetValue = if (listState.canScrollBackward) 0f else 1f, animationSpec = tween(150)
     )
-
-
     this
         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
         .drawWithCache {
-            Log.d("ShortcutPopup", "drawing")
             onDrawWithContent {
                 drawContent()
                 val fraction = fadeHeightPx / size.height
@@ -405,14 +394,6 @@ fun Modifier.fadingEdges(
                     brush = Brush.verticalGradient(*topStops.toTypedArray()),
                     blendMode = BlendMode.DstIn
                 )
-
-                // WORKS
-                // But my perfectionist wants cubic curves...
-//                drawRect(
-//                    brush = Brush.verticalGradient(
-//                        0f to mask.copy(alpha = topAlpha), (fadeHeightPx / size.height) to mask
-//                    ), blendMode = BlendMode.DstIn
-//                )
                 val bottomStops = listOf(
                     (1f - fraction) to Color.Black,                                                        // inward: full keep
                     (1f - fraction) + 0.25f * fraction to Color.Transparent.copy(alpha = 0.70f + (1f - 0.70f) * bottomAlpha),
@@ -424,12 +405,6 @@ fun Modifier.fadingEdges(
                     brush = Brush.verticalGradient(*bottomStops.toTypedArray()),
                     blendMode = BlendMode.DstIn
                 )
-//                drawRect(
-//                    brush = Brush.verticalGradient(
-//                        ((size.height - fadeHeightPx) / size.height) to mask,
-//                        1f to mask.copy(alpha = bottomAlpha)
-//                    ), blendMode = BlendMode.DstIn
-//                )
             }
         }
 }
@@ -458,11 +433,8 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
             val maxHeight = rowHeight * maxVisible - rowHeight / 3
             // NOTE: icon is 42dp and padding is 2 * 8dp
             val height = if (entries.size >= maxVisible) maxHeight else 58.dp * entries.size
-            val fadeHeight = rowHeight / 2
-
             val listState = rememberLazyListState()
             if (entries.isNotEmpty()) {
-//                Log.d("ShortcutPopup", "list content: ${listState.layoutInfo.totalItemsCount}")
                 LazyColumn(
                     state = listState,
                     reverseLayout = true,
@@ -486,11 +458,6 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
                     text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic
                 )
             }
-//            LaunchedEffect(entries) {
-//                if (entries.isNotEmpty()) {
-//                    listState.scrollToItem(0)
-//                }
-//            }
         }
     }
 }
