@@ -457,43 +457,6 @@ fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
     }
 }
 
-//@Composable
-//fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
-//    // Customizing the container
-//    Surface(
-//        modifier = Modifier
-//            .padding(16.dp)
-//            .graphicsLayer {
-//                // Applying a shadow/glow similar to your RowLabel
-//                shadowElevation = 8f
-//                shape = RoundedCornerShape(24.dp) // Pill shaped
-//                clip = true
-//            },
-//        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), // Slightly translucent
-//        shape = RoundedCornerShape(24.dp),
-//        tonalElevation = 4.dp
-//    ) {
-//        Row(
-//            modifier = Modifier
-//                .padding(horizontal = 16.dp, vertical = 10.dp),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Text(
-//                text = snackbarData.visuals.message,
-//                style = MaterialTheme.typography.labelLarge.copy(
-//                    // Reusing your shadow style for consistency
-//                    shadow = Shadow(
-//                        color = MaterialTheme.colorScheme.surface,
-//                        offset = Offset(0f, 0f),
-//                        blurRadius = 8f
-//                    )
-//                ),
-//                color = MaterialTheme.colorScheme.onSurface
-//            )
-//        }
-//    }
-//}
-
 fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
     this
         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
@@ -536,9 +499,6 @@ fun ShortcutPopup(
 ) {
     val haptic = LocalHapticFeedback.current
     val entries = state.entries
-//    val entries by produceState(initialValue = emptyList(), state.item) {
-//        value = appsVM.popupEntries(state.item)
-//    }
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val yDp = with(LocalDensity.current) { state.yPos.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
