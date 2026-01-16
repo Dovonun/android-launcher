@@ -368,15 +368,7 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-fun Modifier.fadingEdges(listState: LazyListState, fadeHeightPx: Float = 24f) = composed {
-    val hasContent by remember { derivedStateOf { listState.layoutInfo.totalItemsCount > 0 } }
-    val topAlpha by animateFloatAsState(
-        targetValue = if (listState.canScrollForward) 0f else if (hasContent) 1f else 0f,
-        animationSpec = tween(150)
-    )
-    val bottomAlpha by animateFloatAsState(
-        targetValue = if (listState.canScrollBackward) 0f else 1f, animationSpec = tween(150)
-    )
+fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
     this
         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
         .drawWithCache {
@@ -384,10 +376,10 @@ fun Modifier.fadingEdges(listState: LazyListState, fadeHeightPx: Float = 24f) = 
                 drawContent()
                 val fraction = fadeHeightPx / size.height
                 val topStops = listOf(
-                    0.00f to Color.Transparent.copy(alpha = 0f + (1f - 0f) * topAlpha),                  // edge: base=0
-                    0.25f * fraction to Color.Transparent.copy(alpha = 0.10f + (1f - 0.10f) * topAlpha), // slow start
-                    0.50f * fraction to Color.Transparent.copy(alpha = 0.35f + (1f - 0.35f) * topAlpha), // accelerating
-                    0.75f * fraction to Color.Transparent.copy(alpha = 0.70f + (1f - 0.70f) * topAlpha), // near full
+                    0.00f to Color.Transparent,
+                    0.25f * fraction to Color.Transparent.copy(alpha = 0.10f), // slow start
+                    0.50f * fraction to Color.Transparent.copy(alpha = 0.35f), // accelerating
+                    0.75f * fraction to Color.Transparent.copy(alpha = 0.70f), // near full
                     1.00f * fraction to Color.Black                                                       // inward: always full keep
                 )
                 drawRect(
@@ -396,10 +388,10 @@ fun Modifier.fadingEdges(listState: LazyListState, fadeHeightPx: Float = 24f) = 
                 )
                 val bottomStops = listOf(
                     (1f - fraction) to Color.Black,                                                        // inward: full keep
-                    (1f - fraction) + 0.25f * fraction to Color.Transparent.copy(alpha = 0.70f + (1f - 0.70f) * bottomAlpha),
-                    (1f - fraction) + 0.50f * fraction to Color.Transparent.copy(alpha = 0.35f + (1f - 0.35f) * bottomAlpha),
-                    (1f - fraction) + 0.75f * fraction to Color.Transparent.copy(alpha = 0.10f + (1f - 0.10f) * bottomAlpha),
-                    1f to Color.Transparent.copy(alpha = 0f + (1f - 0f) * bottomAlpha)                   // edge: base=0
+                    (1f - fraction) + 0.25f * fraction to Color.Transparent.copy(alpha = 0.70f),
+                    (1f - fraction) + 0.50f * fraction to Color.Transparent.copy(alpha = 0.35f),
+                    (1f - fraction) + 0.75f * fraction to Color.Transparent.copy(alpha = 0.10f),
+                    1f to Color.Transparent
                 )
                 drawRect(
                     brush = Brush.verticalGradient(*bottomStops.toTypedArray()),
@@ -446,7 +438,7 @@ fun ShortcutPopup(state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM) {
                         )
                         .widthIn(max = maxWidth)
                         .padding(horizontal = H_PAD.dp, vertical = 12.dp)
-                        .fadingEdges(listState)
+                        .fadingEdges()
                 ) {
                     items(entries) { item ->
                         IconRow(item, appsVM, viewVM)
