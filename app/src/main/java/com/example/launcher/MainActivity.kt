@@ -108,12 +108,14 @@ class MainActivity : ComponentActivity() {
     private val viewVM: ViewVM by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
-    @SuppressLint("ReturnFromAwaitPointerEventScope")
+    @SuppressLint("ReturnFromAwaitPointerEventScope", "UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         setContent {
             LauncherTheme {
                 val appsVM: AppsVM = viewModel()
@@ -133,20 +135,19 @@ class MainActivity : ComponentActivity() {
                 val allApps by appsVM.uiAllGrouped.collectAsState()
                 val favorites by appsVM.favorites.collectAsState()
                 val view by viewVM.view.collectAsState()
-                // TODO: NEXT fix bottom pop
                 Scaffold(
                     containerColor = Color.Transparent,
                     contentColor = Color.Transparent,
+                    contentWindowInsets = WindowInsets(0),
                     snackbarHost = {
                         SnackbarHost(snackbarHostState) { data ->
                             CustomLauncherSnackbar(data)
                         }
                     },
-                ) { innerPadding ->
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding)
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
                         when (view) {
@@ -207,6 +208,7 @@ class MainActivity : ComponentActivity() {
                                         key = { index, item -> "$letter-${item.label}-$index" }) { index, it ->
                                         IconRow(it, appsVM, viewVM, snackbarHostState)
                                     }
+                                    item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
                             }
                         }
@@ -226,6 +228,17 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         viewVM.softReset()
     }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
+    }
+
 }
 
 @Composable
