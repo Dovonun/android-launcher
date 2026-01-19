@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +58,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -131,6 +133,7 @@ class MainActivity : ComponentActivity() {
                 val allApps by appsVM.uiAllGrouped.collectAsState()
                 val favorites by appsVM.favorites.collectAsState()
                 val view by viewVM.view.collectAsState()
+                // TODO: NEXT fix bottom pop
                 Scaffold(
                     containerColor = Color.Transparent,
                     contentColor = Color.Transparent,
@@ -162,10 +165,7 @@ class MainActivity : ComponentActivity() {
                                     }) {
                                 favorites.forEach { fav ->
                                     IconRow(
-                                        fav,
-                                        appsVM,
-                                        viewVM,
-                                        snackbarHostState
+                                        fav, appsVM, viewVM, snackbarHostState
                                     )
                                 }
                             }
@@ -202,11 +202,11 @@ class MainActivity : ComponentActivity() {
 
                                         }
                                     }
-                                    // TODO: What happens when 2 apps have the same name?
-                                    items(items = list, key = { "all-${it.label}" }) { row ->
-                                        IconRow(row, appsVM, viewVM, snackbarHostState)
+                                    itemsIndexed(
+                                        items = list,
+                                        key = { index, item -> "$letter-${item.label}-$index" }) { index, it ->
+                                        IconRow(it, appsVM, viewVM, snackbarHostState)
                                     }
-                                    item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
                             }
                         }
@@ -347,8 +347,7 @@ fun IconRow(
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
-                    onDragStart = { fired = false }
-                ) { change, drag ->
+                    onDragStart = { fired = false }) { change, drag ->
                     if (fired) return@detectHorizontalDragGestures
                     if (drag > 50f) {
                         layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
@@ -421,18 +420,18 @@ fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
         contentAlignment = Alignment.BottomCenter
     ) {
         Surface(
-            modifier = Modifier
-                .graphicsLayer {
-                    shadowElevation = 12f
-                    shape = RoundedCornerShape(28.dp)
-                    clip = true
-                },
+            modifier = Modifier.graphicsLayer {
+                shadowElevation = 12f
+                shape = RoundedCornerShape(28.dp)
+                clip = true
+            },
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
             shape = RoundedCornerShape(28.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 12.dp), // More breathing room
+                modifier = Modifier.padding(
+                    horizontal = 24.dp, vertical = 12.dp
+                ), // More breathing room
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -444,8 +443,7 @@ fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
                             offset = Offset(0f, 4f),
                             blurRadius = 10f
                         )
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    ), color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -487,10 +485,7 @@ fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
 
 @Composable
 fun ShortcutPopup(
-    state: MenuState.Popup,
-    appsVM: AppsVM,
-    viewVM: ViewVM,
-    snackbarHostState: SnackbarHostState
+    state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM, snackbarHostState: SnackbarHostState
 ) {
     val haptic = LocalHapticFeedback.current
     val entries = state.entries
@@ -518,9 +513,12 @@ fun ShortcutPopup(
                     reverseLayout = true,
                     modifier = Modifier
                         .heightIn(max = maxHeight)
-                        .offset(x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
+                        .offset(
+                            x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
+                        )
                         .background(
-                            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
+                            MaterialTheme.colorScheme.secondaryContainer,
+                            MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
                         .padding(horizontal = H_PAD.dp, vertical = 12.dp)
@@ -533,7 +531,10 @@ fun ShortcutPopup(
             } else {
                 val text = "No shortcuts found for this App"
                 Text(
-                    text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic
+                    text = text,
+                    fontSize = 17.sp,
+                    color = Color.Gray,
+                    fontStyle = FontStyle.Italic
                 )
             }
         }
