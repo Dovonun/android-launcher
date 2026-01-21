@@ -1,12 +1,23 @@
 package com.example.launcher
 
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.launcher.TAG.PINNED
 import com.example.launcher.data.TaggedShortcutEntity
 import kotlinx.coroutines.launch
+
+//fun isPinned(shortcut: ShortcutInfo): Boolean {
+//    return (shortcut.categories?.contains("android.intent.category.APP_BROWSER") == true || shortcut.intent?.component != null)
+//}
+fun isPinned(shortcut: ShortcutInfo): Boolean {
+    return shortcut.activity != null
+}
+
+
 
 class PinShortcutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,14 +30,20 @@ class PinShortcutActivity : ComponentActivity() {
         if (request == null) return
         if (!request.isValid) return
         val shortcut = request.shortcutInfo ?: return
-        lifecycleScope.launch {
+        if (isPinned(shortcut)) lifecycleScope.launch {
+            Log.d("Launcher", "Setting Pinned for ${shortcut.`package`}")
             shortcutDao.insert(
                 TaggedShortcutEntity(
-                    packageName = shortcut.`package`, shortcutId = shortcut.id, tagId = 2
+                    packageName = shortcut.`package`,
+                    shortcutId = shortcut.id,
+                    tagId = PINNED,
+                    label = shortcut.shortLabel?.toString() ?: "Pinned Shortcut"
                 )
             )
         }
-        Log.d("Launcher", "Pinned shortcut:($shortcut.id)")
+        Log.d("Launcher", "activity=${shortcut.activity}")
+        Log.d("Launcher", "Pinned shortcut comp:${shortcut.intent?.component} category: ${shortcut.categories}")
+        Log.d("Launcher", "Pinned shortcut intent:${shortcut.intent} shortcut: $shortcut")
         request.accept()
         finish()
     }

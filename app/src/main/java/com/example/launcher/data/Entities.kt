@@ -32,7 +32,7 @@ data class TaggedAppEntity(
     )]
 )
 data class TaggedShortcutEntity(
-    val packageName: String, val shortcutId: String, val tagId: Long
+    val packageName: String, val shortcutId: String, val tagId: Long, val label: String
 )
 
 // Test if this works - written by me

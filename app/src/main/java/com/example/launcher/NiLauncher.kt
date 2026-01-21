@@ -10,6 +10,8 @@ class NiLauncher : Application() {
             applicationContext,
             AppDatabase::class.java,
             "launcher.db"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 }
