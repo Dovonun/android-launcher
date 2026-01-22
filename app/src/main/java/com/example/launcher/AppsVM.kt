@@ -42,7 +42,6 @@ object TAG {
     const val PINNED: Long = 2
 }
 
-
 suspend fun ensureSystemTags(tagDao: TagDao) {
     val existing = tagDao.getAll()
     val systemTags = listOf(TagEntity(TAG.FAV, "Favorite"), TagEntity(TAG.PINNED, "Pinned"))

@@ -10,14 +10,9 @@ import com.example.launcher.TAG.PINNED
 import com.example.launcher.data.TaggedShortcutEntity
 import kotlinx.coroutines.launch
 
-//fun isPinned(shortcut: ShortcutInfo): Boolean {
-//    return (shortcut.categories?.contains("android.intent.category.APP_BROWSER") == true || shortcut.intent?.component != null)
-//}
 fun isPinned(shortcut: ShortcutInfo): Boolean {
     return shortcut.activity != null
 }
-
-
 
 class PinShortcutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,9 +36,6 @@ class PinShortcutActivity : ComponentActivity() {
                 )
             )
         }
-        Log.d("Launcher", "activity=${shortcut.activity}")
-        Log.d("Launcher", "Pinned shortcut comp:${shortcut.intent?.component} category: ${shortcut.categories}")
-        Log.d("Launcher", "Pinned shortcut intent:${shortcut.intent} shortcut: $shortcut")
         request.accept()
         finish()
     }
