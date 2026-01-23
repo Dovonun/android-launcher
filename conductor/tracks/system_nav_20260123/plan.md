@@ -1,8 +1,8 @@
 # Implementation Plan: Refine system navigation and UX
 
 ## Phase 1: Analysis & Infrastructure
-- [ ] Task: Audit current navigation behavior and identify specific "rough edges" in system gestures.
-- [ ] Task: Verify current `MainActivity` launch mode and intent filters for correct home screen behavior.
+- [x] Task: Audit current navigation behavior and identify specific "rough edges" in system gestures.
+- [x] Task: Verify current `MainActivity` launch mode and intent filters for correct home screen behavior.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Analysis & Infrastructure' (Protocol in workflow.md)
 
 ## Phase 2: Refine Home & Back Behavior
