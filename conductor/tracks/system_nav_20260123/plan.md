@@ -13,4 +13,4 @@
 ## Phase 3: UX Polish
 - [x] Task: Add or refine transitions/animations between views for a smoother experience. 380444a
 - [x] Task: Verify behavior when returning from external activities (app launches). 380444a
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: UX Polish' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: UX Polish' (Protocol in workflow.md) [checkpoint: 9e31b12]
