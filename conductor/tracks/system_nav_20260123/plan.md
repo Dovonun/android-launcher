@@ -11,6 +11,6 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Refine Home & Back Behavior' (Protocol in workflow.md) [checkpoint: cfc7d53]
 
 ## Phase 3: UX Polish
-- [ ] Task: Add or refine transitions/animations between views for a smoother experience.
-- [ ] Task: Verify behavior when returning from external activities (app launches).
+- [x] Task: Add or refine transitions/animations between views for a smoother experience. 380444a
+- [x] Task: Verify behavior when returning from external activities (app launches). 380444a
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: UX Polish' (Protocol in workflow.md)
