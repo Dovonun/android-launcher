@@ -6,8 +6,8 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Analysis & Infrastructure' (Protocol in workflow.md)
 
 ## Phase 2: Refine Home & Back Behavior
-- [ ] Task: Implement/Refine back gesture handling in Compose to navigate between launcher views (e.g., All-Apps to Favorites).
-- [ ] Task: Ensure Home intent always resets the launcher state to the primary Favorites view.
+- [x] Task: Implement/Refine back gesture handling in Compose to navigate between launcher views (e.g., All-Apps to Favorites). 0cd73b8
+- [x] Task: Ensure Home intent always resets the launcher state to the primary Favorites view. 0cd73b8
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Refine Home & Back Behavior' (Protocol in workflow.md)
 
 ## Phase 3: UX Polish
