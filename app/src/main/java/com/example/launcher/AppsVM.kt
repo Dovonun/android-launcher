@@ -44,15 +44,10 @@ object TAG {
 
 suspend fun ensureSystemTags(tagDao: TagDao) {
     val existing = tagDao.getAll()
-    val systemTags = listOf(TagEntity(TAG.FAV, "Favorite"), TagEntity(TAG.PINNED, "Pinned"))
-    for (tag in systemTags) {
-        val exist = existing.find { it.id == tag.id }
-        if (exist == null) {
-            tagDao.insert(tag)
-        } else if (exist.name != tag.name) {
-            tagDao.update(tag)
-        }
-    }
+    listOf(
+        TagEntity(TAG.FAV, "Favorite"), TagEntity(TAG.PINNED, "Pinned")
+    ).filterNot { tag -> existing.any { it.id == tag.id && it.name == tag.name } }
+        .forEach { tagDao.insert(it) }
 }
 
 fun createCallback(cb: () -> Unit, cleanup: (String) -> Unit) = object : LauncherApps.Callback() {

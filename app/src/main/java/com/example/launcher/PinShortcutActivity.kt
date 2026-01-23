@@ -1,18 +1,12 @@
 package com.example.launcher
 
 import android.content.pm.LauncherApps
-import android.content.pm.ShortcutInfo
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.launcher.TAG.PINNED
 import com.example.launcher.data.TaggedShortcutEntity
 import kotlinx.coroutines.launch
-
-fun isPinned(shortcut: ShortcutInfo): Boolean {
-    return shortcut.activity != null
-}
 
 class PinShortcutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,8 +19,7 @@ class PinShortcutActivity : ComponentActivity() {
         if (request == null) return
         if (!request.isValid) return
         val shortcut = request.shortcutInfo ?: return
-        if (isPinned(shortcut)) lifecycleScope.launch {
-            Log.d("Launcher", "Setting Pinned for ${shortcut.`package`}")
+        lifecycleScope.launch {
             shortcutDao.insert(
                 TaggedShortcutEntity(
                     packageName = shortcut.`package`,
