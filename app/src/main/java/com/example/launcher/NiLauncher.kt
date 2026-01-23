@@ -10,6 +10,7 @@ class NiLauncher : Application() {
             applicationContext,
             AppDatabase::class.java,
             "launcher.db"
-        ).build()
+        )
+            .build()
     }
 }

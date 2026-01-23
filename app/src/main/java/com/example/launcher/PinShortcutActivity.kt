@@ -2,9 +2,9 @@ package com.example.launcher
 
 import android.content.pm.LauncherApps
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.launcher.TAG.PINNED
 import com.example.launcher.data.TaggedShortcutEntity
 import kotlinx.coroutines.launch
 
@@ -22,11 +22,13 @@ class PinShortcutActivity : ComponentActivity() {
         lifecycleScope.launch {
             shortcutDao.insert(
                 TaggedShortcutEntity(
-                    packageName = shortcut.`package`, shortcutId = shortcut.id, tagId = 2
+                    packageName = shortcut.`package`,
+                    shortcutId = shortcut.id,
+                    tagId = PINNED,
+                    label = shortcut.shortLabel?.toString() ?: "Pinned Shortcut"
                 )
             )
         }
-        Log.d("Launcher", "Pinned shortcut:($shortcut.id)")
         request.accept()
         finish()
     }

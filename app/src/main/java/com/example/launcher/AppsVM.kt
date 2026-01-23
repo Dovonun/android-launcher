@@ -39,13 +39,13 @@ typealias Shortcut = ShortcutInfo
 
 object TAG {
     const val FAV: Long = 1
-    const val PWA: Long = 2
+    const val PINNED: Long = 2
 }
 
 suspend fun ensureSystemTags(tagDao: TagDao) {
     val existing = tagDao.getAll()
     listOf(
-        TagEntity(TAG.FAV, "Favorite"), TagEntity(TAG.PWA, "PWA")
+        TagEntity(TAG.FAV, "Favorite"), TagEntity(TAG.PINNED, "Pinned")
     ).filterNot { tag -> existing.any { it.id == tag.id && it.name == tag.name } }
         .forEach { tagDao.insert(it) }
 }
@@ -108,13 +108,13 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     val uiAllGrouped = combine(
-        apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG.PWA)
-    ) { apps, shortcuts, pwas ->
+        apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG.PINNED)
+    ) { apps, shortcuts, pinned ->
         val uiApps = appsToRows(apps)
-        val uiPwas = shortcutsToRows(pwas.mapNotNull { pwa ->
-            shortcuts[pwa.packageName]?.firstOrNull { it.id == pwa.shortcutId }
+        val uiPinned = shortcutsToRows(pinned.mapNotNull { pin ->
+            shortcuts[pin.packageName]?.firstOrNull { it.id == pin.shortcutId }
         })
-        (uiApps + uiPwas).sortedBy { it.label.lowercase() }
+        (uiApps + uiPinned).sortedBy { it.label.lowercase() }
             .groupBy { it.label.first().uppercaseChar() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
 
@@ -182,7 +182,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
         is Shortcut -> {
             val favs = taggedShortcutDao.getShortcutsForTag(TAG.FAV).first()
-            val itemTag = TaggedShortcutEntity(item.`package`, item.id, TAG.FAV)
+            val itemTag = TaggedShortcutEntity(
+                item.`package`,
+                item.id,
+                TAG.FAV,
+                item.shortLabel?.toString() ?: "Favorite"
+            )
             val isFav = favs.any { it.packageName == item.`package` && it.shortcutId == item.id }
             val favText = if (isFav) "Remove from favorites" else "Add to favorites"
             val dbAction = if (isFav) taggedShortcutDao::delete else taggedShortcutDao::insert
@@ -191,7 +196,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 add(SheetRow("Open Settings") {
                     launcherApps.startAppDetailsActivity(item.activity, user, null, null)
                 })
-                // TODO: add remove for PWAs
+                // TODO: add remove for Pinned Shortcuts
             }
         }
 
