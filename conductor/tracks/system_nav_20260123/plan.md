@@ -8,7 +8,7 @@
 ## Phase 2: Refine Home & Back Behavior
 - [x] Task: Implement/Refine back gesture handling in Compose to navigate between launcher views (e.g., All-Apps to Favorites). 0cd73b8
 - [x] Task: Ensure Home intent always resets the launcher state to the primary Favorites view. 0cd73b8
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Refine Home & Back Behavior' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 2: Refine Home & Back Behavior' (Protocol in workflow.md) [checkpoint: cfc7d53]
 
 ## Phase 3: UX Polish
 - [ ] Task: Add or refine transitions/animations between views for a smoother experience.
