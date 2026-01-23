@@ -1,0 +1,8 @@
+{
+  "track_id": "system_nav_20260123",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-23T12:00:00Z",
+  "updated_at": "2026-01-23T12:00:00Z",
+  "description": "Polishing the home button behavior, back gestures, and app dismissal interactions to ensure a smooth, native feel."
+}
