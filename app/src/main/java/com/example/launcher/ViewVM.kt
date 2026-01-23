@@ -39,6 +39,19 @@ class ViewVM : ViewModel() {
         leaveJob?.cancel()
         leaveJob = null
         setMenu(MenuState.None)
+        setView(View.Favorites)
+    }
+
+    fun back(): Boolean {
+        if (_menu.value != MenuState.None) {
+            setMenu(MenuState.None)
+            return true
+        }
+        if (_view.value != View.Favorites) {
+            setView(View.Favorites)
+            return true
+        }
+        return false
     }
 
     fun setView(view: View) {
