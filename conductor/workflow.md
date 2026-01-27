@@ -103,6 +103,22 @@ All tasks follow a strict lifecycle:
     - **Action:** Commit this change with a descriptive message following the format `conductor(plan): Mark phase '<PHASE NAME>' as complete`.
 9. **Announce Completion:** Inform the user that the phase is complete and the checkpoint has been created, with the detailed verification report attached as a git note.
 
+### Track Completion Protocol
+
+**Trigger:** This protocol is executed when the final task of the final phase in a track's `plan.md` is completed.
+
+1. **Verify Plan Consistency:** Ensure all tasks in `plan.md` are marked as complete `[x]` and have associated commit SHAs.
+2. **Verify Phase Checkpoints:** Ensure all phases in `plan.md` have recorded `[checkpoint: <sha>]`.
+3. **Update Tracks Registry:** 
+    - Open `conductor/tracks.md`.
+    - Locate the entry for the current track.
+    - Mark the track as complete: `- [x] **Track: <Track Name>**`.
+4. **Commit Track Completion:**
+    - Stage `conductor/tracks.md` and the track's `plan.md`.
+    - Commit with a message like `chore(conductor): Mark track '<Track Name>' as complete`.
+5. **Archive Track (Optional):** If the track is no longer needed for active reference, move its folder to `conductor/archive/` and update the link in `conductor/tracks.md`.
+
+
 ### Quality Gates
 
 Before marking any task complete, verify:
