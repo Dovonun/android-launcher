@@ -12,4 +12,7 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+# User-specific configurations
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/studiobot.xml

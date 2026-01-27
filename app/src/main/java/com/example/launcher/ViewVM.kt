@@ -36,9 +36,25 @@ class ViewVM : ViewModel() {
     }
 
     fun softReset() {
-        leaveJob?.cancel()
-        leaveJob = null
+        if (leaveJob?.isActive == true) {
+            leaveJob?.cancel()
+            leaveJob = null
+            return
+        }
         setMenu(MenuState.None)
+        setView(View.Favorites)
+    }
+
+    fun back(): Boolean {
+        if (_menu.value != MenuState.None) {
+            setMenu(MenuState.None)
+            return true
+        }
+        if (_view.value != View.Favorites) {
+            setView(View.Favorites)
+            return true
+        }
+        return false
     }
 
     fun setView(view: View) {
