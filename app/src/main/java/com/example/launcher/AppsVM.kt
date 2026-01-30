@@ -242,7 +242,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun sheetEntries(item: Any, isAllApps: Boolean = false): List<SheetRow> {
+    suspend fun sheetEntries(
+        item: Any,
+        isAllApps: Boolean = false,
+        onNavigate: (View) -> Unit
+    ): List<SheetRow> {
         val resolved = if (item is TagItemEntity) resolveItem(item) else item
         return when (resolved) {
             is App -> {
@@ -260,9 +264,15 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                             }
                         } 
                     })
-                    if (!isAllApps) {
+                    add(SheetRow("Edit Favorites") {
+                        onNavigate(View.ManageTag(TAG.FAV, "Favorites"))
+                    })
+                    if (!isAllApps && item is TagItemEntity) {
                         add(SheetRow("Edit Popup") {
-                            // Navigation to ManageTag will be hooked up in Phase 4
+                            viewModelScope.launch {
+                                val tagId = getOrCreatePopupTag(item)
+                                onNavigate(View.ManageTag(tagId, item.labelOverride ?: resolved.label.toString()))
+                            }
                         })
                     }
                     add(SheetRow("Open Settings") {
@@ -292,9 +302,15 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                             }
                         } 
                     })
-                    if (!isAllApps) {
+                    add(SheetRow("Edit Favorites") {
+                        onNavigate(View.ManageTag(TAG.FAV, "Favorites"))
+                    })
+                    if (!isAllApps && item is TagItemEntity) {
                         add(SheetRow("Edit Popup") {
-                            // Hook up in Phase 4
+                            viewModelScope.launch {
+                                val tagId = getOrCreatePopupTag(item)
+                                onNavigate(View.ManageTag(tagId, item.labelOverride ?: resolved.shortLabel.toString()))
+                            }
                         })
                     }
                     add(SheetRow("Open Settings") {

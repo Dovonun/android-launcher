@@ -129,8 +129,8 @@ class MainActivity : ComponentActivity() {
                 when (val state = menu) {
                     is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM, snackbarHostState)
                     is MenuState.Sheet -> ContextSheet(
-                        state, appsVM
-                    ) { viewVM.setMenu(MenuState.None) }
+                        state, appsVM, { viewVM.setMenu(MenuState.None) }, { viewVM.setView(it) }
+                    )
 
                     is MenuState.None -> Unit
                 }
@@ -566,11 +566,11 @@ fun ShortcutPopup(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
+fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit, onNavigate: (View) -> Unit) {
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val entries by produceState(initialValue = emptyList(), state.item) {
-        value = appsVM.sheetEntries(state.item, state.isAllApps)
+        value = appsVM.sheetEntries(state.item, state.isAllApps, onNavigate)
     }
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(
