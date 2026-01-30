@@ -22,7 +22,7 @@ Update `AppsVM` to handle the new unified list resolution and index 0 "Represent
 ## Phase 3: Reordering UI (Manage Tag View)
 Create the drag-and-drop interface for reordering lists.
 
-- [ ] Task: Create `ManageTagScreen` using Compose `LazyColumn` with drag-and-drop support (Index 0 at the bottom).
+- [~] Task: Create `ManageTagScreen` using Compose `LazyColumn` with drag-and-drop support (Index 0 at the bottom).
 - [ ] Task: Implement navigation in `ViewVM` for `ManageTag` and add the round "Checkmark" confirmation button.
 - [ ] Task: Ensure "Edit Popup" is hidden in the `AllApps` view context (pass context/flag to the sheet entries).
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)

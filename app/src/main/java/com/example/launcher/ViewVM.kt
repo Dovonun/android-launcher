@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 sealed interface View {
     data object Favorites : View
     data object AllApps : View
+    data class ManageTag(val tagId: Long, val name: String) : View
 }
 
 sealed interface MenuState {

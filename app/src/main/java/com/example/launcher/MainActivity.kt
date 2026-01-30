@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        when (view) {
+                        when (val v = view) {
                             is View.Favorites -> Column(
                                 verticalArrangement = Arrangement.Bottom,
                                 modifier = Modifier
@@ -172,6 +172,13 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
+                            is View.ManageTag -> ManageTagScreen(
+                                v.tagId,
+                                v.name,
+                                appsVM,
+                                viewVM
+                            )
 
                             is View.AllApps -> LazyColumn(
                                 modifier = Modifier.padding(start = H_PAD2.dp),
