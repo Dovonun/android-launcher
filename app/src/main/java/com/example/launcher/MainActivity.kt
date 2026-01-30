@@ -221,12 +221,14 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        LetterBar(
-                            allApps,
-                            viewVM,
-                            listState,
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                        )
+                        if (view is View.AllApps) {
+                            LetterBar(
+                                allApps,
+                                viewVM,
+                                listState,
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
                     }
                 }
             }

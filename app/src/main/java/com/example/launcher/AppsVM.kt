@@ -319,6 +319,21 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            is Tag -> {
+                buildList {
+                    // Tag is always a popup in this context
+                    if (!isAllApps && item is TagItemEntity) {
+                        add(SheetRow("Edit Popup") {
+                            onNavigate(View.ManageTag(resolved.id, item.labelOverride ?: "Folder"))
+                        })
+                        add(SheetRow("Remove") {
+                            // Deleting the TagItemEntity from the parent list
+                            viewModelScope.launch { tagItemDao.delete(item) }
+                        })
+                    }
+                }
+            }
+
             else -> emptyList()
         }
     }

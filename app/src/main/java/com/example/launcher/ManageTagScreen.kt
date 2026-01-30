@@ -36,37 +36,32 @@ fun ManageTagScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
-            // Index 0 at the bottom means we reverse the list for display
-            val displayItems = items.reversed()
-
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = 80.dp),
+                reverseLayout = true
             ) {
-                itemsIndexed(displayItems) { index, item ->
-                    // Re-calculate real index in the original items list
-                    val realIndex = items.size - 1 - index
-                    
+                itemsIndexed(items) { index, item ->
                     ListItem(
                         headlineContent = { Text(item.label) },
                         leadingContent = { RowIcon(item.icon) },
                         trailingContent = {
                             Row {
                                 IconButton(onClick = {
-                                    if (realIndex < items.size - 1) {
+                                    if (index < items.size - 1) {
                                         val newList = items.toMutableList()
-                                        val moving = newList.removeAt(realIndex)
-                                        newList.add(realIndex + 1, moving)
+                                        val moving = newList.removeAt(index)
+                                        newList.add(index + 1, moving)
                                         scope.launch { appsVM.updateOrder(tagId, newList) }
                                     }
                                 }) {
                                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up")
                                 }
                                 IconButton(onClick = {
-                                    if (realIndex > 0) {
+                                    if (index > 0) {
                                         val newList = items.toMutableList()
-                                        val moving = newList.removeAt(realIndex)
-                                        newList.add(realIndex - 1, moving)
+                                        val moving = newList.removeAt(index)
+                                        newList.add(index - 1, moving)
                                         scope.launch { appsVM.updateOrder(tagId, newList) }
                                     }
                                 }) {
