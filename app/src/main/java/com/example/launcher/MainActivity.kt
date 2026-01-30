@@ -134,8 +134,8 @@ class MainActivity : ComponentActivity() {
 
                     is MenuState.None -> Unit
                 }
-                val allApps by appsVM.uiAllGrouped.collectAsState()
-                val favorites by appsVM.favorites.collectAsState()
+                val allApps by appsVM.uiAllGrouped.collectAsState(emptyMap())
+                val favorites by appsVM.favorites.collectAsState(emptyList())
                 val view by viewVM.view.collectAsState()
                 Scaffold(
                     containerColor = Color.Transparent,
@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity() {
                                     bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                                 )
                             ) {
-                                appsVM.uiAllGrouped.value.forEach { (letter, list) ->
+                                allApps.forEach { (letter, list) ->
                                     item {
                                         Box(
                                             modifier = Modifier
@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     itemsIndexed(
                                         items = list,
-                                        key = { index, item -> "$letter-${item.label}-$index" }) { index, it ->
+                                        key = { index: Int, item: UiRow -> "$letter-${item.label}-$index" }) { index: Int, it: UiRow ->
                                         IconRow(it, appsVM, viewVM, snackbarHostState)
                                     }
                                     item { Spacer(modifier = Modifier.height(48.dp)) }

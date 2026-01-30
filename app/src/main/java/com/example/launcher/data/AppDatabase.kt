@@ -4,12 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [TagEntity::class, TaggedAppEntity::class, TaggedShortcutEntity::class],
-    version = 1
+    entities = [TagEntity::class, TagItemEntity::class],
+    version = 2
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun tagDao(): TagDao
-    abstract fun taggedAppDao(): TaggedAppDao
-    abstract fun taggedShortcutDao(): TaggedShortcutDao
+    abstract fun tagItemDao(): TagItemDao
 }

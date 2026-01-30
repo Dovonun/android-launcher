@@ -15,8 +15,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.launcher.data.TagDao
 import com.example.launcher.data.TagEntity
-import com.example.launcher.data.TaggedAppEntity
-import com.example.launcher.data.TaggedShortcutEntity
+import com.example.launcher.data.TagItemEntity
+import com.example.launcher.data.TagItemType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -70,15 +71,15 @@ fun createCallback(cb: () -> Unit, cleanup: (String) -> Unit) = object : Launche
 class AppsVM(application: Application) : AndroidViewModel(application) {
     val db = (application as NiLauncher).database
     private val tagDao = db.tagDao()
-    private val taggedAppDao = db.taggedAppDao()
-    private val taggedShortcutDao = db.taggedShortcutDao()
+    private val tagItemDao = db.tagItemDao()
     private val launcherApps: LauncherApps = application.getSystemService(LauncherApps::class.java)
     private val user: UserHandle = android.os.Process.myUserHandle()
     private val apps = MutableStateFlow<List<LauncherActivityInfo>>(emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     // THOUGHT: Could I cache all shortcuts?
-    private val cachedShortcuts = combine(
+    private val cachedShortcuts = MutableStateFlow<Map<String, List<ShortcutInfo>>>(emptyMap())
+    /*combine(
         taggedAppDao.getPackagesForTag(TAG.FAV), taggedShortcutDao.getDistinctPackages()
     ) { favs, tagged -> (favs + tagged).distinct() }.mapLatest { pkgs ->
         coroutineScope {
@@ -95,10 +96,10 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
             }.mapValues { it.value.await() }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())*/
 
     private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
-    private fun cleanup(pkg: String) = db.taggedAppDao()
+    private fun cleanup(pkg: String) { /*db.taggedAppDao()*/ }
     // TODO: delete all tags for this app on uninstall
 
     init {
@@ -107,7 +108,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         refreshApps()
     }
 
-    val uiAllGrouped = combine(
+    val uiAllGrouped = apps.map { apps ->
+        appsToRows(apps).sortedBy { it.label.lowercase() }
+            .groupBy { it.label.first().uppercaseChar() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
+    /*combine(
         apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG.PINNED)
     ) { apps, shortcuts, pinned ->
         val uiApps = appsToRows(apps)
@@ -116,12 +121,15 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         })
         (uiApps + uiPinned).sortedBy { it.label.lowercase() }
             .groupBy { it.label.first().uppercaseChar() }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())*/
 
-    val favorites = uiList(TAG.FAV).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val favorites = MutableStateFlow<List<UiRow>>(emptyList()) //uiList(TAG.FAV).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
 
-    fun uiList(tag: Long): Flow<List<UiRow>> = combine(
+    fun uiList(tag: Long): Flow<List<UiRow>> = apps.map { apps ->
+        appsToRows(apps)
+    }
+    /*combine(
         apps, cachedShortcuts,
         taggedAppDao.getPackagesForTag(tag), taggedShortcutDao.getShortcutsForTag(tag),
     ) { apps, shortcuts, appTags, shortcutTags ->
@@ -130,7 +138,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             shortcuts[shortcut.packageName]?.firstOrNull { it.id == shortcut.shortcutId }
         })
         taggedApps + taggedShortcuts
-    }
+    }*/
 
     fun launch(item: Any) = when (val i = item) {
         is App -> launcherApps.startMainActivity(i.componentName, user, null, null)
@@ -160,14 +168,14 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     suspend fun sheetEntries(item: Any): List<SheetRow> = when (item) {
         is App -> {
-            val favPkgs = taggedAppDao.getPackagesForTag(TAG.FAV).first()
+            /*val favPkgs = taggedAppDao.getPackagesForTag(TAG.FAV).first()
             val dbTag = TaggedAppEntity(item.componentName.packageName, TAG.FAV)
             val isFav = dbTag.packageName in favPkgs
             val favText = if (isFav) "Remove from favorites" else "Add to favorites"
-            val dbAction = if (isFav) taggedAppDao::delete else taggedAppDao::insert
+            val dbAction = if (isFav) taggedAppDao::delete else taggedAppDao::insert*/
             buildList {
-                add(
-                    SheetRow(favText) { viewModelScope.launch { dbAction(dbTag) } })
+                /*add(
+                    SheetRow(favText) { viewModelScope.launch { dbAction(dbTag) } })*/
                 add(SheetRow("Open Settings") {
                     launcherApps.startAppDetailsActivity(item.componentName, user, null, null)
                 })
@@ -181,7 +189,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
 
         is Shortcut -> {
-            val favs = taggedShortcutDao.getShortcutsForTag(TAG.FAV).first()
+            /*val favs = taggedShortcutDao.getShortcutsForTag(TAG.FAV).first()
             val itemTag = TaggedShortcutEntity(
                 item.`package`,
                 item.id,
@@ -190,9 +198,9 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             )
             val isFav = favs.any { it.packageName == item.`package` && it.shortcutId == item.id }
             val favText = if (isFav) "Remove from favorites" else "Add to favorites"
-            val dbAction = if (isFav) taggedShortcutDao::delete else taggedShortcutDao::insert
+            val dbAction = if (isFav) taggedShortcutDao::delete else taggedShortcutDao::insert*/
             buildList {
-                add(SheetRow(favText) { viewModelScope.launch { dbAction(itemTag) } })
+                /*add(SheetRow(favText) { viewModelScope.launch { dbAction(itemTag) } })*/
                 add(SheetRow("Open Settings") {
                     launcherApps.startAppDetailsActivity(item.activity, user, null, null)
                 })
