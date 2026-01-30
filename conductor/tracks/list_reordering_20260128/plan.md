@@ -19,7 +19,7 @@ Update `AppsVM` to handle the new unified list resolution and index 0 "Represent
 - [x] Task: Implement `updateOrder(tagId: Long, newOrder: List<Long>)` for atomic database updates. 5081401
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
-## Phase 3: Reordering UI (Manage Tag View)
+## Phase 3: Reordering UI (Manage Tag View) [checkpoint: 065105c]
 Create the drag-and-drop interface for reordering lists.
 
 - [x] Task: Create `ManageTagScreen` using Compose `LazyColumn` with drag-and-drop support (Index 0 at the bottom). f15a7d2
