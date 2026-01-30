@@ -32,5 +32,5 @@ Wire everything together and ensure recursive nesting works.
 
 - [x] Task: Implement the "Edit Popup" logic: If no custom tag exists, create one from current system shortcuts before opening the editor. e5467ca
 - [x] Task: Update the Bottom Sheet entries ("Edit Favorites", "Edit Popup") to use the new navigation. f4653a3
-- [~] Task: Final verification of the "Index 0 at bottom" layout and recursive swipe-to-open logic.
+- [x] Task: Final verification of the "Index 0 at bottom" layout and recursive swipe-to-open logic. 97bfd09
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
