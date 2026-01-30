@@ -78,10 +78,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     // THOUGHT: Could I cache all shortcuts?
-    private val cachedShortcuts = MutableStateFlow<Map<String, List<ShortcutInfo>>>(emptyMap())
-    /*combine(
-        taggedAppDao.getPackagesForTag(TAG.FAV), taggedShortcutDao.getDistinctPackages()
-    ) { favs, tagged -> (favs + tagged).distinct() }.mapLatest { pkgs ->
+    private val cachedShortcuts = tagItemDao.getDistinctPackages().mapLatest { pkgs ->
         coroutineScope {
             pkgs.associateWith { pkg ->
                 async {
@@ -96,7 +93,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
             }.mapValues { it.value.await() }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())*/
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
     private fun cleanup(pkg: String) { /*db.taggedAppDao()*/ }
@@ -108,37 +105,51 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         refreshApps()
     }
 
-    val uiAllGrouped = apps.map { apps ->
-        appsToRows(apps).sortedBy { it.label.lowercase() }
+    val uiAllGrouped = combine(
+        apps, uiList(TAG.PINNED)
+    ) { apps, pinned ->
+        val uiApps = appsToRows(apps)
+        (uiApps + pinned).sortedBy { it.label.lowercase() }
             .groupBy { it.label.first().uppercaseChar() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
-    /*combine(
-        apps, cachedShortcuts, taggedShortcutDao.getShortcutsForTag(TAG.PINNED)
-    ) { apps, shortcuts, pinned ->
-        val uiApps = appsToRows(apps)
-        val uiPinned = shortcutsToRows(pinned.mapNotNull { pin ->
-            shortcuts[pin.packageName]?.firstOrNull { it.id == pin.shortcutId }
-        })
-        (uiApps + uiPinned).sortedBy { it.label.lowercase() }
-            .groupBy { it.label.first().uppercaseChar() }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())*/
 
-    val favorites = MutableStateFlow<List<UiRow>>(emptyList()) //uiList(TAG.FAV).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val favorites = uiList(TAG.FAV).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
 
-    fun uiList(tag: Long): Flow<List<UiRow>> = apps.map { apps ->
-        appsToRows(apps)
+    fun uiList(tag: Long): Flow<List<UiRow>> = combine(
+        apps, cachedShortcuts, tagItemDao.getItemsForTag(tag)
+    ) { apps, shortcuts, items ->
+        items.mapNotNull { item ->
+            when (item.type) {
+                TagItemType.APP -> {
+                    apps.find { it.componentName.packageName == item.packageName }?.let { app ->
+                        UiRow(
+                            item.labelOverride ?: app.label.toString(),
+                            app.getIcon(0).toBitmap().asImageBitmap(),
+                            app
+                        )
+                    }
+                }
+
+                TagItemType.SHORTCUT -> {
+                    shortcuts[item.packageName]?.find { it.id == item.shortcutId }?.let { shortcut ->
+                        UiRow(
+                            item.labelOverride ?: shortcut.shortLabel.toString(),
+                            launcherApps.getShortcutIconDrawable(shortcut, 0)?.toBitmap()
+                                ?.asImageBitmap(),
+                            shortcut
+                        )
+                    }
+                }
+
+                TagItemType.TAG -> {
+                    // Logic for representative will be added in next task
+                    // For now just show a placeholder or handle basic Tag item
+                    UiRow(item.labelOverride ?: "Folder", null, Tag(item.targetTagId ?: 0L))
+                }
+            }
+        }
     }
-    /*combine(
-        apps, cachedShortcuts,
-        taggedAppDao.getPackagesForTag(tag), taggedShortcutDao.getShortcutsForTag(tag),
-    ) { apps, shortcuts, appTags, shortcutTags ->
-        val taggedApps = appsToRows(apps.filter { it.componentName.packageName in appTags })
-        val taggedShortcuts = shortcutsToRows(shortcutTags.mapNotNull { shortcut ->
-            shortcuts[shortcut.packageName]?.firstOrNull { it.id == shortcut.shortcutId }
-        })
-        taggedApps + taggedShortcuts
-    }*/
 
     fun launch(item: Any) = when (val i = item) {
         is App -> launcherApps.startMainActivity(i.componentName, user, null, null)

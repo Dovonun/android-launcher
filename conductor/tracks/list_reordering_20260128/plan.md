@@ -13,7 +13,7 @@ Consolidate the current tagging entities into a single, ordered `TagItemEntity` 
 ## Phase 2: ViewModel & Logic Updates
 Update `AppsVM` to handle the new unified list resolution and index 0 "Representative" logic.
 
-- [ ] Task: Update `AppsVM.uiList` to fetch from `TagItemEntity` and sort such that `order = 0` is the "Representative".
+- [~] Task: Update `AppsVM.uiList` to fetch from `TagItemEntity` and sort such that `order = 0` is the "Representative".
 - [ ] Task: Implement the "Representative" inheritance: A `TAG` item's label/icon/launch action comes from its child with `order = 0`.
 - [ ] Task: Update `popupEntries` to exclude the representative (index 0) and trigger the "No shortcuts" snackbar if no other children exist.
 - [ ] Task: Implement `updateOrder(tagId: Long, newOrder: List<Long>)` for atomic database updates.
