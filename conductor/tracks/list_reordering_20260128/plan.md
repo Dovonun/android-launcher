@@ -7,7 +7,7 @@ Consolidate the current tagging entities into a single, ordered `TagItemEntity` 
 
 - [x] Task: Create `TagItemEntity` and update `AppDatabase` schema (replace `TaggedAppEntity` and `TaggedShortcutEntity`). f0a9ea8
 - [x] Task: Update `TagDao` and implement `TagItemDao` with atomic ordering logic (single transaction for reorders). f49090e
-- [~] Task: Create a migration utility in `AppsVM` to move existing Favorite/Pinned data to the new `TagItemEntity` structure.
+- [x] Task: Create a migration utility in `AppsVM` to move existing Favorite/Pinned data to the new `TagItemEntity` structure. a8834b7
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: ViewModel & Logic Updates
