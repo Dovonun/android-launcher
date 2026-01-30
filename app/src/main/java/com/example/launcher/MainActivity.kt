@@ -354,6 +354,7 @@ fun IconRow(
     val scope = rememberCoroutineScope()
     var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
+    val view by viewVM.view.collectAsState()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
@@ -365,7 +366,7 @@ fun IconRow(
                 detectTapGestures(onTap = {
                     appVM.launch(uiRow.item)
                     viewVM.leave()
-                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
+                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item, view is View.AllApps)) })
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -569,7 +570,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val entries by produceState(initialValue = emptyList(), state.item) {
-        value = appsVM.sheetEntries(state.item)
+        value = appsVM.sheetEntries(state.item, state.isAllApps)
     }
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(

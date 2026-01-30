@@ -205,7 +205,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun sheetEntries(item: Any): List<SheetRow> {
+    suspend fun sheetEntries(item: Any, isAllApps: Boolean = false): List<SheetRow> {
         val resolved = if (item is TagItemEntity) resolveItem(item) else item
         return when (resolved) {
             is App -> {
@@ -223,6 +223,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                             }
                         } 
                     })
+                    if (!isAllApps) {
+                        add(SheetRow("Edit Popup") {
+                            // Navigation to ManageTag will be hooked up in Phase 4
+                        })
+                    }
                     add(SheetRow("Open Settings") {
                         launcherApps.startAppDetailsActivity(resolved.componentName, user, null, null)
                     })
@@ -250,6 +255,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                             }
                         } 
                     })
+                    if (!isAllApps) {
+                        add(SheetRow("Edit Popup") {
+                            // Hook up in Phase 4
+                        })
+                    }
                     add(SheetRow("Open Settings") {
                         launcherApps.startAppDetailsActivity(resolved.activity, user, null, null)
                     })
