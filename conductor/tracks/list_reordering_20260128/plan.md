@@ -24,7 +24,7 @@ Create the drag-and-drop interface for reordering lists.
 
 - [x] Task: Create `ManageTagScreen` using Compose `LazyColumn` with drag-and-drop support (Index 0 at the bottom). f15a7d2
 - [x] Task: Implement navigation in `ViewVM` for `ManageTag` and add the round "Checkmark" confirmation button. 53c96e6
-- [~] Task: Ensure "Edit Popup" is hidden in the `AllApps` view context (pass context/flag to the sheet entries).
+- [x] Task: Ensure "Edit Popup" is hidden in the `AllApps` view context (pass context/flag to the sheet entries). 92ac212
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: Integration & Polish
