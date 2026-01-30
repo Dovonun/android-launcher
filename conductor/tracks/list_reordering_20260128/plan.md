@@ -2,7 +2,7 @@
 
 This plan implements universal list reordering and custom recursive popups using a unified database schema.
 
-## Phase 1: Database Refactoring
+## Phase 1: Database Refactoring [checkpoint: 5b7a63f]
 Consolidate the current tagging entities into a single, ordered `TagItemEntity` and update DAOs.
 
 - [x] Task: Create `TagItemEntity` and update `AppDatabase` schema (replace `TaggedAppEntity` and `TaggedShortcutEntity`). f0a9ea8
