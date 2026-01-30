@@ -27,7 +27,7 @@ Create the drag-and-drop interface for reordering lists.
 - [x] Task: Ensure "Edit Popup" is hidden in the `AllApps` view context (pass context/flag to the sheet entries). 92ac212
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
-## Phase 4: Integration & Polish
+## Phase 4: Integration & Polish [checkpoint: bc3edec]
 Wire everything together and ensure recursive nesting works.
 
 - [x] Task: Implement the "Edit Popup" logic: If no custom tag exists, create one from current system shortcuts before opening the editor. e5467ca
