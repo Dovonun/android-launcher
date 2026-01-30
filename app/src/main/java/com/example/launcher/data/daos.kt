@@ -11,6 +11,9 @@ interface TagDao {
     @Update
     suspend fun update(tag: TagEntity)
 
+    @Delete
+    suspend fun delete(tag: TagEntity)
+
     @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
     suspend fun getByName(name: String): TagEntity?
 

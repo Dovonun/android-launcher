@@ -176,6 +176,10 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         tagItemDao.updateOrder(tagId, entities)
     }
 
+    suspend fun deleteTag(tagId: Long) {
+        tagDao.delete(TagEntity(id = tagId, name = ""))
+    }
+
     suspend fun getOrCreatePopupTag(item: TagItemEntity): Long {
         if (item.type == TagItemType.TAG) return item.targetTagId ?: 0L
 
@@ -268,7 +272,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         onNavigate(View.ManageTag(TAG.FAV, "Favorites"))
                     })
                     if (!isAllApps && item is TagItemEntity) {
-                        add(SheetRow("Edit Popup") {
+                        add(SheetRow("Edit Tag") {
                             viewModelScope.launch {
                                 val tagId = getOrCreatePopupTag(item)
                                 onNavigate(View.ManageTag(tagId, item.labelOverride ?: resolved.label.toString()))
@@ -306,7 +310,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         onNavigate(View.ManageTag(TAG.FAV, "Favorites"))
                     })
                     if (!isAllApps && item is TagItemEntity) {
-                        add(SheetRow("Edit Popup") {
+                        add(SheetRow("Edit Tag") {
                             viewModelScope.launch {
                                 val tagId = getOrCreatePopupTag(item)
                                 onNavigate(View.ManageTag(tagId, item.labelOverride ?: resolved.shortLabel.toString()))
@@ -323,12 +327,17 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 buildList {
                     // Tag is always a popup in this context
                     if (!isAllApps && item is TagItemEntity) {
-                        add(SheetRow("Edit Popup") {
+                        add(SheetRow("Edit Tag") {
                             onNavigate(View.ManageTag(resolved.id, item.labelOverride ?: "Folder"))
                         })
-                        add(SheetRow("Remove") {
-                            // Deleting the TagItemEntity from the parent list
+                        add(SheetRow("Edit Favorites") {
+                            onNavigate(View.ManageTag(TAG.FAV, "Favorites"))
+                        })
+                        add(SheetRow("Remove from Favorites") {
                             viewModelScope.launch { tagItemDao.delete(item) }
+                        })
+                        add(SheetRow("Delete Tag") {
+                            viewModelScope.launch { deleteTag(resolved.id) }
                         })
                     }
                 }

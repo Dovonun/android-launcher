@@ -153,8 +153,9 @@ class MainActivity : ComponentActivity() {
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
                         when (val v = view) {
-                            is View.Favorites -> Column(
+                            is View.Favorites -> LazyColumn(
                                 verticalArrangement = Arrangement.Bottom,
+                                reverseLayout = true,
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .padding(start = H_PAD2.dp)
@@ -166,7 +167,7 @@ class MainActivity : ComponentActivity() {
                                                 if (dragAmount > 60f) systemVM.expandNotificationShade()
                                             })
                                     }) {
-                                favorites.forEach { fav ->
+                                items(favorites) { fav ->
                                     IconRow(
                                         fav, appsVM, viewVM, snackbarHostState
                                     )
@@ -221,7 +222,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        if (view is View.AllApps) {
+                        if (view !is View.ManageTag) {
                             LetterBar(
                                 allApps,
                                 viewVM,

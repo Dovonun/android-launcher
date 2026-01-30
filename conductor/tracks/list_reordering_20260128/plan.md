@@ -34,4 +34,6 @@ Wire everything together and ensure recursive nesting works.
 - [x] Task: Update the Bottom Sheet entries ("Edit Favorites", "Edit Popup") to use the new navigation. f4653a3
 - [x] Task: Final verification of the "Index 0 at bottom" layout and recursive swipe-to-open logic. 97bfd09
 - [x] Task: Fix ManageTag layout (use reverseLayout=true), hide LetterBar in non-AllApps views, and implement sheetEntries for Tag items. c258e27
+- [~] Task: Restore LetterBar in Favorites, update Favorites view to be bottom-up (LazyColumn), and refine Tag sheet entries (Edit Tag, Remove from Favorites, Delete Tag).
+- [ ] Task: Update `TagItemEntity` with a second Foreign Key for `targetTagId` with CASCADE delete.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)

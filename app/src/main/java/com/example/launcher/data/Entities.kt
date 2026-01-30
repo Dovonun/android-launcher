@@ -2,6 +2,7 @@ package com.example.launcher.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "tags")
@@ -16,12 +17,21 @@ enum class TagItemType {
 @Entity(
     tableName = "tag_items",
     primaryKeys = ["tagId", "itemOrder"],
-    foreignKeys = [ForeignKey(
-        entity = TagEntity::class,
-        parentColumns = ["id"],
-        childColumns = ["tagId"],
-        onDelete = ForeignKey.CASCADE
-    )]
+    indices = [Index("targetTagId")],
+    foreignKeys = [
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["targetTagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
 )
 data class TagItemEntity(
     val tagId: Long,
