@@ -10,7 +10,7 @@ Consolidate the current tagging entities into a single, ordered `TagItemEntity` 
 - [x] Task: Create a migration utility in `AppsVM` to move existing Favorite/Pinned data to the new `TagItemEntity` structure. a8834b7 [Note: Switched to destructive migration 119f040]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
-## Phase 2: ViewModel & Logic Updates
+## Phase 2: ViewModel & Logic Updates [checkpoint: cd5a34d]
 Update `AppsVM` to handle the new unified list resolution and index 0 "Representative" logic.
 
 - [x] Task: Update `AppsVM.uiList` to fetch from `TagItemEntity` and sort such that `order = 0` is the "Representative". 016ae64
