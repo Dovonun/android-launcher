@@ -134,8 +134,8 @@ class AppsVMTest {
         assertEquals(1, result.size)
         // Should inherit name and icon from the child app at index 0
         assertEquals("Child App", result[0].label)
-        // item should still be the Tag object so we can swipe it to open popup
-        assertEquals(childTagId, (result[0].item as Tag).id)
+        // item should now be the TagItemEntity itself
+        assertEquals(childTagId, (result[0].item as TagItemEntity).targetTagId)
     }
 
     @Test
@@ -168,5 +168,35 @@ class AppsVMTest {
         // Should only contain the item at index 1
         assertEquals(1, result.size)
         assertEquals("Popup Item", result[0].label)
+    }
+
+        @Test
+
+        fun updateOrder_delegatesToDao() = runTest {
+
+            val tagId = 1L
+
+            every { tagItemDao.getItemsForTag(tagId) } returns flowOf(emptyList())
+
+            val vm = AppsVM(app)
+
+            testScheduler.advanceUntilIdle()
+
+            
+
+            val entities = listOf(
+
+    
+            TagItemEntity(tagId, 0, TagItemType.APP, "pkg.a"),
+            TagItemEntity(tagId, 1, TagItemType.APP, "pkg.b")
+        )
+        val items = entities.map { UiRow("label", null, it) }
+        
+        coEvery { tagItemDao.updateOrder(tagId, entities) } returns Unit
+        
+        vm.updateOrder(tagId, items)
+        
+        // verify called
+        io.mockk.coVerify { tagItemDao.updateOrder(tagId, entities) }
     }
 }

@@ -127,7 +127,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         UiRow(
                             item.labelOverride ?: app.label.toString(),
                             app.getIcon(0).toBitmap().asImageBitmap(),
-                            app
+                            item // Pass the entity so we can reorder it later
                         )
                     }
                 }
@@ -138,7 +138,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                             item.labelOverride ?: shortcut.shortLabel.toString(),
                             launcherApps.getShortcutIconDrawable(shortcut, 0)?.toBitmap()
                                 ?.asImageBitmap(),
-                            shortcut
+                            item // Pass the entity
                         )
                     }
                 }
@@ -150,7 +150,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         UiRow(
                             item.labelOverride ?: representative?.label ?: "Empty Folder",
                             representative?.icon,
-                            Tag(targetId)
+                            item // Pass the entity
                         )
                     }
                 }
@@ -160,75 +160,104 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         else combine(flows) { it.filterNotNull().toList() }
     }
 
-    fun launch(item: Any) = when (val i = item) {
-        is App -> launcherApps.startMainActivity(i.componentName, user, null, null)
-        is Shortcut -> launcherApps.startShortcut(i.`package`, i.id, null, null, user)
-        else -> error("Unreachable")
-    }
-
-    suspend fun popupEntries(item: Any): List<UiRow> = when (item) {
-        is Tag -> uiList(item.id).first().drop(1)
-        is Shortcut -> emptyList()
-        is App -> {
-            val pkg = item.componentName.packageName
-            val cache = cachedShortcuts.value
-            val shortcuts = cache.getOrElse(pkg) {
-                launcherApps.getShortcuts(
-                    ShortcutQuery().apply {
-                        setPackage(pkg)
-                        setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
-                    }, user
-                ).orEmpty()
+    fun launch(item: Any) {
+        viewModelScope.launch {
+            val resolved = if (item is TagItemEntity) resolveItem(item) else item
+            when (val i = resolved) {
+                is App -> launcherApps.startMainActivity(i.componentName, user, null, null)
+                is Shortcut -> launcherApps.startShortcut(i.`package`, i.id, null, null, user)
+                is Tag -> { /* handled by UI swipe */ }
             }
-            shortcutsToRows(shortcuts)
         }
-
-        else -> error("Unreachable")
     }
 
-    suspend fun sheetEntries(item: Any): List<SheetRow> = when (item) {
-        is App -> {
-            /*val favPkgs = taggedAppDao.getPackagesForTag(TAG.FAV).first()
-            val dbTag = TaggedAppEntity(item.componentName.packageName, TAG.FAV)
-            val isFav = dbTag.packageName in favPkgs
-            val favText = if (isFav) "Remove from favorites" else "Add to favorites"
-            val dbAction = if (isFav) taggedAppDao::delete else taggedAppDao::insert*/
-            buildList {
-                /*add(
-                    SheetRow(favText) { viewModelScope.launch { dbAction(dbTag) } })*/
-                add(SheetRow("Open Settings") {
-                    launcherApps.startAppDetailsActivity(item.componentName, user, null, null)
-                })
-                add(SheetRow("Uninstall") {
-                    val context = getApplication<Application>()
-                    context.startActivity(Intent(Intent.ACTION_DELETE).apply {
-                        data = "package:${item.componentName.packageName}".toUri()
+    suspend fun updateOrder(tagId: Long, items: List<UiRow>) {
+        val entities = items.mapNotNull { it.item as? TagItemEntity }
+        tagItemDao.updateOrder(tagId, entities)
+    }
+
+    suspend fun resolveItem(item: TagItemEntity): Any? = when (item.type) {
+        TagItemType.APP -> apps.value.find { it.componentName.packageName == item.packageName }
+        TagItemType.SHORTCUT -> cachedShortcuts.value[item.packageName]?.find { it.id == item.shortcutId }
+        TagItemType.TAG -> Tag(item.targetTagId ?: 0L)
+    }
+
+    suspend fun popupEntries(item: Any): List<UiRow> {
+        val resolved = if (item is TagItemEntity) resolveItem(item) else item
+        return when (resolved) {
+            is Tag -> uiList(resolved.id).first().drop(1)
+            is Shortcut -> emptyList()
+            is App -> {
+                val pkg = resolved.componentName.packageName
+                val cache = cachedShortcuts.value
+                val shortcuts = cache.getOrElse(pkg) {
+                    launcherApps.getShortcuts(
+                        ShortcutQuery().apply {
+                            setPackage(pkg)
+                            setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
+                        }, user
+                    ).orEmpty()
+                }
+                shortcutsToRows(shortcuts)
+            }
+
+            else -> emptyList()
+        }
+    }
+
+    suspend fun sheetEntries(item: Any): List<SheetRow> {
+        val resolved = if (item is TagItemEntity) resolveItem(item) else item
+        return when (resolved) {
+            is App -> {
+                val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+                val isFav = favs.any { it.type == TagItemType.APP && it.packageName == resolved.componentName.packageName }
+                val favText = if (isFav) "Remove from favorites" else "Add to favorites"
+                
+                buildList {
+                    add(SheetRow(favText) { 
+                        viewModelScope.launch { 
+                            if (isFav) {
+                                favs.find { it.type == TagItemType.APP && it.packageName == resolved.componentName.packageName }?.let { tagItemDao.delete(it) }
+                            } else {
+                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.APP, resolved.componentName.packageName))
+                            }
+                        } 
                     })
-                })
+                    add(SheetRow("Open Settings") {
+                        launcherApps.startAppDetailsActivity(resolved.componentName, user, null, null)
+                    })
+                    add(SheetRow("Uninstall") {
+                        val context = getApplication<Application>()
+                        context.startActivity(Intent(Intent.ACTION_DELETE).apply {
+                            data = "package:${resolved.componentName.packageName}".toUri()
+                        })
+                    })
+                }
             }
-        }
 
-        is Shortcut -> {
-            /*val favs = taggedShortcutDao.getShortcutsForTag(TAG.FAV).first()
-            val itemTag = TaggedShortcutEntity(
-                item.`package`,
-                item.id,
-                TAG.FAV,
-                item.shortLabel?.toString() ?: "Favorite"
-            )
-            val isFav = favs.any { it.packageName == item.`package` && it.shortcutId == item.id }
-            val favText = if (isFav) "Remove from favorites" else "Add to favorites"
-            val dbAction = if (isFav) taggedShortcutDao::delete else taggedShortcutDao::insert*/
-            buildList {
-                /*add(SheetRow(favText) { viewModelScope.launch { dbAction(itemTag) } })*/
-                add(SheetRow("Open Settings") {
-                    launcherApps.startAppDetailsActivity(item.activity, user, null, null)
-                })
-                // TODO: add remove for Pinned Shortcuts
+            is Shortcut -> {
+                val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+                val isFav = favs.any { it.type == TagItemType.SHORTCUT && it.packageName == resolved.`package` && it.shortcutId == resolved.id }
+                val favText = if (isFav) "Remove from favorites" else "Add to favorites"
+                
+                buildList {
+                    add(SheetRow(favText) { 
+                        viewModelScope.launch { 
+                            if (isFav) {
+                                favs.find { it.type == TagItemType.SHORTCUT && it.packageName == resolved.`package` && it.shortcutId == resolved.id }?.let { tagItemDao.delete(it) }
+                            } else {
+                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.SHORTCUT, resolved.`package`, resolved.id, labelOverride = resolved.shortLabel?.toString()))
+                            }
+                        } 
+                    })
+                    add(SheetRow("Open Settings") {
+                        launcherApps.startAppDetailsActivity(resolved.activity, user, null, null)
+                    })
+                }
             }
-        }
 
-        else -> error("unreachable")
+            else -> emptyList()
+        }
     }
 
     private fun appsToRows(list: List<LauncherActivityInfo>) = list.map {
