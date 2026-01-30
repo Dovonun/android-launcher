@@ -6,7 +6,7 @@ This plan implements universal list reordering and custom recursive popups using
 Consolidate the current tagging entities into a single, ordered `TagItemEntity` and update DAOs.
 
 - [x] Task: Create `TagItemEntity` and update `AppDatabase` schema (replace `TaggedAppEntity` and `TaggedShortcutEntity`). f0a9ea8
-- [~] Task: Update `TagDao` and implement `TagItemDao` with atomic ordering logic (single transaction for reorders).
+- [x] Task: Update `TagDao` and implement `TagItemDao` with atomic ordering logic (single transaction for reorders). f49090e
 - [ ] Task: Create a migration utility in `AppsVM` to move existing Favorite/Pinned data to the new `TagItemEntity` structure.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
