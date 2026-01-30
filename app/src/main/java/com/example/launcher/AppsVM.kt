@@ -167,7 +167,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun popupEntries(item: Any): List<UiRow> = when (item) {
-        is Tag -> uiList(item.id).first()
+        is Tag -> uiList(item.id).first().drop(1)
         is Shortcut -> emptyList()
         is App -> {
             val pkg = item.componentName.packageName

@@ -137,4 +137,36 @@ class AppsVMTest {
         // item should still be the Tag object so we can swipe it to open popup
         assertEquals(childTagId, (result[0].item as Tag).id)
     }
+
+    @Test
+    fun popupEntries_excludesRepresentative() = runTest {
+        val tagId = 1L
+        // Tag has 2 items
+        val items = listOf(
+            TagItemEntity(tagId, 0, TagItemType.APP, "pkg.representative"),
+            TagItemEntity(tagId, 1, TagItemType.APP, "pkg.popup")
+        )
+        every { tagItemDao.getItemsForTag(tagId) } returns flowOf(items)
+        
+        val appRep = mockk<LauncherActivityInfo> {
+            every { componentName.packageName } returns "pkg.representative"
+            every { label } returns "Rep"
+            every { getIcon(0) } returns mockk(relaxed = true)
+        }
+        val appPopup = mockk<LauncherActivityInfo> {
+            every { componentName.packageName } returns "pkg.popup"
+            every { label } returns "Popup Item"
+            every { getIcon(0) } returns mockk(relaxed = true)
+        }
+        every { launcherApps.getActivityList(null, any()) } returns listOf(appRep, appPopup)
+
+        val vm = AppsVM(app)
+        testScheduler.advanceUntilIdle()
+
+        val result = vm.popupEntries(Tag(tagId))
+        
+        // Should only contain the item at index 1
+        assertEquals(1, result.size)
+        assertEquals("Popup Item", result[0].label)
+    }
 }
