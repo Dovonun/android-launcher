@@ -3,11 +3,13 @@ package com.example.launcher
 import android.app.Application
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.os.UserHandle
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import com.example.launcher.data.AppDatabase
 import com.example.launcher.data.TagDao
+import com.example.launcher.data.TagEntity
 import com.example.launcher.data.TagItemDao
 import com.example.launcher.data.TagItemEntity
 import com.example.launcher.data.TagItemType
@@ -34,6 +36,7 @@ class AppsVMTest {
     private val app: NiLauncher = mockk(relaxed = true)
     private val db: AppDatabase = mockk()
     private val tagItemDao: TagItemDao = mockk()
+    private val tagDao: TagDao = mockk(relaxed = true)
     private val launcherApps: LauncherApps = mockk()
     private val testDispatcher = StandardTestDispatcher()
 
@@ -49,18 +52,18 @@ class AppsVMTest {
 
         every { android.os.Process.myUserHandle() } returns mockk()
 
-        val tagDao: TagDao = mockk(relaxed = true)
         every { app.database } returns db
         every { db.tagDao() } returns tagDao
+        every { db.tagItemDao() } returns tagItemDao
+        
         every { tagDao.getAll() } returns emptyList()
         coEvery { tagDao.insert(any()) } returns 0L
         
-        every { db.tagItemDao() } returns tagItemDao
         every { app.getSystemService(LauncherApps::class.java) } returns launcherApps
         every { launcherApps.registerCallback(any()) } returns Unit
         every { launcherApps.getActivityList(null, any()) } returns emptyList()
         every { tagItemDao.getDistinctPackages() } returns flowOf(emptyList())
-        every { tagItemDao.getItemsForTag(2L) } returns flowOf(emptyList())
+        every { tagItemDao.getItemsForTag(any()) } returns flowOf(emptyList())
     }
 
     @After
@@ -170,23 +173,14 @@ class AppsVMTest {
         assertEquals("Popup Item", result[0].label)
     }
 
-        @Test
-
-        fun updateOrder_delegatesToDao() = runTest {
-
-            val tagId = 1L
-
-            every { tagItemDao.getItemsForTag(tagId) } returns flowOf(emptyList())
-
-            val vm = AppsVM(app)
-
-            testScheduler.advanceUntilIdle()
-
-            
-
-            val entities = listOf(
-
-    
+    @Test
+    fun updateOrder_delegatesToDao() = runTest {
+        val tagId = 1L
+        every { tagItemDao.getItemsForTag(tagId) } returns flowOf(emptyList())
+        val vm = AppsVM(app)
+        testScheduler.advanceUntilIdle()
+        
+        val entities = listOf(
             TagItemEntity(tagId, 0, TagItemType.APP, "pkg.a"),
             TagItemEntity(tagId, 1, TagItemType.APP, "pkg.b")
         )
@@ -198,5 +192,42 @@ class AppsVMTest {
         
         // verify called
         io.mockk.coVerify { tagItemDao.updateOrder(tagId, entities) }
+    }
+
+    @Test
+    fun getOrCreatePopupTag_createsNewTagWithShortcuts() = runTest {
+        val parentTagId = 1L
+        val item = TagItemEntity(parentTagId, 0, TagItemType.APP, "pkg.a")
+        
+        coEvery { tagDao.insert(any()) } returns 100L // New tag ID
+        coEvery { tagItemDao.insert(any()) } returns Unit
+        coEvery { tagItemDao.insertAll(any()) } returns Unit
+        
+        // Mock shortcuts for pkg.a
+        val s1 = mockk<ShortcutInfo> {
+            every { id } returns "s1"
+            every { `package` } returns "pkg.a"
+            every { shortLabel } returns "S1"
+        }
+        every { launcherApps.getShortcuts(any(), any()) } returns listOf(s1)
+
+        val vm = AppsVM(app)
+        testScheduler.advanceUntilIdle()
+
+        val resultId = vm.getOrCreatePopupTag(item)
+        
+        assertEquals(100L, resultId)
+        
+        // Verify we replaced the original item in parent tag with a TAG item
+        io.mockk.coVerify { tagItemDao.insert(match { 
+            it.tagId == parentTagId && it.type == TagItemType.TAG && it.targetTagId == 100L 
+        }) }
+        
+        // Verify we added the representative and shortcuts to the new tag
+        io.mockk.coVerify { tagItemDao.insertAll(match { list ->
+            list.size == 2 && 
+            list[0].type == TagItemType.APP && list[0].itemOrder == 0 &&
+            list[1].type == TagItemType.SHORTCUT && list[1].itemOrder == 1
+        }) }
     }
 }

@@ -176,6 +176,43 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         tagItemDao.updateOrder(tagId, entities)
     }
 
+    suspend fun getOrCreatePopupTag(item: TagItemEntity): Long {
+        if (item.type == TagItemType.TAG) return item.targetTagId ?: 0L
+
+        // Create a new tag for this item's popup
+        val newTagId = tagDao.insert(TagEntity(name = "Custom Popup"))
+        
+        // 1. Copy the item as the representative (order 0)
+        val representative = item.copy(tagId = newTagId, itemOrder = 0)
+        
+        // 2. Fetch system shortcuts for this app
+        val pkg = item.packageName ?: ""
+        val systemShortcuts = launcherApps.getShortcuts(
+            ShortcutQuery().apply {
+                setPackage(pkg)
+                setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
+            }, user
+        ).orEmpty()
+        
+        val shortcutItems = systemShortcuts.mapIndexed { index, info ->
+            TagItemEntity(
+                tagId = newTagId,
+                itemOrder = index + 1,
+                type = TagItemType.SHORTCUT,
+                packageName = pkg,
+                shortcutId = info.id,
+                labelOverride = info.shortLabel?.toString()
+            )
+        }
+        
+        tagItemDao.insertAll(listOf(representative) + shortcutItems)
+        
+        // 3. Replace the original item in its parent tag with a reference to the new tag
+        tagItemDao.insert(item.copy(type = TagItemType.TAG, targetTagId = newTagId, packageName = null, shortcutId = null))
+        
+        return newTagId
+    }
+
     suspend fun resolveItem(item: TagItemEntity): Any? = when (item.type) {
         TagItemType.APP -> apps.value.find { it.componentName.packageName == item.packageName }
         TagItemType.SHORTCUT -> cachedShortcuts.value[item.packageName]?.find { it.id == item.shortcutId }
