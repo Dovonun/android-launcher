@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -116,13 +118,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     val favorites = uiList(TAG.FAV).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
 
-    fun uiList(tag: Long): Flow<List<UiRow>> = combine(
-        apps, cachedShortcuts, tagItemDao.getItemsForTag(tag)
-    ) { apps, shortcuts, items ->
-        items.mapNotNull { item ->
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun uiList(tagId: Long): Flow<List<UiRow>> = tagItemDao.getItemsForTag(tagId).flatMapLatest { items ->
+        val flows = items.map { item ->
             when (item.type) {
-                TagItemType.APP -> {
-                    apps.find { it.componentName.packageName == item.packageName }?.let { app ->
+                TagItemType.APP -> apps.map { list ->
+                    list.find { it.componentName.packageName == item.packageName }?.let { app ->
                         UiRow(
                             item.labelOverride ?: app.label.toString(),
                             app.getIcon(0).toBitmap().asImageBitmap(),
@@ -131,7 +132,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                     }
                 }
 
-                TagItemType.SHORTCUT -> {
+                TagItemType.SHORTCUT -> cachedShortcuts.map { shortcuts ->
                     shortcuts[item.packageName]?.find { it.id == item.shortcutId }?.let { shortcut ->
                         UiRow(
                             item.labelOverride ?: shortcut.shortLabel.toString(),
@@ -143,12 +144,20 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
 
                 TagItemType.TAG -> {
-                    // Logic for representative will be added in next task
-                    // For now just show a placeholder or handle basic Tag item
-                    UiRow(item.labelOverride ?: "Folder", null, Tag(item.targetTagId ?: 0L))
+                    val targetId = item.targetTagId ?: 0L
+                    uiList(targetId).map { children ->
+                        val representative = children.firstOrNull()
+                        UiRow(
+                            item.labelOverride ?: representative?.label ?: "Empty Folder",
+                            representative?.icon,
+                            Tag(targetId)
+                        )
+                    }
                 }
             }
         }
+        if (flows.isEmpty()) flowOf(emptyList())
+        else combine(flows) { it.filterNotNull().toList() }
     }
 
     fun launch(item: Any) = when (val i = item) {

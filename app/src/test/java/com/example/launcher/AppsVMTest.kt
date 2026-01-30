@@ -101,4 +101,40 @@ class AppsVMTest {
         assertEquals("App A", result[0].label)
         assertEquals("App B", result[1].label)
     }
+
+    @Test
+    fun uiList_representativeInheritance() = runTest {
+        val parentTagId = 1L
+        val childTagId = 10L
+        
+        // Parent tag has one item which is a TAG type pointing to childTagId
+        val parentItems = listOf(
+            TagItemEntity(parentTagId, 0, TagItemType.TAG, targetTagId = childTagId)
+        )
+        // Child tag has one item which is an APP
+        val childItems = listOf(
+            TagItemEntity(childTagId, 0, TagItemType.APP, "pkg.child")
+        )
+        
+        every { tagItemDao.getItemsForTag(parentTagId) } returns flowOf(parentItems)
+        every { tagItemDao.getItemsForTag(childTagId) } returns flowOf(childItems)
+        
+        val childApp = mockk<LauncherActivityInfo> {
+            every { componentName.packageName } returns "pkg.child"
+            every { label } returns "Child App"
+            every { getIcon(0) } returns mockk(relaxed = true)
+        }
+        every { launcherApps.getActivityList(null, any()) } returns listOf(childApp)
+
+        val vm = AppsVM(app)
+        testScheduler.advanceUntilIdle()
+
+        val result = vm.uiList(parentTagId).first()
+        
+        assertEquals(1, result.size)
+        // Should inherit name and icon from the child app at index 0
+        assertEquals("Child App", result[0].label)
+        // item should still be the Tag object so we can swipe it to open popup
+        assertEquals(childTagId, (result[0].item as Tag).id)
+    }
 }
