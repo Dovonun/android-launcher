@@ -9,6 +9,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: List Reordering & Custom Popups**
+- [x] **Track: List Reordering & Custom Popups**
   *Link: [./tracks/list_reordering_20260128/](./tracks/list_reordering_20260128/)*
 
