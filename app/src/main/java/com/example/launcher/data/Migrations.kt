@@ -11,13 +11,13 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
             """
             CREATE TABLE IF NOT EXISTS `tag_items` (
                 `tagId` INTEGER NOT NULL, 
-                `order` INTEGER NOT NULL, 
+                `itemOrder` INTEGER NOT NULL, 
                 `type` TEXT NOT NULL, 
                 `packageName` TEXT, 
                 `shortcutId` TEXT, 
                 `targetTagId` INTEGER, 
                 `labelOverride` TEXT, 
-                PRIMARY KEY(`tagId`, `order`), 
+                PRIMARY KEY(`tagId`, `itemOrder`), 
                 FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
             )
             """.trimIndent()
@@ -37,7 +37,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
                 
                 val cv = ContentValues().apply {
                     put("tagId", tagId)
-                    put("order", currentOrder)
+                    put("itemOrder", currentOrder)
                     put("type", "APP")
                     put("packageName", pkg)
                 }
@@ -64,7 +64,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 
                 val cv = ContentValues().apply {
                     put("tagId", tagId)
-                    put("order", currentOrder)
+                    put("itemOrder", currentOrder)
                     put("type", "SHORTCUT")
                     put("packageName", pkg)
                     put("shortcutId", sId)

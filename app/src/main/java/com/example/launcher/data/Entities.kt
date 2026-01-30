@@ -15,7 +15,7 @@ enum class TagItemType {
 
 @Entity(
     tableName = "tag_items",
-    primaryKeys = ["tagId", "order"],
+    primaryKeys = ["tagId", "itemOrder"],
     foreignKeys = [ForeignKey(
         entity = TagEntity::class,
         parentColumns = ["id"],
@@ -25,7 +25,7 @@ enum class TagItemType {
 )
 data class TagItemEntity(
     val tagId: Long,
-    val order: Int,
+    val itemOrder: Int,
     val type: TagItemType,
     val packageName: String? = null,
     val shortcutId: String? = null,

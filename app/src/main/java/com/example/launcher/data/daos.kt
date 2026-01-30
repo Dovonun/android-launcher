@@ -41,7 +41,7 @@ interface TagItemDao {
     @Query("DELETE FROM tag_items WHERE tagId = :tagId")
     suspend fun deleteByTagId(tagId: Long)
 
-    @Query("SELECT * FROM tag_items WHERE tagId = :tagId ORDER BY `order` ASC")
+    @Query("SELECT * FROM tag_items WHERE tagId = :tagId ORDER BY `itemOrder` ASC")
     fun getItemsForTag(tagId: Long): Flow<List<TagItemEntity>>
 
     @Query("SELECT DISTINCT packageName FROM tag_items WHERE type = 'APP' OR type = 'SHORTCUT'")
@@ -54,7 +54,7 @@ interface TagItemDao {
         // Actually, since (tagId, order) is the PK, we must be careful.
         deleteByTagId(tagId)
         insertAll(items.mapIndexed { index, item ->
-            item.copy(order = index)
+            item.copy(itemOrder = index)
         })
     }
 }
