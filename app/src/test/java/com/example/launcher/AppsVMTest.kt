@@ -230,4 +230,39 @@ class AppsVMTest {
             list[1].type == TagItemType.SHORTCUT && list[1].itemOrder == 1
         }) }
     }
+
+    @Test
+    fun launch_tag_launchesRepresentative() = runTest {
+        val tagId = 1L
+        // The item passed to launch is typically the TagItemEntity of type TAG
+        val item = TagItemEntity(100L, 0, TagItemType.TAG, targetTagId = tagId)
+        
+        // Tag content: Index 0 is an APP
+        val tagItems = listOf(
+            TagItemEntity(tagId, 0, TagItemType.APP, "pkg.rep")
+        )
+        every { tagItemDao.getItemsForTag(tagId) } returns flowOf(tagItems)
+        
+        val appRep = mockk<LauncherActivityInfo> {
+            every { componentName.packageName } returns "pkg.rep"
+            every { componentName.className } returns "cls.rep"
+            // uiList needs label/icon to filter successfully
+            every { label } returns "Rep App"
+            every { getIcon(0) } returns mockk(relaxed = true)
+        }
+        every { launcherApps.getActivityList(null, any()) } returns listOf(appRep)
+        every { launcherApps.startMainActivity(any(), any(), any(), any()) } returns Unit
+
+        val vm = AppsVM(app)
+        testScheduler.advanceUntilIdle()
+
+        vm.launch(item)
+        testScheduler.advanceUntilIdle()
+
+        val slot = io.mockk.slot<android.content.ComponentName>()
+        io.mockk.verify { 
+            launcherApps.startMainActivity(capture(slot), any(), any(), any()) 
+        }
+        assertEquals("pkg.rep", slot.captured.packageName)
+    }
 }

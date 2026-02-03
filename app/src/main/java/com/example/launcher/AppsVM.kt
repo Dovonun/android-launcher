@@ -166,7 +166,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             when (val i = resolved) {
                 is App -> launcherApps.startMainActivity(i.componentName, user, null, null)
                 is Shortcut -> launcherApps.startShortcut(i.`package`, i.id, null, null, user)
-                is Tag -> { /* handled by UI swipe */ }
+                is Tag -> {
+                    val children = uiList(i.id).first()
+                    children.firstOrNull()?.let { representative ->
+                        launch(representative.item)
+                    }
+                }
             }
         }
     }
