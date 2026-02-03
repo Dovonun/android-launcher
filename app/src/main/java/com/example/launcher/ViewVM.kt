@@ -11,11 +11,12 @@ import kotlinx.coroutines.launch
 sealed interface View {
     data object Favorites : View
     data object AllApps : View
+    data class ManageTag(val tagId: Long, val name: String) : View
 }
 
 sealed interface MenuState {
     data object None : MenuState
-    data class Sheet(val item: Any) : MenuState
+    data class Sheet(val item: Any, val isAllApps: Boolean = false) : MenuState
     data class Popup(val entries: List<UiRow>, val yPos: Float) : MenuState
 }
 

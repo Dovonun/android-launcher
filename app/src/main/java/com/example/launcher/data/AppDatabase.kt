@@ -2,14 +2,15 @@ package com.example.launcher.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 
 @Database(
-    entities = [TagEntity::class, TaggedAppEntity::class, TaggedShortcutEntity::class],
-    version = 1
+    entities = [TagEntity::class, TagItemEntity::class],
+    version = 3
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun tagDao(): TagDao
-    abstract fun taggedAppDao(): TaggedAppDao
-    abstract fun taggedShortcutDao(): TaggedShortcutDao
+    abstract fun tagItemDao(): TagItemDao
 }
