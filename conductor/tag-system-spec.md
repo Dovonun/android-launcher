@@ -7,7 +7,6 @@ Tags are the primary organizational unit in the launcher. They allow items (Apps
 
 ### 1. Tag
 - A Tag is a named collection of items.
-- It is fully abstracted from the UI (no "folder" icons by default, unless it's a nested tag).
 - **Representation:** A tag is represented in the UI by its first item (index 0). Launching the tag launches its first item. Swiping the tag opens a popup containing the rest of the items (index 1 and onwards).
 
 ### 2. Items
@@ -18,34 +17,22 @@ A tag can contain:
 
 ### 3. Special Tags
 - **Favorites (ID: 1):** Populates the main view.
-- **Pinned (ID: 2):** Shortcuts created via `pinShortcutRequest`. Shown in the all-apps list (treating PWAs like native apps).
-- **Hidden:** (Reserved for future) Hides tagged elements from the all-apps view.
-
-### 4. Custom Tags (Popup Overrides)
-- Any item in a tag can be "upgraded" to a custom tag.
-- This creates a new Tag, moves the original item to index 0 of that new Tag, and populates the rest with defaults (e.g., system shortcuts for that app).
-- The original reference in the parent tag is replaced by a reference to this new Tag.
+- **Pinned (ID: 2):** Shortcuts created via `pinShortcutRequest`. Shown in the all-apps list.
 
 ## Technical Specification
 
 ### 1. Database Schema
 We use a unified "Tag Item" model. This table acts as a simple mapping of "Slots" in a list.
 
-#### `tags` table
-- `id` (Long, PK)
-- `name` (String)
-
 #### `tag_items` table
 - `tagId` (Long, FK -> tags.id, PK part 1)
 - `itemOrder` (Int, PK part 2)
 - `type` (Enum: APP, SHORTCUT, TAG)
-- `packageName` (String?, nullable)
-- `shortcutId` (String?, nullable)
-- `targetTagId` (Long?, FK -> tags.id, nullable)
+- `packageName`, `shortcutId`, `targetTagId` (Nullable fields for the item reference)
 - `labelOverride` (String?, nullable)
 
 ### 2. In-Memory Graph Architecture
-To ensure zero-latency UI interactions, the entire tag system is loaded into an in-memory graph upon startup or DB change.
+The entire tag system is loaded into an in-memory graph upon startup or DB change to ensure zero-latency UI.
 
 #### Data Structure (`LauncherItem` Sealed Interface)
 ```kotlin
@@ -58,32 +45,27 @@ sealed interface LauncherItem {
     data class Tag(
         val id: Long,
         val name: String,
-        val items: List<LauncherItem>,
-        var representative: LauncherItem?
-    ) : LauncherItem
+        private val getItems: () -> List<LauncherItem>, // Lazy provider
+        val representative: LauncherItem? // Memoized face
+    ) : LauncherItem {
+        val items: List<LauncherItem> by lazy { getItems() }
+    }
+    data class Recursion(...) : LauncherItem // Easter egg for infinite loops
 }
 ```
 
-#### Two-Pass Construction
-1.  **Pass 1 (Graph Building):** 
-    - Load all `tags` and `tag_items`.
-    - Create `Tag` objects for every tag.
-    - Populate `items` for each tag. If an item is a `TAG` type, point to the corresponding `Tag` object instance. This allows for circular references.
-2.  **Pass 2 (Representative Resolution):**
-    - For each `Tag` object, find its "Index 0" representative.
-    - Use a `visited: Set<Long>` to track recursion.
-    - **Logic:**
-        - If `items[0]` is an App/Shortcut, that is the representative.
-        - If `items[0]` is a Tag, recurse into that tag's `items[0]`.
-        - If `items` is empty, representative is `null`.
-        - If a cycle is detected, representative is a special "Recursion Easter Egg" item.
+#### Order Convention (Crucial)
+- **VM/Database Order:** Items are stored and exposed in **Canonical Order** (Index 0 = Representative).
+- **UI Rendering:** All lists (Favorites, Popups, ManageTag) are rendered **Bottom-Up**.
+    - In `MainActivity`: `favorites.asReversed().forEach`.
+    - In `LazyColumn`: `reverseLayout = true`.
+    - Result: Index 0 is always at the bottom of the screen.
 
-### 3. UI Behavior
-- **Empty Tags:** If a user launches/swipes an empty tag, show the tag name and a Toast: "This tag is empty."
-- **Recursion Easter Egg:** If a loop is detected during resolution, display a unique "Infinity" icon.
-- **Context Menus:** Use the graph's parent-child relationships to provide context-aware actions (e.g., "Remove from [Parent Tag Name]").
+### 3. UI Behavior & Context Menus
+- **Additive Sheets:** Context menus are parent-aware. If an item is inside a tag, the menu shows BOTH the container's management options ("Manage [Tag Name]", "Remove from [Tag Name]") and the item's own options ("Open Settings", "Uninstall").
+- **Empty Tags:** Triggers a "This tag is empty" toast on launch.
+- **Recursion:** Loops are detected during resolution. The tag displays an "∞" icon. Launching a recursion loop triggers an "Infinite loop detected!" toast.
 
-### 3. Open Questions & Decisions
-- **Custom Icons/Names:** The `labelOverride` in `tag_items` handles custom names. Custom icons can be added similarly (e.g., `iconUriOverride`).
-- **Tests:** While manual testing is essential, unit tests for the recursive resolution logic are recommended to prevent regressions in complex nested structures.
-- **Minimalism:** `Converters.kt` is kept as necessary boilerplate for Room Enum support.
+### 4. Technical Constants
+- **`TAG.FAV = 1`**: Reserved ID for the favorites list.
+- **`TAG.PINNED = 2`**: Reserved ID for pinned shortcuts.
