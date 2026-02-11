@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -125,18 +126,24 @@ class MainActivity : ComponentActivity() {
                 val listState = rememberLazyListState()
                 val snackbarHostState = remember { SnackbarHostState() }
 
+                LaunchedEffect(Unit) {
+                    appsVM.toast.collect { message ->
+                        snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+                    }
+                }
+
                 val menu by viewVM.menu.collectAsState()
                 when (val state = menu) {
                     is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM, snackbarHostState)
                     is MenuState.Sheet -> ContextSheet(
-                        state, appsVM
+                        state, appsVM, viewVM
                     ) { viewVM.setMenu(MenuState.None) }
 
                     is MenuState.None -> Unit
                 }
                 val allApps by appsVM.uiAllGrouped.collectAsState()
                 val favorites by appsVM.favorites.collectAsState()
-                val view by viewVM.view.collectAsState()
+                val currentView by viewVM.view.collectAsState()
                 Scaffold(
                     containerColor = Color.Transparent,
                     contentColor = Color.Transparent,
@@ -152,24 +159,27 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        when (view) {
-                            is View.Favorites -> Column(
-                                verticalArrangement = Arrangement.Bottom,
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(start = H_PAD2.dp)
-                                    .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                                    .pointerInput(Unit) {
-                                        detectVerticalDragGestures(
-                                            onVerticalDrag = { change, dragAmount ->
-                                                if (change.isConsumed) return@detectVerticalDragGestures
-                                                if (dragAmount > 60f) systemVM.expandNotificationShade()
-                                            })
-                                    }) {
-                                favorites.forEach { fav ->
-                                    IconRow(
-                                        fav, appsVM, viewVM, snackbarHostState
-                                    )
+                        when (val v = currentView) {
+                            is View.Favorites -> {
+                                val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
+                                Column(
+                                    verticalArrangement = Arrangement.Bottom,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(start = H_PAD2.dp)
+                                        .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+                                        .pointerInput(Unit) {
+                                            detectVerticalDragGestures(
+                                                onVerticalDrag = { change, dragAmount ->
+                                                    if (change.isConsumed) return@detectVerticalDragGestures
+                                                    if (dragAmount > 60f) systemVM.expandNotificationShade()
+                                                })
+                                        }) {
+                                    favorites.asReversed().forEach { fav ->
+                                        IconRow(
+                                            fav, appsVM, viewVM, snackbarHostState, parent = favTag
+                                        )
+                                    }
                                 }
                             }
 
@@ -213,13 +223,24 @@ class MainActivity : ComponentActivity() {
                                     item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
                             }
+
+                            is View.ManageTag -> {
+                                ManageTagScreen(
+                                    tagId = v.tagId,
+                                    tagName = v.name,
+                                    appsVM = appsVM,
+                                    viewVM = viewVM
+                                )
+                            }
                         }
-                        LetterBar(
-                            allApps,
-                            viewVM,
-                            listState,
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                        )
+                        if (currentView !is View.ManageTag) {
+                            LetterBar(
+                                allApps,
+                                viewVM,
+                                listState,
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
                     }
                 }
             }
@@ -245,7 +266,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LetterBar(
-    content: Map<Char, List<UiRow>>,
+    content: Map<Char, List<LauncherItem>>,
     viewVM: ViewVM,
     listState: LazyListState,
     modifier: Modifier = Modifier
@@ -338,10 +359,11 @@ fun LetterBar(
 
 @Composable
 fun IconRow(
-    uiRow: UiRow,
+    item: LauncherItem,
     appVM: AppsVM,
     viewVM: ViewVM,
     snackbarHostState: SnackbarHostState,
+    parent: LauncherItem.Tag? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -356,9 +378,9 @@ fun IconRow(
             .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
-                    appVM.launch(uiRow.item)
+                    appVM.launch(item)
                     viewVM.leave()
-                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
+                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(item, parent)) })
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -369,26 +391,43 @@ fun IconRow(
                             fired = true
                             change.consume()
                             scope.launch {
-                                val entries = appVM.popupEntries(uiRow.item)
+                                val entries = appVM.popupEntries(item)
                                 if (entries.isEmpty()) snackbarHostState.showSnackbar(
                                     "Nothing to show for this item",
                                     duration = SnackbarDuration.Short
-                                ) else viewVM.setMenu(MenuState.Popup(entries, n))
+                                ) else {
+                                    // When swiping, the 'parent' for items inside this popup is 'item' (if it's a Tag)
+                                    viewVM.setMenu(MenuState.Popup(entries, n, item as? LauncherItem.Tag))
+                                }
                             }
                         } ?: return@detectHorizontalDragGestures
                     }
                 }
             }) {
-        RowIcon(uiRow.icon)
-        RowLabel(uiRow.label)
+        RowIcon(item)
+        RowLabel(item.label)
     }
 }
 
 @Composable
-fun RowIcon(icon: ImageBitmap?) = if (icon != null) Image(
-    bitmap = icon, modifier = Modifier.size(40.dp), contentDescription = null
-) else {
-    Spacer(modifier = Modifier.size(40.dp))
+fun RowIcon(item: LauncherItem) = when (item) {
+    is LauncherItem.Recursion -> Box(
+        modifier = Modifier.size(40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "∞",
+            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = TextStyle(shadow = Shadow(blurRadius = 8f))
+        )
+    }
+
+    else -> if (item.icon != null) Image(
+        bitmap = item.icon!!, modifier = Modifier.size(40.dp), contentDescription = null
+    ) else {
+        Spacer(modifier = Modifier.size(40.dp))
+    }
 }
 
 @Composable
@@ -540,7 +579,7 @@ fun ShortcutPopup(
                         .fadingEdges()
                 ) {
                     items(entries) { item ->
-                        IconRow(item, appsVM, viewVM, snackbarHostState)
+                        IconRow(item, appsVM, viewVM, snackbarHostState, parent = state.parent)
                     }
                 }
             } else {
@@ -557,23 +596,105 @@ fun ShortcutPopup(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
-fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
+
+fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: () -> Unit) {
+
     val haptic = LocalHapticFeedback.current
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val entries by produceState(initialValue = emptyList(), state.item) {
-        value = appsVM.sheetEntries(state.item)
+
+    val entries by produceState(initialValue = emptyList<SheetItem>(), state.item, state.parent) {
+
+        value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
+
     }
+
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+
     ModalBottomSheet(
+
         onDismissRequest = reset,
+
         sheetState = sheetState,
+
         containerColor = MaterialTheme.colorScheme.surface,
+
         windowInsets = WindowInsets(0.dp)
+
     ) {
-        Column(Modifier.fillMaxWidth()) {
-            entries.forEach { entry -> SheetEntry(entry.label, entry.onTap, reset) }
-            Spacer(Modifier.height(42.dp))
+
+        Column(
+
+            Modifier
+
+                .fillMaxWidth()
+
+                .padding(bottom = 32.dp)) {
+
+            entries.forEach { entry ->
+
+                when (entry) {
+
+                    is SheetItem.Header -> {
+
+                        Row(
+
+                            verticalAlignment = Alignment.CenterVertically,
+
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+
+                        ) {
+
+                            if (entry.icon != null) {
+
+                                Image(
+
+                                    bitmap = entry.icon,
+
+                                    contentDescription = null,
+
+                                    modifier = Modifier.size(32.dp)
+
+                                )
+
+                                Spacer(Modifier.width(12.dp))
+
+                            }
+
+                            Text(
+
+                                text = entry.title,
+
+                                style = MaterialTheme.typography.titleMedium,
+
+                                color = MaterialTheme.colorScheme.primary
+
+                            )
+
+                        }
+
+                    }
+
+                    is SheetItem.Divider -> HorizontalDivider(
+
+                        modifier = Modifier.padding(vertical = 8.dp),
+
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
+                    )
+
+                    is SheetItem.Action -> SheetEntry(entry.label, entry.onTap, reset)
+
+                }
+
+            }
+
         }
+
     }
+
 }
+
+

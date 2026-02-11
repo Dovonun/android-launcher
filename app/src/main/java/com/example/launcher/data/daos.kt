@@ -11,11 +11,17 @@ interface TagDao {
     @Update
     suspend fun update(tag: TagEntity)
 
+    @Delete
+    suspend fun delete(tag: TagEntity)
+
     @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
     suspend fun getByName(name: String): TagEntity?
 
     @Query("SELECT * FROM tags")
     fun getAll(): List<TagEntity>
+
+    @Query("SELECT * FROM tags")
+    fun getAllFlow(): Flow<List<TagEntity>>
 
     // Utility: insert or get existing tag
     suspend fun insertOrGet(name: String): TagEntity {
@@ -28,48 +34,37 @@ interface TagDao {
 }
 
 @Dao
-interface TaggedAppDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(entity: TaggedAppEntity)
+interface TagItemDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(item: TagItemEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<TagItemEntity>)
 
     @Delete
-    suspend fun delete(entity: TaggedAppEntity)
+    suspend fun delete(item: TagItemEntity)
 
-    @Query("SELECT packageName FROM tagged_apps WHERE tagId = :tagId")
-    fun getPackagesForTag(tagId: Long): Flow<List<String>>
+    @Query("DELETE FROM tag_items WHERE tagId = :tagId")
+    suspend fun deleteByTagId(tagId: Long)
 
-    @Query(
-        """
-        SELECT tagged_apps.packageName FROM tagged_apps
-        INNER JOIN tags ON tags.id = tagged_apps.tagId
-        WHERE tags.name = :tagName
-        """
-    )
-    fun getPackagesForTag(tagName: String): Flow<List<String>>
-}
+    @Query("SELECT * FROM tag_items WHERE tagId = :tagId ORDER BY `itemOrder` ASC")
+    fun getItemsForTag(tagId: Long): Flow<List<TagItemEntity>>
 
-@Dao
-interface TaggedShortcutDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(entity: TaggedShortcutEntity)
+    @Query("SELECT * FROM tag_items ORDER BY tagId, itemOrder ASC")
+    fun getAllItemsFlow(): Flow<List<TagItemEntity>>
 
-    @Delete
-    suspend fun delete(entity: TaggedShortcutEntity)
-
-    // Does this work? I use packageName and shortcutId as props to the ShortcutEntity
-    @Query("SELECT packageName, shortcutId FROM tagged_shortcuts WHERE tagId = :tagId")
-    fun getShortcutsForTag(tagId: Long): Flow<List<ShortcutEntity>>
-
-    @Query("SELECT DISTINCT packageName FROM tagged_shortcuts")
+    @Query("SELECT DISTINCT packageName FROM tag_items WHERE type = 'APP' OR type = 'SHORTCUT'")
     fun getDistinctPackages(): Flow<List<String>>
 
-    @Query(
-        """
-        SELECT packageName || ':' || shortcutId FROM tagged_shortcuts
-        INNER JOIN tags ON tags.id = tagged_shortcuts.tagId
-        WHERE tags.name = :tagName
-        """
-    )
-    fun getShortcutsForTag(tagName: String): Flow<List<String>>
+    @Transaction
+    suspend fun updateOrder(tagId: Long, items: List<TagItemEntity>) {
+        // First delete existing items for this tag to avoid unique constraint violations
+        // when reordering if we use the same orders.
+        // Actually, since (tagId, order) is the PK, we must be careful.
+        deleteByTagId(tagId)
+        insertAll(items.mapIndexed { index, item ->
+            item.copy(itemOrder = index)
+        })
+    }
 }
 
