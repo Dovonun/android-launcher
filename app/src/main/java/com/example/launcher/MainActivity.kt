@@ -413,31 +413,15 @@ fun IconRow(
                     }
                 }
             }) {
-        RowIcon(item)
+        RowIcon(item.icon)
         RowLabel(item.label)
     }
 }
 
 @Composable
-// TODO: Fix this
-fun RowIcon(item: LauncherItem, size: androidx.compose.ui.unit.Dp = 40.dp) = when (item) {
-    is LauncherItem.Recursion -> Box(
-        modifier = Modifier.size(size), contentAlignment = Alignment.Center
-    ) {
-        Text(
-            "∞",
-            fontSize = (size.value * 0.6f).sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = TextStyle(shadow = Shadow(blurRadius = 8f))
-        )
-    }
-
-    else -> if (item.icon != null) Image(
-        bitmap = item.icon!!, modifier = Modifier.size(size), contentDescription = null
-    ) else {
-        Spacer(modifier = Modifier.size(size))
-    }
-}
+fun RowIcon(icon: ImageBitmap?, size: androidx.compose.ui.unit.Dp = 40.dp) =
+    if (icon == null) Spacer(modifier = Modifier.size(size))
+    else Image(bitmap = icon, modifier = Modifier.size(size), contentDescription = null)
 
 @Composable
 fun RowLabel(text: String) = Text(
@@ -636,7 +620,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(12.dp) // reduce line height
             ) {
-                RowIcon(representative ?: state.item, size = 32.dp)
+                RowIcon(state.item.icon, size = 32.dp)
                 Text(
                     text = state.item.label,
                     style = MaterialTheme.typography.titleLarge,
