@@ -255,6 +255,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         viewVM.softReset()
     }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -401,7 +402,11 @@ fun IconRow(
                                     duration = SnackbarDuration.Short
                                 ) else {
                                     // When swiping, the 'parent' for items inside this popup is 'item' (if it's a Tag)
-                                    viewVM.setMenu(MenuState.Popup(entries, n, item as? LauncherItem.Tag))
+                                    viewVM.setMenu(
+                                        MenuState.Popup(
+                                            entries, n, item as? LauncherItem.Tag
+                                        )
+                                    )
                                 }
                             }
                         } ?: return@detectHorizontalDragGestures
@@ -416,8 +421,7 @@ fun IconRow(
 @Composable
 fun RowIcon(item: LauncherItem, size: androidx.compose.ui.unit.Dp = 40.dp) = when (item) {
     is LauncherItem.Recursion -> Box(
-        modifier = Modifier.size(size),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.size(size), contentAlignment = Alignment.Center
     ) {
         Text(
             "∞",
@@ -575,8 +579,7 @@ fun ShortcutPopup(
                             x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
                         )
                         .background(
-                            MaterialTheme.colorScheme.secondaryContainer,
-                            MaterialTheme.shapes.large
+                            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
                         .padding(horizontal = H_PAD.dp, vertical = 12.dp)
@@ -589,10 +592,7 @@ fun ShortcutPopup(
             } else {
                 val text = "No shortcuts found for this App"
                 Text(
-                    text = text,
-                    fontSize = 17.sp,
-                    color = Color.Gray,
-                    fontStyle = FontStyle.Italic
+                    text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic
                 )
             }
         }
@@ -604,185 +604,74 @@ fun ShortcutPopup(
 @Composable
 
 fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: () -> Unit) {
-
     val haptic = LocalHapticFeedback.current
-
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    
-
+    // Why do I need sheet entries? Aren't they fixed?
     val entries by produceState(initialValue = emptyList<SheetItem>(), state.item, state.parent) {
-
         value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
-
     }
-
-
-
-
-
-    
-
     val representative = if (state.item is LauncherItem.Tag) state.item.representative else state.item
-
-    val badges by appsVM.getTagsForItem(representative ?: state.item).collectAsState(initial = emptyList())
-
-
-
+    val badges by appsVM.getTagsForItem(representative ?: state.item) .collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
-
-    
-
     ModalBottomSheet(
-
         onDismissRequest = reset,
-
         sheetState = sheetState,
-
         containerColor = MaterialTheme.colorScheme.surface,
-
         windowInsets = WindowInsets(0.dp)
-
     ) {
-
         Column(
-
             Modifier
-
                 .fillMaxWidth()
-
-                .padding(bottom = 32.dp)) {
-
-            
-
-                        // Unified Header
-
-            
-
+                .padding(bottom = 32.dp)
+        ) {
+            // Unified Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                RowIcon(representative ?: state.item, size = 32.dp)
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = if (state.item is LauncherItem.Tag) state.item.name else (representative?.label
+                            ?: state.item.label),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (badges.isNotEmpty()) {
                         Row(
-
-            
-
-                            verticalAlignment = Alignment.CenterVertically,
-
-            
-
-                            modifier = Modifier.padding(16.dp)
-
-            
-
-                        ) {
-
-            
-
-                            RowIcon(representative ?: state.item, size = 32.dp)
-
-            
-
-                            Spacer(Modifier.width(16.dp))
-
-            
-
-                            Column {
-
-            
-
-                                Text(
-
-            
-
-                                    text = if (state.item is LauncherItem.Tag) state.item.name else (representative?.label ?: state.item.label),
-
-            
-
-                                    style = MaterialTheme.typography.titleLarge,
-
-            
-
-                                    color = MaterialTheme.colorScheme.onSurface
-
-            
-
-                                )
-
-            
-
-                                if (badges.isNotEmpty()) {
-
-            
-
-            
-
-                        Row(
-
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-
                             modifier = Modifier.padding(top = 4.dp)
-
                         ) {
-
                             badges.forEach { tag ->
-
                                 SuggestionChip(
-
                                     onClick = { },
-
                                     label = { Text(tag, fontSize = 10.sp) },
-
                                     shape = RoundedCornerShape(8.dp),
-
                                     colors = SuggestionChipDefaults.suggestionChipColors(
-
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant
-
                                     ),
-
                                     border = null,
-
                                     modifier = Modifier.height(20.dp)
-
                                 )
-
                             }
-
                         }
-
                     }
-
                 }
-
             }
-
-
-
             HorizontalDivider(
-
                 modifier = Modifier.padding(bottom = 8.dp),
-
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-
             )
-
-
-
-            // Flat Action List
-
             entries.forEach { entry ->
-
                 if (entry is SheetItem.Action) {
-
                     SheetEntry(entry.label, entry.onTap, reset)
-
                 }
-
                 // We ignore Header/Divider from AppsVM as we use a unified visual style now
-
             }
-
         }
-
     }
-
 }
 
 
