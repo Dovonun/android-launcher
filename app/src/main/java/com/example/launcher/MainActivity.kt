@@ -419,6 +419,7 @@ fun IconRow(
 }
 
 @Composable
+// TODO: Fix this
 fun RowIcon(item: LauncherItem, size: androidx.compose.ui.unit.Dp = 40.dp) = when (item) {
     is LauncherItem.Recursion -> Box(
         modifier = Modifier.size(size), contentAlignment = Alignment.Center
@@ -611,8 +612,13 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
     val entries by produceState(initialValue = emptyList<SheetItem>(), state.item, state.parent) {
         value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
     }
-    val representative = if (state.item is LauncherItem.Tag) state.item.representative else state.item
-    val badges by appsVM.getTagsForItem(representative ?: state.item) .collectAsState(initial = emptyList())
+
+    // This seems stupid
+    val representative =
+        if (state.item is LauncherItem.Tag) state.item.representative else state.item
+
+    val badges by appsVM.getTagsForItem(representative ?: state.item)
+        .collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(
         onDismissRequest = reset,
@@ -623,39 +629,35 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp)
+                .padding(bottom = 24.dp) // reduce bottom padding
         ) {
             // Unified Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(12.dp) // reduce line height
             ) {
                 RowIcon(representative ?: state.item, size = 32.dp)
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(
-                        text = if (state.item is LauncherItem.Tag) state.item.name else (representative?.label
-                            ?: state.item.label),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (badges.isNotEmpty()) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
-                            badges.forEach { tag ->
-                                SuggestionChip(
-                                    onClick = { },
-                                    label = { Text(tag, fontSize = 10.sp) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                    ),
-                                    border = null,
-                                    modifier = Modifier.height(20.dp)
-                                )
-                            }
+                Text(
+                    text = state.item.label,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (badges.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        badges.forEach { tag ->
+                            SuggestionChip(
+                                onClick = { },
+                                label = { Text(tag, fontSize = 10.sp) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                border = null,
+                                modifier = Modifier.height(20.dp)
+                            )
                         }
                     }
                 }
