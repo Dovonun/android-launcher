@@ -46,6 +46,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarData
@@ -605,13 +609,29 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    
+
     val entries by produceState(initialValue = emptyList<SheetItem>(), state.item, state.parent) {
 
         value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
 
     }
 
+
+
+
+
+    
+
+    val representative = if (state.item is LauncherItem.Tag) state.item.representative else state.item
+
+    val badges by appsVM.getTagsForItem(representative ?: state.item).collectAsState(initial = emptyList())
+
+
+
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+
+    
 
     ModalBottomSheet(
 
@@ -633,61 +653,99 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
 
                 .padding(bottom = 32.dp)) {
 
-            entries.forEach { entry ->
+            
 
-                when (entry) {
+            // Unified Header
 
-                    is SheetItem.Header -> {
+            Row(
+
+                verticalAlignment = Alignment.CenterVertically,
+
+                modifier = Modifier.padding(16.dp)
+
+            ) {
+
+                RowIcon(representative ?: state.item)
+
+                Spacer(Modifier.width(16.dp))
+
+                Column {
+
+                    Text(
+
+                        text = representative?.label ?: state.item.label,
+
+                        style = MaterialTheme.typography.titleLarge,
+
+                        color = MaterialTheme.colorScheme.onSurface
+
+                    )
+
+                    if (badges.isNotEmpty()) {
 
                         Row(
 
-                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
 
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                            modifier = Modifier.padding(top = 4.dp)
 
                         ) {
 
-                            if (entry.icon != null) {
+                            badges.forEach { tag ->
 
-                                Image(
+                                SuggestionChip(
 
-                                    bitmap = entry.icon,
+                                    onClick = { },
 
-                                    contentDescription = null,
+                                    label = { Text(tag, fontSize = 10.sp) },
 
-                                    modifier = Modifier.size(32.dp)
+                                    shape = RoundedCornerShape(8.dp),
+
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+
+                                    ),
+
+                                    border = null,
+
+                                    modifier = Modifier.height(20.dp)
 
                                 )
 
-                                Spacer(Modifier.width(12.dp))
-
                             }
-
-                            Text(
-
-                                text = entry.title,
-
-                                style = MaterialTheme.typography.titleMedium,
-
-                                color = MaterialTheme.colorScheme.primary
-
-                            )
 
                         }
 
                     }
 
-                    is SheetItem.Divider -> HorizontalDivider(
+                }
 
-                        modifier = Modifier.padding(vertical = 8.dp),
+            }
 
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 
-                    )
 
-                    is SheetItem.Action -> SheetEntry(entry.label, entry.onTap, reset)
+            HorizontalDivider(
+
+                modifier = Modifier.padding(bottom = 8.dp),
+
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
+            )
+
+
+
+            // Flat Action List
+
+            entries.forEach { entry ->
+
+                if (entry is SheetItem.Action) {
+
+                    SheetEntry(entry.label, entry.onTap, reset)
 
                 }
+
+                // We ignore Header/Divider from AppsVM as we use a unified visual style now
 
             }
 
@@ -696,5 +754,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
     }
 
 }
+
+
 
 

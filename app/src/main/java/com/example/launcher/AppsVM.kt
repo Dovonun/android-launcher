@@ -225,6 +225,20 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     fun getTag(id: Long): Flow<LauncherItem.Tag?> = graph.map { it[id] }
 
+    fun getTagsForItem(item: LauncherItem): Flow<List<String>> = combine(
+        tagDao.getAllFlow(), tagItemDao.getAllItemsFlow()
+    ) { tags, items ->
+        val itemTagIds = items.filter { entity ->
+            when (item) {
+                is LauncherItem.App -> entity.type == TagItemType.APP && entity.packageName == item.info.componentName.packageName
+                is LauncherItem.Shortcut -> entity.type == TagItemType.SHORTCUT && entity.packageName == item.info.`package` && entity.shortcutId == item.info.id
+                is LauncherItem.Tag -> entity.type == TagItemType.TAG && entity.targetTagId == item.id
+                is LauncherItem.Recursion -> false
+            }
+        }.map { it.tagId }.toSet()
+        tags.filter { it.id in itemTagIds }.map { it.name }
+    }
+
     private val _toast = kotlinx.coroutines.flow.MutableSharedFlow<String>()
     val toast: kotlinx.coroutines.flow.SharedFlow<String> = _toast
 
@@ -261,20 +275,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         parent: LauncherItem.Tag? = null,
         onNavigate: (View) -> Unit = {}
     ): List<SheetItem> = buildList {
-        // 1. Tag Section (if the item itself is a tag)
-        if (item is LauncherItem.Tag) {
-            add(SheetItem.Header("Tag - ${item.name}"))
-            add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
-            add(SheetItem.Action("Delete Tag") {
-                viewModelScope.launch { tagDao.delete(TagEntity(item.id, item.name)) }
-            })
-            add(SheetItem.Divider)
-        }
+        val representative = if (item is LauncherItem.Tag) item.representative else item
+        val isTag = item is LauncherItem.Tag
 
-        // 2. Parent Section (where we are currently looking at the item)
+        // 1. Parent Management (Manage the container we are currently in)
         parent?.let { p ->
             val parentLabel = if (p.id == TAG.FAV) "Favorites" else p.name
-            add(SheetItem.Header("In $parentLabel"))
             add(SheetItem.Action("Manage $parentLabel") { onNavigate(View.ManageTag(p.id, p.name)) })
             add(SheetItem.Action("Remove from $parentLabel") {
                 viewModelScope.launch {
@@ -293,43 +299,16 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             add(SheetItem.Divider)
         }
 
-        // 3. Representative Section (The App/Shortcut itself)
-        val representative = if (item is LauncherItem.Tag) item.representative else item
+        // 2. Item-as-Tag Management (Manage the item itself if it is a tag)
+        if (isTag && item is LauncherItem.Tag) {
+            add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
+        }
+
+        // 3. Representative Actions (Settings/Uninstall)
         when (representative) {
             is LauncherItem.App -> {
-                add(SheetItem.Header(representative.label, representative.icon))
-                
-                // Add to Favorites (Global)
-                val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
-                val isGlobalFav = favs.any { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }
-                
-                if (!isGlobalFav) {
-                    add(SheetItem.Action("Add to Favorites") {
-                        viewModelScope.launch {
-                            tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.APP, representative.info.componentName.packageName))
-                        }
-                    })
-                }
-
-                add(SheetItem.Action("Create Tag") {
-                    viewModelScope.launch {
-                        val newTagId = tagDao.insert(TagEntity(name = "${representative.label} Tag"))
-                        val appEntity = TagItemEntity(newTagId, 0, TagItemType.APP, representative.info.componentName.packageName)
-                        val systemShortcuts = cachedShortcuts.value[representative.info.componentName.packageName].orEmpty()
-                        val shortcutEntities = systemShortcuts.mapIndexed { idx, info ->
-                            TagItemEntity(newTagId, idx + 1, TagItemType.SHORTCUT, info.`package`, info.id, labelOverride = info.shortLabel?.toString())
-                        }
-                        tagItemDao.insertAll(listOf(appEntity) + shortcutEntities)
-                        
-                        // Add this new tag to favorites
-                        val favsCount = tagItemDao.getItemsForTag(TAG.FAV).first().size
-                        tagItemDao.insert(TagItemEntity(TAG.FAV, favsCount, TagItemType.TAG, targetTagId = newTagId))
-                        
-                        _toast.emit("Tag created and added to Favorites")
-                    }
-                })
-
-                add(SheetItem.Action("Open Settings") {
+                // Settings and Uninstall always shown for apps
+                add(SheetItem.Action("App Settings") {
                     launcherApps.startAppDetailsActivity(representative.info.componentName, user, null, null)
                 })
                 add(SheetItem.Action("Uninstall") {
@@ -338,36 +317,54 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         data = "package:${representative.info.componentName.packageName}".toUri()
                     }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 })
-            }
-            is LauncherItem.Shortcut -> {
-                add(SheetItem.Header(representative.label, representative.icon))
-                
-                val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
-                val isGlobalFav = favs.any { it.type == TagItemType.SHORTCUT && it.packageName == representative.info.`package` && it.shortcutId == representative.info.id }
-                
-                if (!isGlobalFav) {
-                    add(SheetItem.Action("Add to Favorites") {
+
+                // Fav/Create Tag only if NOT a tag already (prevents nested tag-in-tag creation here)
+                if (!isTag) {
+                    val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+                    val isGlobalFav = favs.any { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }
+                    val favText = if (isGlobalFav) "Remove from Favorites" else "Add to Favorites"
+                    add(SheetItem.Action(favText) {
                         viewModelScope.launch {
-                            tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.SHORTCUT, representative.info.`package`, representative.info.id, labelOverride = representative.label))
+                            if (isGlobalFav) {
+                                favs.find { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }?.let { tagItemDao.delete(it) }
+                            } else {
+                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.APP, representative.info.componentName.packageName))
+                            }
+                        }
+                    })
+
+                    add(SheetItem.Action("Create Tag") {
+                        viewModelScope.launch {
+                            val newTagId = tagDao.insert(TagEntity(name = "${representative.label} Tag"))
+                            val appEntity = TagItemEntity(newTagId, 0, TagItemType.APP, representative.info.componentName.packageName)
+                            val systemShortcuts = cachedShortcuts.value[representative.info.componentName.packageName].orEmpty()
+                            val shortcutEntities = systemShortcuts.mapIndexed { idx, info ->
+                                TagItemEntity(newTagId, idx + 1, TagItemType.SHORTCUT, info.`package`, info.id, labelOverride = info.shortLabel?.toString())
+                            }
+                            tagItemDao.insertAll(listOf(appEntity) + shortcutEntities)
+                            val favsCount = tagItemDao.getItemsForTag(TAG.FAV).first().size
+                            tagItemDao.insert(TagItemEntity(TAG.FAV, favsCount, TagItemType.TAG, targetTagId = newTagId))
+                            _toast.emit("Tag created and added to Favorites")
                         }
                     })
                 }
-
-                add(SheetItem.Action("Create Tag") {
-                    viewModelScope.launch {
-                        val newTagId = tagDao.insert(TagEntity(name = "${representative.label} Tag"))
-                        val shortcutEntity = TagItemEntity(newTagId, 0, TagItemType.SHORTCUT, representative.info.`package`, representative.info.id, labelOverride = representative.label)
-                        tagItemDao.insert(shortcutEntity)
-                        
-                        // Add this new tag to favorites
-                        val favsCount = tagItemDao.getItemsForTag(TAG.FAV).first().size
-                        tagItemDao.insert(TagItemEntity(TAG.FAV, favsCount, TagItemType.TAG, targetTagId = newTagId))
-                        
-                        _toast.emit("Tag created and added to Favorites")
-                    }
-                })
-
-                add(SheetItem.Action("Open Settings") {
+            }
+            is LauncherItem.Shortcut -> {
+                if (!isTag) {
+                    val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+                    val isGlobalFav = favs.any { it.type == TagItemType.SHORTCUT && it.packageName == representative.info.`package` && it.shortcutId == representative.info.id }
+                    val favText = if (isGlobalFav) "Remove from Favorites" else "Add to Favorites"
+                    add(SheetItem.Action(favText) {
+                        viewModelScope.launch {
+                            if (isGlobalFav) {
+                                favs.find { it.type == TagItemType.SHORTCUT && it.packageName == representative.info.`package` && it.shortcutId == representative.info.id }?.let { tagItemDao.delete(it) }
+                            } else {
+                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.SHORTCUT, representative.info.`package`, representative.info.id, labelOverride = representative.label))
+                            }
+                        }
+                    })
+                }
+                add(SheetItem.Action("App Settings") {
                     launcherApps.startAppDetailsActivity(representative.info.activity, user, null, null)
                 })
             }
