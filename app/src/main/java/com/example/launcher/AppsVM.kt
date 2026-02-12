@@ -278,10 +278,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         val representative = if (item is LauncherItem.Tag) item.representative else item
         val isTag = item is LauncherItem.Tag
 
-        // 1. Parent Management (Manage the container we are currently in)
+        // 1. Contextual Container Actions (The Top Section)
         parent?.let { p ->
             val parentLabel = if (p.id == TAG.FAV) "Favorites" else p.name
-            add(SheetItem.Action("Manage $parentLabel") { onNavigate(View.ManageTag(p.id, p.name)) })
+            
+            // A. Remove from Parent
             add(SheetItem.Action("Remove from $parentLabel") {
                 viewModelScope.launch {
                     val allItems = tagItemDao.getAllItemsFlow().first().filter { it.tagId == p.id }
@@ -296,43 +297,26 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                     toDelete?.let { tagItemDao.delete(it) }
                 }
             })
-            add(SheetItem.Divider)
+
+            // B. Manage Item (if it's a Tag)
+            if (isTag && item is LauncherItem.Tag) {
+                add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
+            }
+
+            // C. Manage Parent
+            add(SheetItem.Action("Manage $parentLabel") { onNavigate(View.ManageTag(p.id, p.name)) })
+        } ?: run {
+            // Case for All Apps (no parent)
+            if (isTag && item is LauncherItem.Tag) {
+                add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
+            }
         }
 
-        // 2. Item-as-Tag Management (Manage the item itself if it is a tag)
-        if (isTag && item is LauncherItem.Tag) {
-            add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
-        }
-
-        // 3. Representative Actions (Settings/Uninstall)
+        // 2. Representative-Specific Actions (Settings, Favorites Toggle, Create Tag)
         when (representative) {
             is LauncherItem.App -> {
-                // Settings and Uninstall always shown for apps
-                add(SheetItem.Action("App Settings") {
-                    launcherApps.startAppDetailsActivity(representative.info.componentName, user, null, null)
-                })
-                add(SheetItem.Action("Uninstall") {
-                    val context = getApplication<Application>()
-                    context.startActivity(Intent(Intent.ACTION_DELETE).apply {
-                        data = "package:${representative.info.componentName.packageName}".toUri()
-                    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                })
-
-                // Fav/Create Tag only if NOT a tag already (prevents nested tag-in-tag creation here)
+                // Create Tag (only for raw items)
                 if (!isTag) {
-                    val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
-                    val isGlobalFav = favs.any { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }
-                    val favText = if (isGlobalFav) "Remove from Favorites" else "Add to Favorites"
-                    add(SheetItem.Action(favText) {
-                        viewModelScope.launch {
-                            if (isGlobalFav) {
-                                favs.find { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }?.let { tagItemDao.delete(it) }
-                            } else {
-                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.APP, representative.info.componentName.packageName))
-                            }
-                        }
-                    })
-
                     add(SheetItem.Action("Create Tag") {
                         viewModelScope.launch {
                             val newTagId = tagDao.insert(TagEntity(name = "${representative.label} Tag"))
@@ -347,7 +331,32 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                             _toast.emit("Tag created and added to Favorites")
                         }
                     })
+
+                    // Global Favorite Toggle (only for raw items)
+                    val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+                    val isGlobalFav = favs.any { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }
+                    val favText = if (isGlobalFav) "Remove from Favorites" else "Add to Favorites"
+                    add(SheetItem.Action(favText) {
+                        viewModelScope.launch {
+                            if (isGlobalFav) {
+                                favs.find { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }?.let { tagItemDao.delete(it) }
+                            } else {
+                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.APP, representative.info.componentName.packageName))
+                            }
+                        }
+                    })
                 }
+
+                // System Actions (Always at the bottom)
+                add(SheetItem.Action("App Settings") {
+                    launcherApps.startAppDetailsActivity(representative.info.componentName, user, null, null)
+                })
+                add(SheetItem.Action("Uninstall") {
+                    val context = getApplication<Application>()
+                    context.startActivity(Intent(Intent.ACTION_DELETE).apply {
+                        data = "package:${representative.info.componentName.packageName}".toUri()
+                    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                })
             }
             is LauncherItem.Shortcut -> {
                 if (!isTag) {

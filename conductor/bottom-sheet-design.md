@@ -21,27 +21,27 @@ The bottom sheet is the primary context-sensitive menu for the launcher. It shou
 - **Representative**: The App/Shortcut resolved from the item (if the item is a Tag).
 - **Parent**: The container the user was looking at when they opened the menu (e.g., Favorites or a Tag popup).
 
-### Rules for Actions
+### Rules for Actions (Ordered)
 
-#### Container Management (if Parent exists)
-- **Manage [Parent]**: Opens the Tag Editor for the parent.
-- **Remove from [Parent]**: Removes the *Item* from the parent container.
-
-#### Item Management
-- **Manage [Item]**: (If item is a Tag) Opens the Tag Editor for the item.
-- **App Settings / Uninstall**: (If representative is an App) Always shown.
-- **Add to/Remove from Favorites**: (Global toggle) Shown only if the item is NOT currently a Tag representative.
-- **Create Tag**: (If representative is an App) Shown only if the item is NOT a Tag representative.
+1.  **Remove from [Parent]**: Removes the *Item* from the parent container. (Shown only if Parent exists).
+2.  **Manage [Item]**: Opens the Tag Editor for the item (Shown only if item is a Tag).
+3.  **Manage [Parent]**: Opens the Tag Editor for the parent. (Shown only if Parent exists).
+4.  **Add to / Remove from Favorites**: Global toggle for the *representative*.
+    - **HIDDEN** if the item is a Tag (to prevent duplicate removal options and keep focus on the container).
+5.  **Create Tag**: Creates a new Tag pre-filled with the app and its shortcuts.
+    - **HIDDEN** if the item is a Tag.
+6.  **App Settings**: (If representative is an App/Shortcut) Always shown.
+7.  **Uninstall**: (If representative is an App) Always shown.
 
 ## Decision Tree Matrix
 
-| Context | Item Type | Actions |
+| Context | Item Type | Actions (In Order) |
 | :--- | :--- | :--- |
-| All Apps | App | Add/Remove Fav, Create Tag, App Settings, Uninstall |
+| All Apps | App | Add/Remove Fav (Global), Create Tag, App Settings, Uninstall |
 | Favorites | App | Remove from Favorites, Manage Favorites, Create Tag, App Settings, Uninstall |
-| Favorites | Tag | Remove Tag from Favorites, Manage Favorites, Manage Tag, App Settings (Rep), Uninstall (Rep) |
+| Favorites | Tag | Remove from Favorites, Manage [Tag], Manage Favorites, App Settings (Rep), Uninstall (Rep) |
 | Popup (Tag A) | App | Remove from Tag A, Manage Tag A, App Settings, Uninstall |
-| Popup (Tag A) | Shortcut | Add to Fav (Shortcut), Remove from Tag A, Manage Tag A |
+| Popup (Tag A) | Shortcut | Remove from Tag A, Manage Tag A, App Settings (Rep) |
 
 ## Implementation Details
 - `AppsVM` will provide a `getTagsForItem(item)` helper to resolve badges.

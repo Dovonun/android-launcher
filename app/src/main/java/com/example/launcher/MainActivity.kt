@@ -414,23 +414,23 @@ fun IconRow(
 }
 
 @Composable
-fun RowIcon(item: LauncherItem) = when (item) {
+fun RowIcon(item: LauncherItem, size: androidx.compose.ui.unit.Dp = 40.dp) = when (item) {
     is LauncherItem.Recursion -> Box(
-        modifier = Modifier.size(40.dp),
+        modifier = Modifier.size(size),
         contentAlignment = Alignment.Center
     ) {
         Text(
             "∞",
-            fontSize = 24.sp,
+            fontSize = (size.value * 0.6f).sp,
             color = MaterialTheme.colorScheme.onSurface,
             style = TextStyle(shadow = Shadow(blurRadius = 8f))
         )
     }
 
     else -> if (item.icon != null) Image(
-        bitmap = item.icon!!, modifier = Modifier.size(40.dp), contentDescription = null
+        bitmap = item.icon!!, modifier = Modifier.size(size), contentDescription = null
     ) else {
-        Spacer(modifier = Modifier.size(40.dp))
+        Spacer(modifier = Modifier.size(size))
     }
 }
 
@@ -655,33 +655,63 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
 
             
 
-            // Unified Header
+                        // Unified Header
 
-            Row(
+            
 
-                verticalAlignment = Alignment.CenterVertically,
+                        Row(
 
-                modifier = Modifier.padding(16.dp)
+            
 
-            ) {
+                            verticalAlignment = Alignment.CenterVertically,
 
-                RowIcon(representative ?: state.item)
+            
 
-                Spacer(Modifier.width(16.dp))
+                            modifier = Modifier.padding(16.dp)
 
-                Column {
+            
 
-                    Text(
+                        ) {
 
-                        text = representative?.label ?: state.item.label,
+            
 
-                        style = MaterialTheme.typography.titleLarge,
+                            RowIcon(representative ?: state.item, size = 32.dp)
 
-                        color = MaterialTheme.colorScheme.onSurface
+            
 
-                    )
+                            Spacer(Modifier.width(16.dp))
 
-                    if (badges.isNotEmpty()) {
+            
+
+                            Column {
+
+            
+
+                                Text(
+
+            
+
+                                    text = if (state.item is LauncherItem.Tag) state.item.name else (representative?.label ?: state.item.label),
+
+            
+
+                                    style = MaterialTheme.typography.titleLarge,
+
+            
+
+                                    color = MaterialTheme.colorScheme.onSurface
+
+            
+
+                                )
+
+            
+
+                                if (badges.isNotEmpty()) {
+
+            
+
+            
 
                         Row(
 

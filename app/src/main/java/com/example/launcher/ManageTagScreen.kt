@@ -24,6 +24,7 @@ fun ManageTagScreen(
 ) {
     val tag by appsVM.getTag(tagId).collectAsState(initial = null)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Column(
@@ -43,43 +44,52 @@ fun ManageTagScreen(
             tag?.let { t ->
                 val items = t.items
                 LazyColumn(
-                    modifier = Modifier.weight(1f, fill = false), // Take remaining space but only if needed
+                    modifier = Modifier.weight(1f, fill = false),
                     contentPadding = PaddingValues(bottom = 100.dp),
                     reverseLayout = true,
                     verticalArrangement = Arrangement.Bottom
                 ) {
                     itemsIndexed(items) { index, item ->
-                        ListItem(
-                            headlineContent = { Text(item.label) },
-                            leadingContent = { RowIcon(item) },
-                            trailingContent = {
-                                Row {
-                                    IconButton(
-                                        enabled = index < items.size - 1,
-                                        onClick = {
-                                            val newList = items.toMutableList()
-                                            val moving = newList.removeAt(index)
-                                            newList.add(index + 1, moving)
-                                            scope.launch { appsVM.updateOrder(tagId, newList) }
-                                        }
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                IconRow(
+                                    item = item,
+                                    appVM = appsVM,
+                                    viewVM = viewVM,
+                                    snackbarHostState = snackbarHostState,
+                                    parent = t
+                                )
+                            }
+                            
+                            Row {
+                                IconButton(
+                                    enabled = index < items.size - 1,
+                                    onClick = {
+                                        val newList = items.toMutableList()
+                                        val moving = newList.removeAt(index)
+                                        newList.add(index + 1, moving)
+                                        scope.launch { appsVM.updateOrder(tagId, newList) }
                                     }
-                                    IconButton(
-                                        enabled = index > 0,
-                                        onClick = {
-                                            val newList = items.toMutableList()
-                                            val moving = newList.removeAt(index)
-                                            newList.add(index - 1, moving)
-                                            scope.launch { appsVM.updateOrder(tagId, newList) }
-                                        }
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down")
-                                    }
+                                ) {
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up")
                                 }
-                            },
-                            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-                        )
+                                IconButton(
+                                    enabled = index > 0,
+                                    onClick = {
+                                        val newList = items.toMutableList()
+                                        val moving = newList.removeAt(index)
+                                        newList.add(index - 1, moving)
+                                        scope.launch { appsVM.updateOrder(tagId, newList) }
+                                    }
+                                ) {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down")
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             } ?: Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
