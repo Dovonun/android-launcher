@@ -611,25 +611,28 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         windowInsets = WindowInsets(0.dp)
     ) {
         Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp) // reduce bottom padding
+            Modifier.fillMaxWidth().padding(bottom = H_PAD.dp)
         ) {
             // Unified Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(12.dp) // reduce line height
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp, start = 24.dp)
             ) {
                 RowIcon(state.item.icon, size = 32.dp)
                 Text(
                     text = state.item.label,
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .padding(start = H_PAD.dp)
+                        .weight(1f)
                 )
                 if (badges.isNotEmpty()) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
                         badges.forEach { tag ->
                             SuggestionChip(
