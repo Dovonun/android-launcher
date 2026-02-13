@@ -105,6 +105,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 const val H_PAD = 16
@@ -593,15 +594,17 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Why do I need sheet entries? Aren't they fixed?
+    val isTag = state.item is LauncherItem.Tag
     val entries by produceState(initialValue = emptyList<SheetItem>(), state.item, state.parent) {
         value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
     }
 
-    // This seems stupid
-    val representative =
-        if (state.item is LauncherItem.Tag) state.item.representative else state.item
+    // This now gets the tags for the representative item and does therefore not show that it is a tag
+    // It should show that this is currently a tag
 
-    val badges by appsVM.getTagsForItem(representative ?: state.item)
+    // I we show the name but that seems to be the name of the rep
+    // We have the id - does that help?
+    val badges by appsVM.getTagsForItem(state.item)
         .collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(
@@ -611,24 +614,44 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         windowInsets = WindowInsets(0.dp)
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(bottom = H_PAD.dp)
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = H_PAD.dp)
         ) {
-            // Unified Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp, start = 24.dp)
             ) {
-                RowIcon(state.item.icon, size = 32.dp)
-                Text(
-                    text = state.item.label,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .padding(start = H_PAD.dp)
-                        .weight(1f)
-                )
+                if (state.item is LauncherItem.Tag) {
+                    Text(
+                        text = "Tag:",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .padding(start = H_PAD.dp)
+                            .weight(1f)
+                    )
+                    Text(
+                        text = state.item.id.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .padding(start = H_PAD.dp)
+                            .weight(1f)
+                    )
+                } else {
+                    RowIcon(state.item.icon, size = 32.dp)
+                    Text(
+                        text = state.item.label,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .padding(start = H_PAD.dp)
+                            .weight(1f)
+                    )
+                }
                 if (badges.isNotEmpty()) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -658,6 +681,38 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
                     SheetEntry(entry.label, entry.onTap, reset)
                 }
                 // We ignore Header/Divider from AppsVM as we use a unified visual style now
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(bottom = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            if (state.parent == null) {
+//               appsVM.getTag(1L) make this sync
+
+                // I need a tag function
+                SheetEntry("Add to Favorites", {}, reset)
+            } else {
+                // not sure if the label here is correct | I think it is the rep label
+                SheetEntry("Remove from ${state.parent.label} - parent", {}, reset)
+                SheetEntry("Manage ${state.parent.label} - parent", {}, reset)
+            }
+
+            if (isTag) {
+                SheetEntry("Manage ${state.item.id}", {}, reset)
+            } else {
+                SheetEntry("Create Tag", {}, reset)
+            }
+
+            // Parent is Brave for normal app Brave. Why?
+            var item = state.item
+            while (item is LauncherItem.Tag) {
+                // This should not be nullable
+                item = item.representative!!
+            }
+            if (item is LauncherItem.App) {
+                SheetEntry("App Settings", {}, reset)
+                SheetEntry("Uninstall", {}, reset)
             }
         }
     }
