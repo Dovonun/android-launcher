@@ -1,0 +1,8 @@
+{
+  "track_id": "list_reordering_20260128",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-28T00:00:00Z",
+  "updated_at": "2026-01-28T00:00:00Z",
+  "description": "Add manual reordering for Favorites and custom Popups with a unified database schema."
+}

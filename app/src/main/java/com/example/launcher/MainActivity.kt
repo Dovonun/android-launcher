@@ -129,13 +129,13 @@ class MainActivity : ComponentActivity() {
                 when (val state = menu) {
                     is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM, snackbarHostState)
                     is MenuState.Sheet -> ContextSheet(
-                        state, appsVM
-                    ) { viewVM.setMenu(MenuState.None) }
+                        state, appsVM, { viewVM.setMenu(MenuState.None) }, { viewVM.setView(it) }
+                    )
 
                     is MenuState.None -> Unit
                 }
-                val allApps by appsVM.uiAllGrouped.collectAsState()
-                val favorites by appsVM.favorites.collectAsState()
+                val allApps by appsVM.uiAllGrouped.collectAsState(emptyMap())
+                val favorites by appsVM.favorites.collectAsState(emptyList())
                 val view by viewVM.view.collectAsState()
                 Scaffold(
                     containerColor = Color.Transparent,
@@ -152,9 +152,10 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        when (view) {
-                            is View.Favorites -> Column(
+                        when (val v = view) {
+                            is View.Favorites -> LazyColumn(
                                 verticalArrangement = Arrangement.Bottom,
+                                reverseLayout = true,
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .padding(start = H_PAD2.dp)
@@ -166,12 +167,19 @@ class MainActivity : ComponentActivity() {
                                                 if (dragAmount > 60f) systemVM.expandNotificationShade()
                                             })
                                     }) {
-                                favorites.forEach { fav ->
+                                items(favorites) { fav ->
                                     IconRow(
                                         fav, appsVM, viewVM, snackbarHostState
                                     )
                                 }
                             }
+
+                            is View.ManageTag -> ManageTagScreen(
+                                v.tagId,
+                                v.name,
+                                appsVM,
+                                viewVM
+                            )
 
                             is View.AllApps -> LazyColumn(
                                 modifier = Modifier.padding(start = H_PAD2.dp),
@@ -181,7 +189,7 @@ class MainActivity : ComponentActivity() {
                                     bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                                 )
                             ) {
-                                appsVM.uiAllGrouped.value.forEach { (letter, list) ->
+                                allApps.forEach { (letter, list) ->
                                     item {
                                         Box(
                                             modifier = Modifier
@@ -207,19 +215,21 @@ class MainActivity : ComponentActivity() {
                                     }
                                     itemsIndexed(
                                         items = list,
-                                        key = { index, item -> "$letter-${item.label}-$index" }) { index, it ->
+                                        key = { index: Int, item: UiRow -> "$letter-${item.label}-$index" }) { index: Int, it: UiRow ->
                                         IconRow(it, appsVM, viewVM, snackbarHostState)
                                     }
                                     item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
                             }
                         }
-                        LetterBar(
-                            allApps,
-                            viewVM,
-                            listState,
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                        )
+                        if (view !is View.ManageTag) {
+                            LetterBar(
+                                allApps,
+                                viewVM,
+                                listState,
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
                     }
                 }
             }
@@ -347,6 +357,7 @@ fun IconRow(
     val scope = rememberCoroutineScope()
     var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
+    val view by viewVM.view.collectAsState()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
@@ -358,7 +369,7 @@ fun IconRow(
                 detectTapGestures(onTap = {
                     appVM.launch(uiRow.item)
                     viewVM.leave()
-                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
+                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item, view is View.AllApps)) })
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -558,11 +569,11 @@ fun ShortcutPopup(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
+fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit, onNavigate: (View) -> Unit) {
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val entries by produceState(initialValue = emptyList(), state.item) {
-        value = appsVM.sheetEntries(state.item)
+        value = appsVM.sheetEntries(state.item, state.isAllApps, onNavigate)
     }
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(

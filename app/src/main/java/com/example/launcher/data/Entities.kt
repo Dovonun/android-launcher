@@ -2,6 +2,7 @@ package com.example.launcher.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "tags")
@@ -9,32 +10,39 @@ data class TagEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String
 )
 
-@Entity(
-    tableName = "tagged_apps", primaryKeys = ["packageName", "tagId"], foreignKeys = [ForeignKey(
-        entity = TagEntity::class,
-        parentColumns = ["id"],
-        childColumns = ["tagId"],
-        onDelete = ForeignKey.CASCADE
-    )]
-)
-data class TaggedAppEntity(
-    val packageName: String, val tagId: Long
-)
+enum class TagItemType {
+    APP, SHORTCUT, TAG
+}
 
 @Entity(
-    tableName = "tagged_shortcuts",
-    primaryKeys = ["packageName", "shortcutId", "tagId"],
-    foreignKeys = [ForeignKey(
-        entity = TagEntity::class,
-        parentColumns = ["id"],
-        childColumns = ["tagId"],
-        onDelete = ForeignKey.CASCADE
-    )]
+    tableName = "tag_items",
+    primaryKeys = ["tagId", "itemOrder"],
+    indices = [Index("targetTagId")],
+    foreignKeys = [
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["targetTagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
 )
-data class TaggedShortcutEntity(
-    val packageName: String, val shortcutId: String, val tagId: Long, val label: String
+data class TagItemEntity(
+    val tagId: Long,
+    val itemOrder: Int,
+    val type: TagItemType,
+    val packageName: String? = null,
+    val shortcutId: String? = null,
+    val targetTagId: Long? = null,
+    val labelOverride: String? = null
 )
 
 // Test if this works - written by me
-@Entity(tableName = "tagged_shortcuts", primaryKeys = ["packageName", "shortcutId"])
+@Entity(tableName = "shortcuts", primaryKeys = ["packageName", "shortcutId"])
 data class ShortcutEntity(val packageName: String, val shortcutId: String)

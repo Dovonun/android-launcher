@@ -11,6 +11,7 @@ class NiLauncher : Application() {
             AppDatabase::class.java,
             "launcher.db"
         )
+            .fallbackToDestructiveMigration()
             .build()
     }
 }
