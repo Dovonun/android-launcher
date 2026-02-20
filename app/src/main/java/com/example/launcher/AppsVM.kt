@@ -270,6 +270,17 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun openAppSettings(item: LauncherActivityInfo) {
+        launcherApps.startAppDetailsActivity(item.componentName, user, null, null)
+    }
+
+    fun uninstallApp(item: LauncherActivityInfo) {
+        val context = getApplication<Application>()
+        context.startActivity(Intent(Intent.ACTION_DELETE).apply {
+            data = "package:${item.componentName.packageName}".toUri()
+        }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     suspend fun sheetEntries(
         item: LauncherItem,
         parent: LauncherItem.Tag? = null,

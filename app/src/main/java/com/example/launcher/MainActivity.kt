@@ -3,6 +3,7 @@ package com.example.launcher
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
@@ -375,6 +376,7 @@ fun IconRow(
     val scope = rememberCoroutineScope()
     var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
+    Log.d("IconRow", "Parent: $parent")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
@@ -590,6 +592,7 @@ fun ShortcutPopup(
 @Composable
 
 fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: () -> Unit) {
+    Log.d("ContextSheet", "Parent: ${state.parent}")
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -691,11 +694,14 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
 //               appsVM.getTag(1L) make this sync
 
                 // I need a tag function
-                SheetEntry("Add to Favorites", {}, reset)
+                SheetEntry("Add to Favorites", {
+
+                }, reset)
             } else {
                 // not sure if the label here is correct | I think it is the rep label
-                SheetEntry("Remove from ${state.parent.label} - parent", {}, reset)
-                SheetEntry("Manage ${state.parent.label} - parent", {}, reset)
+                // The tag label is the rep label. I need to add the tag name...
+                SheetEntry("Remove from ${state.parent.id} - parent", {}, reset)
+                SheetEntry("Manage ${state.parent.id} - parent", {}, reset)
             }
 
             if (isTag) {
@@ -705,15 +711,15 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
             }
 
             // Parent is Brave for normal app Brave. Why?
+            // Ohh, because Brave is the name of Favorites because it takes the name of the rep
             var item = state.item
             while (item is LauncherItem.Tag) {
                 // This should not be nullable
                 item = item.representative!!
             }
             if (item is LauncherItem.App) {
-                SheetEntry("App Settings", {}, reset)
-                SheetEntry("Uninstall", {}, reset)
-            }
+                SheetEntry("App Settings", { appsVM.openAppSettings(item.info) }, reset)
+                SheetEntry("Uninstall", { appsVM.uninstallApp(item.info) }, reset) }
         }
     }
 }
