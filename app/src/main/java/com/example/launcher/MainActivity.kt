@@ -3,7 +3,6 @@ package com.example.launcher
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
@@ -49,8 +48,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarData
@@ -106,7 +103,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 const val H_PAD = 16
@@ -376,7 +372,6 @@ fun IconRow(
     val scope = rememberCoroutineScope()
     var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
-    Log.d("IconRow", "Parent: $parent")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
@@ -592,23 +587,12 @@ fun ShortcutPopup(
 @Composable
 
 fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: () -> Unit) {
-    Log.d("ContextSheet", "Parent: ${state.parent}")
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    // Why do I need sheet entries? Aren't they fixed?
-    val isTag = state.item is LauncherItem.Tag
-    val entries by produceState(initialValue = emptyList<SheetItem>(), state.item, state.parent) {
+    val entries by produceState(initialValue = emptyList<SheetAction>(), state.item, state.parent) {
         value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
     }
-
-    // This now gets the tags for the representative item and does therefore not show that it is a tag
-    // It should show that this is currently a tag
-
-    // I we show the name but that seems to be the name of the rep
-    // We have the id - does that help?
-    val badges by appsVM.getTagsForItem(state.item)
-        .collectAsState(initial = emptyList())
+    val badges by appsVM.getTagsForItem(state.item).collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(
         onDismissRequest = reset,
@@ -627,34 +611,16 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
                     .fillMaxWidth()
                     .padding(bottom = 24.dp, start = 24.dp)
             ) {
-                if (state.item is LauncherItem.Tag) {
-                    Text(
-                        text = "Tag:",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(start = H_PAD.dp)
-                            .weight(1f)
-                    )
-                    Text(
-                        text = state.item.id.toString(),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(start = H_PAD.dp)
-                            .weight(1f)
-                    )
-                } else {
-                    RowIcon(state.item.icon, size = 32.dp)
-                    Text(
-                        text = state.item.label,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(start = H_PAD.dp)
-                            .weight(1f)
-                    )
-                }
+                val title = if (state.item is LauncherItem.Tag) state.item.name else state.item.label
+                if (state.item !is LauncherItem.Tag) RowIcon(state.item.icon, size = 32.dp)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .padding(start = H_PAD.dp)
+                        .weight(1f)
+                )
                 if (badges.isNotEmpty()) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -680,50 +646,10 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
             entries.forEach { entry ->
-                if (entry is SheetItem.Action) {
-                    SheetEntry(entry.label, entry.onTap, reset)
-                }
-                // We ignore Header/Divider from AppsVM as we use a unified visual style now
+                SheetEntry(entry.label, entry.onTap, reset)
             }
-            HorizontalDivider(
-                modifier = Modifier.padding(bottom = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
-
-            if (state.parent == null) {
-//               appsVM.getTag(1L) make this sync
-
-                // I need a tag function
-                SheetEntry("Add to Favorites", {
-
-                }, reset)
-            } else {
-                // not sure if the label here is correct | I think it is the rep label
-                // The tag label is the rep label. I need to add the tag name...
-                SheetEntry("Remove from ${state.parent.id} - parent", {}, reset)
-                SheetEntry("Manage ${state.parent.id} - parent", {}, reset)
-            }
-
-            if (isTag) {
-                SheetEntry("Manage ${state.item.id}", {}, reset)
-            } else {
-                SheetEntry("Create Tag", {}, reset)
-            }
-
-            // Parent is Brave for normal app Brave. Why?
-            // Ohh, because Brave is the name of Favorites because it takes the name of the rep
-            var item = state.item
-            while (item is LauncherItem.Tag) {
-                // This should not be nullable
-                item = item.representative!!
-            }
-            if (item is LauncherItem.App) {
-                SheetEntry("App Settings", { appsVM.openAppSettings(item.info) }, reset)
-                SheetEntry("Uninstall", { appsVM.uninstallApp(item.info) }, reset) }
         }
     }
 }
-
-
 
 

@@ -1,49 +1,70 @@
 # Bottom Sheet Redesign Specification
 
 ## Overview
-The bottom sheet is the primary context-sensitive menu for the launcher. It should provide a clean, unified interface for managing items (Apps, Shortcuts, Tags) and their containers.
+The bottom sheet is the primary context-sensitive menu for the launcher. It provides one flat list of actions for Apps, Shortcuts, and Tags.
 
 ## Visual Design
 
 ### 1. Header
-- **Icon**: Large icon of the representative item.
-- **Label**: Name of the representative item (or the Tag name if it's a placeholder).
-- **Tag Badges**: Small badges displayed next to/behind the name, representing all tags that contain this specific App or Shortcut (Global lookup).
+- **Tag item**:
+  - **Icon**: None.
+  - **Label**: Tag name (`tag.name`).
+  - **Tag Badges**: Tags that contain this Tag item.
+- **Non-tag item**:
+  - **Icon**: Item icon.
+  - **Label**: Item label.
+  - **Tag Badges**: Tags that contain this item.
 
 ### 2. Action List
-- A single, flat list of actions (no sub-sections).
-- Dividers may be used sparingly if it improves clarity, but the goal is a cohesive list.
+- A single flat list of actions.
+- No header/divider entries are emitted by the decision engine.
 
 ## Action Logic (Parent-Aware)
 
 ### Context Definitions
-- **Item**: The object the user long-pressed (could be an App, Shortcut, or Tag).
-- **Representative**: The App/Shortcut resolved from the item (if the item is a Tag).
-- **Parent**: The container the user was looking at when they opened the menu (e.g., Favorites or a Tag popup).
+- **Item**: The object the user long-pressed (App, Shortcut, or Tag).
+- **Parent**: The container the user was viewing when they opened the sheet (Favorites or a Tag popup).
+- **Terminal item**: Resolved non-Tag item after walking Tag representatives.
 
-### Rules for Actions (Ordered)
+### Decision Tree (Ordered)
+1. **Has parent?**
+- **No**: check membership in Favorites and show exactly one:
+  - `Add to Favorites` when item is not in Favorites
+  - `Remove from Favorites` when item is already in Favorites
+- **Yes**: show `Remove from <Parent>`, `Manage <Parent>`
 
-1.  **Remove from [Parent]**: Removes the *Item* from the parent container. (Shown only if Parent exists).
-2.  **Manage [Item]**: Opens the Tag Editor for the item (Shown only if item is a Tag).
-3.  **Manage [Parent]**: Opens the Tag Editor for the parent. (Shown only if Parent exists).
-4.  **Add to / Remove from Favorites**: Global toggle for the *representative*.
-    - **HIDDEN** if the item is a Tag (to prevent duplicate removal options and keep focus on the container).
-5.  **Create Tag**: Creates a new Tag pre-filled with the app and its shortcuts.
-    - **HIDDEN** if the item is a Tag.
-6.  **App Settings**: (If representative is an App/Shortcut) Always shown.
-7.  **Uninstall**: (If representative is an App) Always shown.
+2. **Is item a Tag?**
+- **Yes**: show `Manage <Tag>`
+- **No**: show `Create Tag`
 
-## Decision Tree Matrix
+3. **Is terminal item an App?**
+- **Yes**: show `App Settings`, `Uninstall`
+- **No**: show no app-level system actions
 
-| Context | Item Type | Actions (In Order) |
-| :--- | :--- | :--- |
-| All Apps | App | Add/Remove Fav (Global), Create Tag, App Settings, Uninstall |
-| Favorites | App | Remove from Favorites, Manage Favorites, Create Tag, App Settings, Uninstall |
-| Favorites | Tag | Remove from Favorites, Manage [Tag], Manage Favorites, App Settings (Rep), Uninstall (Rep) |
-| Popup (Tag A) | App | Remove from Tag A, Manage Tag A, App Settings, Uninstall |
-| Popup (Tag A) | Shortcut | Remove from Tag A, Manage Tag A, App Settings (Rep) |
+### Canonical Flow (ASCII)
+```text
+has parent?
+├─ no  -> Add/Remove Favorites (membership toggle)
+└─ yes -> Remove from <Parent>, Manage <Parent>
+
+is tag?
+├─ no  -> Create Tag
+└─ yes -> Manage <Tag>
+
+terminal item is app?
+├─ yes -> App Settings, Uninstall
+└─ no  -> (none)
+```
+
+## Placeholder Behavior
+- Tag representatives are never null.
+- Placeholder representatives are used for:
+  - Empty tag
+  - Recursive tag reference
+  - Missing/dangling reference
+- Placeholder terminals do not get app-level system actions.
 
 ## Implementation Details
-- `AppsVM` will provide a `getTagsForItem(item)` helper to resolve badges.
-- `MenuState.Sheet` carries the `(item, parent)` context.
-- `sheetEntries` follows the flat list pattern with context-relative removal logic.
+- `AppsVM` provides `getTagsForItem(item)` for badges.
+- `MenuState.Sheet` carries `(item, parent)` context.
+- `sheetEntries` in `AppsVM` is the single source of action decisions.

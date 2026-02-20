@@ -53,24 +53,24 @@ sealed interface LauncherItem {
         val id: Long,
         val name: String,
         private val getItems: () -> List<LauncherItem>,
-        val representative: LauncherItem?
+        val representative: LauncherItem
     ) : LauncherItem {
         val items: List<LauncherItem> by lazy { getItems() }
-        override val label: String get() = representative?.label ?: name
-        override val icon: ImageBitmap? get() = representative?.icon
+        // Tag rows intentionally mirror the representative for list UX.
+        override val label: String get() = representative.label
+        override val icon: ImageBitmap? get() = representative.icon
     }
 
-    data class Recursion(
-        override val label: String = "Recursive Loop",
+    data class Placeholder(
+        val kind: PlaceholderKind,
+        override val label: String,
         override val icon: ImageBitmap? = null
     ) : LauncherItem
 }
 
-sealed interface SheetItem {
-    data class Header(val title: String, val icon: ImageBitmap? = null) : SheetItem
-    data object Divider : SheetItem
-    data class Action(val label: String, val onTap: () -> Unit) : SheetItem
-}
+enum class PlaceholderKind { EMPTY_TAG, RECURSION, MISSING_REFERENCE }
+
+data class SheetAction(val label: String, val onTap: () -> Unit)
 
 typealias App = LauncherActivityInfo
 typealias Shortcut = ShortcutInfo
@@ -158,28 +158,36 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
 
         // --- Layer 2: Memoized Structural Resolution ---
-        val repCache = mutableMapOf<Long, LauncherItem?>()
+        val repCache = mutableMapOf<Long, LauncherItem>()
 
-        fun getRepresentative(tagId: Long, visited: Set<Long>): LauncherItem? {
-            // 1. Cycle Detection
-            if (tagId in visited) return LauncherItem.Recursion()
+        fun getRepresentative(tagId: Long, visited: Set<Long>): LauncherItem {
+            if (tagId in visited) {
+                return LauncherItem.Placeholder(PlaceholderKind.RECURSION, "Recursion")
+            }
 
-            // 2. Check if we've already computed this tag in this pass
             repCache[tagId]?.let { return it }
 
-            // 3. Find the first item
-            val firstItem = itemsByTag[tagId]?.firstOrNull() ?: return null
+            val firstItem = itemsByTag[tagId]?.firstOrNull()
+                ?: return LauncherItem.Placeholder(PlaceholderKind.EMPTY_TAG, "Empty tag")
 
-            // 4. Resolve it
             val result = when (firstItem.type) {
-                TagItemType.APP, TagItemType.SHORTCUT -> resolveEntity(firstItem)
-                TagItemType.TAG -> firstItem.targetTagId?.let { targetId ->
-                    getRepresentative(targetId, visited + tagId)
+                TagItemType.APP, TagItemType.SHORTCUT -> {
+                    resolveEntity(firstItem)
+                        ?: LauncherItem.Placeholder(PlaceholderKind.MISSING_REFERENCE, "Missing item")
+                }
+                TagItemType.TAG -> {
+                    val targetId = firstItem.targetTagId
+                    if (targetId == null) {
+                        LauncherItem.Placeholder(PlaceholderKind.MISSING_REFERENCE, "Missing item")
+                    } else {
+                        getRepresentative(targetId, visited + tagId)
+                    }
                 }
             }
 
-            // 5. Store and return
-            if (result !is LauncherItem.Recursion) repCache[tagId] = result
+            if (result !is LauncherItem.Placeholder || result.kind != PlaceholderKind.RECURSION) {
+                repCache[tagId] = result
+            }
             return result
         }
 
@@ -233,7 +241,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 is LauncherItem.App -> entity.type == TagItemType.APP && entity.packageName == item.info.componentName.packageName
                 is LauncherItem.Shortcut -> entity.type == TagItemType.SHORTCUT && entity.packageName == item.info.`package` && entity.shortcutId == item.info.id
                 is LauncherItem.Tag -> entity.type == TagItemType.TAG && entity.targetTagId == item.id
-                is LauncherItem.Recursion -> false
+                is LauncherItem.Placeholder -> false
             }
         }.map { it.tagId }.toSet()
         tags.filter { it.id in itemTagIds }.map { it.name }
@@ -254,7 +262,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         launch(item.items[0])
                     }
                 }
-                is LauncherItem.Recursion -> _toast.emit("Infinite loop detected!")
+                is LauncherItem.Placeholder -> _toast.emit(item.label)
             }
         }
     }
@@ -262,7 +270,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     suspend fun popupEntries(item: LauncherItem): List<LauncherItem> = when (item) {
         is LauncherItem.Tag -> item.items.drop(1)
         is LauncherItem.Shortcut -> emptyList()
-        is LauncherItem.Recursion -> emptyList()
+        is LauncherItem.Placeholder -> emptyList()
         is LauncherItem.App -> {
             val pkg = item.info.componentName.packageName
             val shortcuts = cachedShortcuts.value[pkg] ?: emptyList()
@@ -285,111 +293,173 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         item: LauncherItem,
         parent: LauncherItem.Tag? = null,
         onNavigate: (View) -> Unit = {}
-    ): List<SheetItem> = buildList {
-        val representative = if (item is LauncherItem.Tag) item.representative else item
-        val isTag = item is LauncherItem.Tag
-
-        // 1. Contextual Container Actions (The Top Section)
-        parent?.let { p ->
-            val parentLabel = if (p.id == TAG.FAV) "Favorites" else p.name
-            
-            // A. Remove from Parent
-            add(SheetItem.Action("Remove from $parentLabel") {
+    ): List<SheetAction> = buildList {
+        if (parent == null) {
+            val inFavorites = isInFavorites(item)
+            val favoriteLabel = if (inFavorites) "Remove from Favorites" else "Add to Favorites"
+            add(SheetAction(favoriteLabel) {
                 viewModelScope.launch {
-                    val allItems = tagItemDao.getAllItemsFlow().first().filter { it.tagId == p.id }
-                    val toDelete = allItems.find { entity ->
-                        when (item) {
-                            is LauncherItem.App -> entity.type == TagItemType.APP && entity.packageName == item.info.componentName.packageName
-                            is LauncherItem.Shortcut -> entity.type == TagItemType.SHORTCUT && entity.packageName == item.info.`package` && entity.shortcutId == item.info.id
-                            is LauncherItem.Tag -> entity.type == TagItemType.TAG && entity.targetTagId == item.id
-                            is LauncherItem.Recursion -> false
-                        }
-                    }
-                    toDelete?.let { tagItemDao.delete(it) }
+                    if (inFavorites) removeItemFromFavorites(item) else addItemToFavorites(item)
                 }
             })
-
-            // B. Manage Item (if it's a Tag)
-            if (isTag && item is LauncherItem.Tag) {
-                add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
-            }
-
-            // C. Manage Parent
-            add(SheetItem.Action("Manage $parentLabel") { onNavigate(View.ManageTag(p.id, p.name)) })
-        } ?: run {
-            // Case for All Apps (no parent)
-            if (isTag && item is LauncherItem.Tag) {
-                add(SheetItem.Action("Manage ${item.name}") { onNavigate(View.ManageTag(item.id, item.name)) })
-            }
+        } else {
+            val parentLabel = if (parent.id == TAG.FAV) "Favorites" else parent.name
+            add(SheetAction("Remove from $parentLabel") {
+                viewModelScope.launch { removeItemFromParent(item, parent.id) }
+            })
+            add(SheetAction("Manage $parentLabel") {
+                onNavigate(View.ManageTag(parent.id, parent.name))
+            })
         }
 
-        // 2. Representative-Specific Actions (Settings, Favorites Toggle, Create Tag)
-        when (representative) {
+        if (item is LauncherItem.Tag) {
+            add(SheetAction("Manage ${item.name}") {
+                onNavigate(View.ManageTag(item.id, item.name))
+            })
+        } else {
+            add(SheetAction("Create Tag") {
+                viewModelScope.launch { createTagFromItem(item) }
+            })
+        }
+
+        val terminal = resolveTerminalItem(item)
+        if (terminal is LauncherItem.App) {
+            add(SheetAction("App Settings") { openAppSettings(terminal.info) })
+            add(SheetAction("Uninstall") { uninstallApp(terminal.info) })
+        }
+    }
+
+    private suspend fun removeItemFromParent(item: LauncherItem, parentId: Long) {
+        val allItems = tagItemDao.getAllItemsFlow().first().filter { it.tagId == parentId }
+        val toDelete = allItems.find { entity ->
+            entityMatchesItem(entity, item)
+        }
+        toDelete?.let { tagItemDao.delete(it) }
+    }
+
+    private suspend fun removeItemFromFavorites(item: LauncherItem) {
+        removeItemFromParent(item, TAG.FAV)
+    }
+
+    private suspend fun isInFavorites(item: LauncherItem): Boolean {
+        val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+        return favs.any { entityMatchesItem(it, item) }
+    }
+
+    private fun entityMatchesItem(entity: TagItemEntity, item: LauncherItem): Boolean = when (item) {
+        is LauncherItem.App -> {
+            entity.type == TagItemType.APP && entity.packageName == item.info.componentName.packageName
+        }
+        is LauncherItem.Shortcut -> {
+            entity.type == TagItemType.SHORTCUT &&
+                entity.packageName == item.info.`package` &&
+                entity.shortcutId == item.info.id
+        }
+        is LauncherItem.Tag -> entity.type == TagItemType.TAG && entity.targetTagId == item.id
+        is LauncherItem.Placeholder -> false
+    }
+
+    private suspend fun nextItemOrderForTag(tagId: Long): Int =
+        tagItemDao.getItemsForTag(tagId).first().maxOfOrNull { it.itemOrder }?.plus(1) ?: 0
+
+    private suspend fun addItemToFavorites(item: LauncherItem) {
+        val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
+        when (item) {
             is LauncherItem.App -> {
-                // Create Tag (only for raw items)
-                if (!isTag) {
-                    add(SheetItem.Action("Create Tag") {
-                        viewModelScope.launch {
-                            val newTagId = tagDao.insert(TagEntity(name = "${representative.label} Tag"))
-                            val appEntity = TagItemEntity(newTagId, 0, TagItemType.APP, representative.info.componentName.packageName)
-                            val systemShortcuts = cachedShortcuts.value[representative.info.componentName.packageName].orEmpty()
-                            val shortcutEntities = systemShortcuts.mapIndexed { idx, info ->
-                                TagItemEntity(newTagId, idx + 1, TagItemType.SHORTCUT, info.`package`, info.id, labelOverride = info.shortLabel?.toString())
-                            }
-                            tagItemDao.insertAll(listOf(appEntity) + shortcutEntities)
-                            val favsCount = tagItemDao.getItemsForTag(TAG.FAV).first().size
-                            tagItemDao.insert(TagItemEntity(TAG.FAV, favsCount, TagItemType.TAG, targetTagId = newTagId))
-                            _toast.emit("Tag created and added to Favorites")
-                        }
-                    })
-
-                    // Global Favorite Toggle (only for raw items)
-                    val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
-                    val isGlobalFav = favs.any { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }
-                    val favText = if (isGlobalFav) "Remove from Favorites" else "Add to Favorites"
-                    add(SheetItem.Action(favText) {
-                        viewModelScope.launch {
-                            if (isGlobalFav) {
-                                favs.find { it.type == TagItemType.APP && it.packageName == representative.info.componentName.packageName }?.let { tagItemDao.delete(it) }
-                            } else {
-                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.APP, representative.info.componentName.packageName))
-                            }
-                        }
-                    })
+                val exists = favs.any {
+                    it.type == TagItemType.APP && it.packageName == item.info.componentName.packageName
                 }
-
-                // System Actions (Always at the bottom)
-                add(SheetItem.Action("App Settings") {
-                    launcherApps.startAppDetailsActivity(representative.info.componentName, user, null, null)
-                })
-                add(SheetItem.Action("Uninstall") {
-                    val context = getApplication<Application>()
-                    context.startActivity(Intent(Intent.ACTION_DELETE).apply {
-                        data = "package:${representative.info.componentName.packageName}".toUri()
-                    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                })
+                if (!exists) {
+                    val nextOrder = nextItemOrderForTag(TAG.FAV)
+                    tagItemDao.insert(
+                        TagItemEntity(
+                            TAG.FAV,
+                            nextOrder,
+                            TagItemType.APP,
+                            item.info.componentName.packageName
+                        )
+                    )
+                }
             }
             is LauncherItem.Shortcut -> {
-                if (!isTag) {
-                    val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
-                    val isGlobalFav = favs.any { it.type == TagItemType.SHORTCUT && it.packageName == representative.info.`package` && it.shortcutId == representative.info.id }
-                    val favText = if (isGlobalFav) "Remove from Favorites" else "Add to Favorites"
-                    add(SheetItem.Action(favText) {
-                        viewModelScope.launch {
-                            if (isGlobalFav) {
-                                favs.find { it.type == TagItemType.SHORTCUT && it.packageName == representative.info.`package` && it.shortcutId == representative.info.id }?.let { tagItemDao.delete(it) }
-                            } else {
-                                tagItemDao.insert(TagItemEntity(TAG.FAV, favs.size, TagItemType.SHORTCUT, representative.info.`package`, representative.info.id, labelOverride = representative.label))
-                            }
-                        }
-                    })
+                val exists = favs.any {
+                    it.type == TagItemType.SHORTCUT &&
+                        it.packageName == item.info.`package` &&
+                        it.shortcutId == item.info.id
                 }
-                add(SheetItem.Action("App Settings") {
-                    launcherApps.startAppDetailsActivity(representative.info.activity, user, null, null)
-                })
+                if (!exists) {
+                    val nextOrder = nextItemOrderForTag(TAG.FAV)
+                    tagItemDao.insert(
+                        TagItemEntity(
+                            TAG.FAV,
+                            nextOrder,
+                            TagItemType.SHORTCUT,
+                            item.info.`package`,
+                            item.info.id,
+                            labelOverride = item.label
+                        )
+                    )
+                }
             }
-            else -> {}
+            is LauncherItem.Tag -> {
+                val exists = favs.any {
+                    it.type == TagItemType.TAG && it.targetTagId == item.id
+                }
+                if (!exists) {
+                    val nextOrder = nextItemOrderForTag(TAG.FAV)
+                    tagItemDao.insert(
+                        TagItemEntity(
+                            TAG.FAV,
+                            nextOrder,
+                            TagItemType.TAG,
+                            targetTagId = item.id
+                        )
+                    )
+                }
+            }
+            is LauncherItem.Placeholder -> Unit
         }
+    }
+
+    private suspend fun createTagFromItem(item: LauncherItem) {
+        val base = when (item) {
+            is LauncherItem.App -> item
+            is LauncherItem.Shortcut -> {
+                val appInfo = apps.value.find { it.componentName.packageName == item.info.`package` } ?: return
+                LauncherItem.App(appInfo, appInfo.label.toString(), appInfo.getIcon(0).toBitmap().asImageBitmap())
+            }
+            is LauncherItem.Tag -> return
+            is LauncherItem.Placeholder -> return
+        }
+        val newTagId = tagDao.insert(TagEntity(name = "${base.label} Tag"))
+        val appEntity = TagItemEntity(newTagId, 0, TagItemType.APP, base.info.componentName.packageName)
+        val systemShortcuts = cachedShortcuts.value[base.info.componentName.packageName].orEmpty()
+        val shortcutEntities = systemShortcuts.mapIndexed { idx, info ->
+            TagItemEntity(
+                newTagId,
+                idx + 1,
+                TagItemType.SHORTCUT,
+                info.`package`,
+                info.id,
+                labelOverride = info.shortLabel?.toString()
+            )
+        }
+        tagItemDao.insertAll(listOf(appEntity) + shortcutEntities)
+        val nextOrder = nextItemOrderForTag(TAG.FAV)
+        tagItemDao.insert(TagItemEntity(TAG.FAV, nextOrder, TagItemType.TAG, targetTagId = newTagId))
+        _toast.emit("Tag created and added to Favorites")
+    }
+
+    private fun resolveTerminalItem(item: LauncherItem): LauncherItem {
+        var current = item
+        val visited = mutableSetOf<Long>()
+        while (current is LauncherItem.Tag) {
+            if (!visited.add(current.id)) {
+                return LauncherItem.Placeholder(PlaceholderKind.RECURSION, "Recursion")
+            }
+            current = current.representative
+        }
+        return current
     }
 
     suspend fun updateOrder(tagId: Long, items: List<LauncherItem>) {
@@ -400,7 +470,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 is LauncherItem.App -> currentEntities.find { it.type == TagItemType.APP && it.packageName == item.info.componentName.packageName }
                 is LauncherItem.Shortcut -> currentEntities.find { it.type == TagItemType.SHORTCUT && it.packageName == item.info.`package` && it.shortcutId == item.info.id }
                 is LauncherItem.Tag -> currentEntities.find { it.type == TagItemType.TAG && it.targetTagId == item.id }
-                is LauncherItem.Recursion -> null
+                is LauncherItem.Placeholder -> null
             }
             entity?.copy(itemOrder = index)
         }.filterNotNull()
