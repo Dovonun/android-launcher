@@ -39,7 +39,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 ## 5. Favorites/Pinned Ordering Robustness
 
 - [ ] Use a shared helper for next order (`max(itemOrder) + 1`) for all append operations.
-- [ ] Apply same ordering strategy to pinned shortcut insertion.
+- [x] Apply same ordering strategy to pinned shortcut insertion.
 - [ ] Verify add/remove sequences do not overwrite unrelated entries.
 - [ ] Verify mixed entries (App + Tag + Shortcut) in favorites are stable.
 

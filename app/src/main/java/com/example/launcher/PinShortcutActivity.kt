@@ -22,11 +22,14 @@ class PinShortcutActivity : ComponentActivity() {
         if (!request.isValid) return
         val shortcut = request.shortcutInfo ?: return
         lifecycleScope.launch {
-            val count = tagItemDao.getItemsForTag(PINNED).first().size
+            val nextOrder = tagItemDao.getItemsForTag(PINNED).first()
+                .maxOfOrNull { it.itemOrder }
+                ?.plus(1)
+                ?: 0
             tagItemDao.insert(
                 TagItemEntity(
                     tagId = PINNED,
-                    itemOrder = count,
+                    itemOrder = nextOrder,
                     type = TagItemType.SHORTCUT,
                     packageName = shortcut.`package`,
                     shortcutId = shortcut.id,
@@ -38,4 +41,3 @@ class PinShortcutActivity : ComponentActivity() {
         finish()
     }
 }
-
