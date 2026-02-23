@@ -47,7 +47,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 - [ ] Verify app list refreshes after uninstall.
 - [ ] Verify package add/remove/change callbacks update UI correctly.
-- [ ] Review shortcut change callback path (`cleanup(pkg)`) and either implement or remove TODO path.
+- [x] Review shortcut change callback path (`cleanup(pkg)`) and either implement or remove TODO path.
 - [ ] Confirm no stale shortcut icons/labels after app/shortcut updates.
 
 ## 7. Converter and Schema Explanations

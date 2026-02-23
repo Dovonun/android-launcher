@@ -112,27 +112,35 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val launcherApps: LauncherApps = application.getSystemService(LauncherApps::class.java)
     private val user: UserHandle = android.os.Process.myUserHandle()
     private val apps = MutableStateFlow<List<LauncherActivityInfo>>(emptyList())
+    private val shortcutsRefreshTick = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val cachedShortcuts = tagItemDao.getDistinctPackages().mapLatest { pkgs ->
-        coroutineScope {
-            pkgs.associateWith { pkg ->
-                async {
-                    launcherApps.getShortcuts(
-                        ShortcutQuery().apply {
-                            setPackage(pkg)
-                            setQueryFlags(
-                                ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
-                            )
-                        }, user
-                    ).orEmpty()
-                }
-            }.mapValues { it.value.await() }
+    private val cachedShortcuts = combine(
+        tagItemDao.getDistinctPackages(), shortcutsRefreshTick
+    ) { pkgs, _ -> pkgs }
+        .mapLatest { pkgs ->
+            coroutineScope {
+                pkgs.associateWith { pkg ->
+                    async {
+                        launcherApps.getShortcuts(
+                            ShortcutQuery().apply {
+                                setPackage(pkg)
+                                setQueryFlags(
+                                    ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
+                                )
+                            }, user
+                        ).orEmpty()
+                    }
+                }.mapValues { it.value.await() }
+            }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
-    private fun cleanup(pkg: String) { /* TODO */ }
+    private fun cleanup(pkg: String) {
+        // Shortcut changes do not alter distinct package set, so trigger cache rebuild.
+        shortcutsRefreshTick.update { it + 1 }
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) { ensureSystemTags(tagDao) }
