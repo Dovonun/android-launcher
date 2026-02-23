@@ -10,6 +10,8 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 - [ ] Keep main app/favorites lists reactive (`uiAllGrouped`, `favorites`).
 - [ ] Ensure bottom sheet action building is snapshot-style (no live reactive updates while open).
 - [ ] Ensure popup entries are snapshot-style (computed once when opened).
+  - Implemented: gesture handlers now key on `item,parent` to avoid stale closure captures.
+  - Implemented: app popup entries use cache-miss fallback query and memoize fetched shortcuts.
 - [ ] Rename/refactor functions to make reactive vs snapshot intent explicit.
 
 ## 2. Bottom Sheet Simplification
@@ -23,6 +25,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 ## 3. Manage Screen Usability
 
 - [ ] Confirm current reorder controls are visible and usable.
+  - Implemented: explicit icon button colors to avoid invisible arrows in current theme.
 - [x] Stop reusing fully interactive `IconRow` inside manage mode.
 - [x] Split row into reusable layout-only component + behavior wrapper.
 - [x] Use layout-only rows in `ManageTagScreen`.
@@ -46,6 +49,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 ## 6. Refresh Behavior Verification
 
 - [ ] Verify app list refreshes after uninstall.
+  - Implemented: uninstall path now triggers short refresh polling after delete intent.
 - [ ] Verify package add/remove/change callbacks update UI correctly.
   - Implemented: package callbacks now trigger both app list refresh and shortcut cache refresh.
 - [x] Review shortcut change callback path (`cleanup(pkg)`) and either implement or remove TODO path.

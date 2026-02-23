@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
                                     bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                                 )
                             ) {
-                                appsVM.uiAllGrouped.value.forEach { (letter, list) ->
+                                allApps.forEach { (letter, list) ->
                                     item {
                                         Box(
                                             modifier = Modifier
@@ -376,13 +376,13 @@ fun IconRow(
         item = item,
         modifier = modifier
             .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
-            .pointerInput(Unit) {
+            .pointerInput(item, parent) {
                 detectTapGestures(onTap = {
                     appVM.launch(item)
                     viewVM.leave()
                 }, onLongPress = { viewVM.setMenu(MenuState.Sheet(item, parent)) })
             }
-            .pointerInput(Unit) {
+            .pointerInput(item, parent) {
                 detectHorizontalDragGestures(
                     onDragStart = { fired = false }) { change, drag ->
                     if (fired) return@detectHorizontalDragGestures
@@ -660,4 +660,3 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         }
     }
 }
-

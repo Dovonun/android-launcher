@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -113,6 +114,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val user: UserHandle = android.os.Process.myUserHandle()
     private val apps = MutableStateFlow<List<LauncherActivityInfo>>(emptyList())
     private val shortcutsRefreshTick = MutableStateFlow(0)
+    private val popupShortcutMemo = mutableMapOf<String, List<ShortcutInfo>>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val cachedShortcuts = combine(
@@ -137,11 +139,17 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private fun refreshApps() {
-        apps.update { launcherApps.getActivityList(null, user) }
+        val latest = launcherApps.getActivityList(null, user)
+        apps.update { latest }
+        synchronized(popupShortcutMemo) {
+            val knownPackages = latest.mapTo(mutableSetOf()) { it.componentName.packageName }
+            popupShortcutMemo.keys.retainAll(knownPackages)
+        }
         // Keep shortcut cache in sync on package add/remove/change callbacks.
         shortcutsRefreshTick.update { it + 1 }
     }
     private fun cleanup(pkg: String) {
+        synchronized(popupShortcutMemo) { popupShortcutMemo.remove(pkg) }
         // Shortcut changes do not alter distinct package set, so trigger cache rebuild.
         shortcutsRefreshTick.update { it + 1 }
     }
@@ -285,8 +293,25 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         is LauncherItem.Placeholder -> emptyList()
         is LauncherItem.App -> {
             val pkg = item.info.componentName.packageName
-            val shortcuts = cachedShortcuts.value[pkg] ?: emptyList()
-            shortcuts.map { LauncherItem.Shortcut(it, it.shortLabel.toString(), launcherApps.getShortcutIconDrawable(it, 0)?.toBitmap()?.asImageBitmap()) }
+            val shortcuts = cachedShortcuts.value[pkg]
+                ?: synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] }
+                ?: launcherApps.getShortcuts(
+                    ShortcutQuery().apply {
+                        setPackage(pkg)
+                        setQueryFlags(
+                            ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
+                        )
+                    }, user
+                ).orEmpty().also { fetched ->
+                    synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] = fetched }
+                }
+            shortcuts.map {
+                LauncherItem.Shortcut(
+                    it,
+                    it.shortLabel.toString(),
+                    launcherApps.getShortcutIconDrawable(it, 0)?.toBitmap()?.asImageBitmap()
+                )
+            }
         }
     }
 
@@ -299,6 +324,14 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         context.startActivity(Intent(Intent.ACTION_DELETE).apply {
             data = "package:${item.componentName.packageName}".toUri()
         }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        // Package manager updates can lag while uninstall UI is in foreground.
+        // Poll a few times after request so All Apps reflects removals reliably.
+        viewModelScope.launch {
+            repeat(4) {
+                delay(600)
+                refreshApps()
+            }
+        }
     }
 
     suspend fun sheetEntries(
