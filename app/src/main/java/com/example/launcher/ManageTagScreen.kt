@@ -24,7 +24,6 @@ fun ManageTagScreen(
 ) {
     val tag by appsVM.getTag(tagId).collectAsState(initial = null)
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Column(
@@ -55,13 +54,7 @@ fun ManageTagScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Box(modifier = Modifier.weight(1f)) {
-                                IconRow(
-                                    item = item,
-                                    appVM = appsVM,
-                                    viewVM = viewVM,
-                                    snackbarHostState = snackbarHostState,
-                                    parent = t
-                                )
+                                LauncherRowLayout(item = item)
                             }
                             
                             Row {

@@ -372,12 +372,9 @@ fun IconRow(
     val scope = rememberCoroutineScope()
     var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+    LauncherRowLayout(
+        item = item,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
             .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
@@ -410,10 +407,8 @@ fun IconRow(
                         } ?: return@detectHorizontalDragGestures
                     }
                 }
-            }) {
-        RowIcon(item.icon)
-        RowLabel(item.label)
-    }
+            }
+    )
 }
 
 @Composable
@@ -433,6 +428,20 @@ fun RowLabel(text: String) = Text(
     maxLines = 1,
     overflow = TextOverflow.Ellipsis,
 )
+
+@Composable
+fun LauncherRowLayout(item: LauncherItem, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        RowIcon(item.icon)
+        RowLabel(item.label)
+    }
+}
 
 @Composable
 fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
@@ -651,5 +660,4 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         }
     }
 }
-
 

@@ -18,9 +18,11 @@ interface TagDao {
     suspend fun getByName(name: String): TagEntity?
 
     @Query("SELECT * FROM tags")
+    // Startup/bootstrap path needs a one-shot synchronous read.
     fun getAll(): List<TagEntity>
 
     @Query("SELECT * FROM tags")
+    // Reactive UI graph and badges subscribe to this flow.
     fun getAllFlow(): Flow<List<TagEntity>>
 
     // Utility: insert or get existing tag
@@ -67,4 +69,3 @@ interface TagItemDao {
         })
     }
 }
-

@@ -42,7 +42,3 @@ data class TagItemEntity(
     val targetTagId: Long? = null,
     val labelOverride: String? = null
 )
-
-// Test if this works - written by me
-@Entity(tableName = "shortcuts", primaryKeys = ["packageName", "shortcutId"])
-data class ShortcutEntity(val packageName: String, val shortcutId: String)
