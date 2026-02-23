@@ -60,6 +60,10 @@ fun ManageTagScreen(
                             Row {
                                 IconButton(
                                     enabled = index < items.size - 1,
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                                    ),
                                     onClick = {
                                         val newList = items.toMutableList()
                                         val moving = newList.removeAt(index)
@@ -71,6 +75,10 @@ fun ManageTagScreen(
                                 }
                                 IconButton(
                                     enabled = index > 0,
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                                    ),
                                     onClick = {
                                         val newList = items.toMutableList()
                                         val moving = newList.removeAt(index)

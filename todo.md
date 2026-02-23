@@ -24,8 +24,8 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 ## 3. Manage Screen Usability
 
-- [ ] Confirm current reorder controls are visible and usable.
-  - Implemented: explicit icon button colors to avoid invisible arrows in current theme.
+- [x] Confirm current reorder controls are visible and usable.
+  - Verified on device after explicit icon button colors.
 - [x] Stop reusing fully interactive `IconRow` inside manage mode.
 - [x] Split row into reusable layout-only component + behavior wrapper.
 - [x] Use layout-only rows in `ManageTagScreen`.
@@ -59,7 +59,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 - [x] Add short explanation comments/docs for Room `TypeConverter` usage.
 - [x] Explain why converter exists for `TagItemType` enum persistence.
-- [ ] Document storage format expectation (enum name string) and migration implications.
+- [x] Document storage format expectation (enum name string) and migration implications.
 - [ ] Keep explanations concise and local to where new contributors will look first.
 
 ## 8. Remove What We Don’t Need
@@ -71,7 +71,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 ## 9. Test and Validation Pass
 
-- [ ] Compile check:
+- [x] Compile check:
   - `JAVA_HOME=/snap/android-studio/current/jbr ./gradlew :app:compileDebugKotlin -q`
 - [ ] Manual test: bottom sheet action matrix.
 - [ ] Manual test: popup behavior and parent context handling.

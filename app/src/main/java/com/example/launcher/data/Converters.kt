@@ -4,7 +4,8 @@ import androidx.room.TypeConverter
 
 class Converters {
     // Room stores enums as primitive DB values.
-    // We persist TagItemType as its stable enum name.
+    // We persist TagItemType as enum name text (APP/SHORTCUT/TAG).
+    // If enum names ever change, a DB migration must rewrite stored values.
     @TypeConverter
     fun fromTagItemType(value: TagItemType): String {
         return value.name
