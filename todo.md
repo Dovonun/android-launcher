@@ -38,7 +38,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 ## 5. Favorites/Pinned Ordering Robustness
 
-- [ ] Use a shared helper for next order (`max(itemOrder) + 1`) for all append operations.
+- [x] Use a shared helper for next order (`max(itemOrder) + 1`) for all append operations.
 - [x] Apply same ordering strategy to pinned shortcut insertion.
 - [ ] Verify add/remove sequences do not overwrite unrelated entries.
 - [ ] Verify mixed entries (App + Tag + Shortcut) in favorites are stable.
@@ -47,6 +47,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 - [ ] Verify app list refreshes after uninstall.
 - [ ] Verify package add/remove/change callbacks update UI correctly.
+  - Implemented: package callbacks now trigger both app list refresh and shortcut cache refresh.
 - [x] Review shortcut change callback path (`cleanup(pkg)`) and either implement or remove TODO path.
 - [ ] Confirm no stale shortcut icons/labels after app/shortcut updates.
 

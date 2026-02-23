@@ -7,7 +7,6 @@ import androidx.lifecycle.lifecycleScope
 import com.example.launcher.TAG.PINNED
 import com.example.launcher.data.TagItemEntity
 import com.example.launcher.data.TagItemType
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class PinShortcutActivity : ComponentActivity() {
@@ -22,10 +21,7 @@ class PinShortcutActivity : ComponentActivity() {
         if (!request.isValid) return
         val shortcut = request.shortcutInfo ?: return
         lifecycleScope.launch {
-            val nextOrder = tagItemDao.getItemsForTag(PINNED).first()
-                .maxOfOrNull { it.itemOrder }
-                ?.plus(1)
-                ?: 0
+            val nextOrder = tagItemDao.nextOrderForTag(PINNED)
             tagItemDao.insert(
                 TagItemEntity(
                     tagId = PINNED,

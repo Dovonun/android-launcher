@@ -136,7 +136,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    private fun refreshApps() = apps.update { launcherApps.getActivityList(null, user) }
+    private fun refreshApps() {
+        apps.update { launcherApps.getActivityList(null, user) }
+        // Keep shortcut cache in sync on package add/remove/change callbacks.
+        shortcutsRefreshTick.update { it + 1 }
+    }
     private fun cleanup(pkg: String) {
         // Shortcut changes do not alter distinct package set, so trigger cache rebuild.
         shortcutsRefreshTick.update { it + 1 }
@@ -367,9 +371,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         is LauncherItem.Placeholder -> false
     }
 
-    private suspend fun nextItemOrderForTag(tagId: Long): Int =
-        tagItemDao.getItemsForTag(tagId).first().maxOfOrNull { it.itemOrder }?.plus(1) ?: 0
-
     private suspend fun addItemToFavorites(item: LauncherItem) {
         val favs = tagItemDao.getItemsForTag(TAG.FAV).first()
         when (item) {
@@ -378,7 +379,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                     it.type == TagItemType.APP && it.packageName == item.info.componentName.packageName
                 }
                 if (!exists) {
-                    val nextOrder = nextItemOrderForTag(TAG.FAV)
+                    val nextOrder = tagItemDao.nextOrderForTag(TAG.FAV)
                     tagItemDao.insert(
                         TagItemEntity(
                             TAG.FAV,
@@ -396,7 +397,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         it.shortcutId == item.info.id
                 }
                 if (!exists) {
-                    val nextOrder = nextItemOrderForTag(TAG.FAV)
+                    val nextOrder = tagItemDao.nextOrderForTag(TAG.FAV)
                     tagItemDao.insert(
                         TagItemEntity(
                             TAG.FAV,
@@ -414,7 +415,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                     it.type == TagItemType.TAG && it.targetTagId == item.id
                 }
                 if (!exists) {
-                    val nextOrder = nextItemOrderForTag(TAG.FAV)
+                    val nextOrder = tagItemDao.nextOrderForTag(TAG.FAV)
                     tagItemDao.insert(
                         TagItemEntity(
                             TAG.FAV,
@@ -453,7 +454,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             )
         }
         tagItemDao.insertAll(listOf(appEntity) + shortcutEntities)
-        val nextOrder = nextItemOrderForTag(TAG.FAV)
+        val nextOrder = tagItemDao.nextOrderForTag(TAG.FAV)
         tagItemDao.insert(TagItemEntity(TAG.FAV, nextOrder, TagItemType.TAG, targetTagId = newTagId))
         _toast.emit("Tag created and added to Favorites")
     }

@@ -58,6 +58,11 @@ interface TagItemDao {
     @Query("SELECT DISTINCT packageName FROM tag_items WHERE type = 'APP' OR type = 'SHORTCUT'")
     fun getDistinctPackages(): Flow<List<String>>
 
+    @Query("SELECT MAX(itemOrder) FROM tag_items WHERE tagId = :tagId")
+    suspend fun getMaxOrderForTag(tagId: Long): Int?
+
+    suspend fun nextOrderForTag(tagId: Long): Int = (getMaxOrderForTag(tagId) ?: -1) + 1
+
     @Transaction
     suspend fun updateOrder(tagId: Long, items: List<TagItemEntity>) {
         // First delete existing items for this tag to avoid unique constraint violations
