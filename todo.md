@@ -5,22 +5,23 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 ## 1. Reactivity Boundaries
 
-- [ ] Document which data must be reactive vs snapshot-only.
-- [ ] Keep tag graph reactive (`AppsVM.graph`).
-- [ ] Keep main app/favorites lists reactive (`uiAllGrouped`, `favorites`).
-- [ ] Ensure bottom sheet action building is snapshot-style (no live reactive updates while open).
-- [ ] Ensure popup entries are snapshot-style (computed once when opened).
+- [x] Document which data must be reactive vs snapshot-only.
+- [x] Keep tag graph reactive (`AppsVM.graph`).
+- [x] Keep main app/favorites lists reactive (`uiAllGrouped`, `favorites`).
+- [x] Ensure bottom sheet action building is snapshot-style (no live reactive updates while open).
+- [x] Ensure popup entries are snapshot-style (computed once when opened).
   - Implemented: gesture handlers now key on `item,parent` to avoid stale closure captures.
   - Implemented: app popup entries use cache-miss fallback query and memoize fetched shortcuts.
-- [ ] Rename/refactor functions to make reactive vs snapshot intent explicit.
+- [x] Rename/refactor functions to make reactive vs snapshot intent explicit.
+  - `sheetActionsSnapshot(...)` and `popupEntriesSnapshot(...)`.
 
 ## 2. Bottom Sheet Simplification
 
-- [ ] Keep `AppsVM` as single source of sheet actions.
-- [ ] Verify no duplicated UI-side action definitions in `ContextSheet`.
-- [ ] Keep action order and gating logic explicit and easy to read.
-- [ ] Verify terminal-item logic for app actions (`App Settings`, `Uninstall`) is correct.
-- [ ] Add concise comments only where logic is non-obvious.
+- [x] Keep `AppsVM` as single source of sheet actions.
+- [x] Verify no duplicated UI-side action definitions in `ContextSheet`.
+- [x] Keep action order and gating logic explicit and easy to read.
+- [x] Verify terminal-item logic for app actions (`App Settings`, `Uninstall`) is correct.
+- [x] Add concise comments only where logic is non-obvious.
 
 ## 3. Manage Screen Usability
 
@@ -36,8 +37,8 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 - [x] Remove obvious leftover/debug/test artifacts (e.g. temporary entities/comments).
 - [x] Review DAO API surface for redundancy and document intent where both sync and reactive variants are needed.
-- [ ] Ensure naming is consistent (`TagItem`, `itemOrder`, etc.).
-- [ ] Verify no dead migrations/converters/entities remain.
+- [x] Ensure naming is consistent (`TagItem`, `itemOrder`, etc.).
+- [x] Verify no dead migrations/converters/entities remain.
   - Implemented: DB reset to v1 with destructive migration fallback for alpha iteration.
 
 ## 5. Favorites/Pinned Ordering Robustness
@@ -61,13 +62,13 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 - [x] Add short explanation comments/docs for Room `TypeConverter` usage.
 - [x] Explain why converter exists for `TagItemType` enum persistence.
 - [x] Document storage format expectation (enum name string) and migration implications.
-- [ ] Keep explanations concise and local to where new contributors will look first.
+- [x] Keep explanations concise and local to where new contributors will look first.
 
 ## 8. Remove What We Don’t Need
 
 - [x] Delete unused imports, dead code paths, and stale comments.
-- [ ] Prefer removing unnecessary abstractions over adding more wrappers.
-- [ ] Re-check each helper: keep only if it improves clarity or isolates side effects.
+- [x] Prefer removing unnecessary abstractions over adding more wrappers.
+- [x] Re-check each helper: keep only if it improves clarity or isolates side effects.
 - [ ] Ensure “no line is best line” principle is applied where safe.
 
 ## 9. Test and Validation Pass

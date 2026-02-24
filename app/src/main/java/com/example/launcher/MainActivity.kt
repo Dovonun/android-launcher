@@ -391,7 +391,7 @@ fun IconRow(
                             fired = true
                             change.consume()
                             scope.launch {
-                                val entries = appVM.popupEntries(item)
+                                val entries = appVM.popupEntriesSnapshot(item)
                                 if (entries.isEmpty()) snackbarHostState.showSnackbar(
                                     "Nothing to show for this item",
                                     duration = SnackbarDuration.Short
@@ -599,7 +599,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val entries by produceState(initialValue = emptyList<SheetAction>(), state.item, state.parent) {
-        value = appsVM.sheetEntries(state.item, state.parent) { viewVM.setView(it) }
+        value = appsVM.sheetActionsSnapshot(state.item, state.parent) { viewVM.setView(it) }
     }
     val badges by appsVM.getTagsForItem(state.item).collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }

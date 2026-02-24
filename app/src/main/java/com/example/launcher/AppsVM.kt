@@ -81,7 +81,7 @@ object TAG {
 suspend fun ensureSystemTags(tagDao: TagDao) {
     val existing = tagDao.getAll()
     listOf(
-        TagEntity(TAG.FAV, "Favorite"), TagEntity(TAG.PINNED, "Pinned")
+        TagEntity(TAG.FAV, "Favorites"), TagEntity(TAG.PINNED, "Pinned")
     ).filterNot { tag -> existing.any { it.id == tag.id && it.name == tag.name } }
         .forEach { tagDao.insert(it) }
 }
@@ -113,6 +113,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val shortcutsRefreshTick = MutableStateFlow(0)
     private val popupShortcutMemo = mutableMapOf<String, List<ShortcutInfo>>()
 
+    // Reactive cache for packages referenced by launcher data.
     @OptIn(ExperimentalCoroutinesApi::class)
     private val cachedShortcuts = combine(
         tagItemDao.getDistinctPackages(), shortcutsRefreshTick
@@ -157,6 +158,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         refreshApps()
     }
 
+    // Reactive graph that drives app/tag UI and badges.
     private val graph = combine(
         apps, cachedShortcuts, tagDao.getAllFlow(), tagItemDao.getAllItemsFlow()
     ) { apps, shortcuts, tagEntities, itemEntities ->
@@ -232,6 +234,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         finalGraph
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
+    // Reactive all-apps list for main screen rendering.
     val uiAllGrouped = combine(
         apps, cachedShortcuts, tagItemDao.getItemsForTag(TAG.PINNED)
     ) { apps, shortcuts, pinned ->
@@ -245,6 +248,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             .groupBy { it.label.first().uppercaseChar() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
 
+    // Reactive favorites list for home screen rendering.
     val favorites = graph.map { it[TAG.FAV]?.items ?: emptyList() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -284,7 +288,8 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun popupEntries(item: LauncherItem): List<LauncherItem> = when (item) {
+    // Snapshot-only builder for swipe popup content at open time.
+    suspend fun popupEntriesSnapshot(item: LauncherItem): List<LauncherItem> = when (item) {
         is LauncherItem.Tag -> item.items.drop(1)
         is LauncherItem.Shortcut -> emptyList()
         is LauncherItem.Placeholder -> emptyList()
@@ -331,7 +336,8 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun sheetEntries(
+    // Snapshot-only builder for bottom-sheet actions at open time.
+    suspend fun sheetActionsSnapshot(
         item: LauncherItem,
         parent: LauncherItem.Tag? = null,
         onNavigate: (View) -> Unit = {}
@@ -341,7 +347,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             val favoriteLabel = if (inFavorites) "Remove from Favorites" else "Add to Favorites"
             add(SheetAction(favoriteLabel) {
                 viewModelScope.launch {
-                    if (inFavorites) removeItemFromFavorites(item) else addItemToFavorites(item)
+                    if (inFavorites) removeItemFromParent(item, TAG.FAV) else addItemToFavorites(item)
                 }
             })
         } else {
@@ -372,15 +378,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun removeItemFromParent(item: LauncherItem, parentId: Long) {
-        val allItems = tagItemDao.getAllItemsFlow().first().filter { it.tagId == parentId }
+        val allItems = tagItemDao.getItemsForTag(parentId).first()
         val toDelete = allItems.find { entity ->
             entityMatchesItem(entity, item)
         }
         toDelete?.let { tagItemDao.delete(it) }
-    }
-
-    private suspend fun removeItemFromFavorites(item: LauncherItem) {
-        removeItemFromParent(item, TAG.FAV)
     }
 
     private suspend fun isInFavorites(item: LauncherItem): Boolean {
@@ -502,7 +504,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun updateOrder(tagId: Long, items: List<LauncherItem>) {
-        val currentEntities = tagItemDao.getAllItemsFlow().first().filter { it.tagId == tagId }
+        val currentEntities = tagItemDao.getItemsForTag(tagId).first()
         
         val newEntities = items.mapIndexed { index, item ->
             val entity = when (item) {
