@@ -79,7 +79,7 @@ object TAG {
 }
 
 suspend fun ensureSystemTags(tagDao: TagDao) {
-    val existing = tagDao.getAll()
+    val existing = tagDao.getAllFlow().first()
     listOf(
         TagEntity(TAG.FAV, "Favorites"), TagEntity(TAG.PINNED, "Pinned")
     ).filterNot { tag -> existing.any { it.id == tag.id && it.name == tag.name } }
