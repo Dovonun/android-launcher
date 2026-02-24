@@ -121,20 +121,22 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         .mapLatest { pkgs ->
             coroutineScope {
                 pkgs.associateWith { pkg ->
-                    async {
-                        launcherApps.getShortcuts(
-                            ShortcutQuery().apply {
-                                setPackage(pkg)
-                                setQueryFlags(
-                                    ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
-                                )
-                            }, user
-                        ).orEmpty()
-                    }
+                    async { loadShortcutsForPackage(pkg) }
                 }.mapValues { it.value.await() }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    private fun loadShortcutsForPackage(pkg: String): List<ShortcutInfo> =
+        launcherApps.getShortcuts(
+            ShortcutQuery().apply {
+                setPackage(pkg)
+                setQueryFlags(
+                    ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
+                )
+            },
+            user
+        ).orEmpty()
 
     private fun refreshApps() {
         val latest = launcherApps.getActivityList(null, user)
@@ -297,14 +299,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             val pkg = item.info.componentName.packageName
             val shortcuts = cachedShortcuts.value[pkg]
                 ?: synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] }
-                ?: launcherApps.getShortcuts(
-                    ShortcutQuery().apply {
-                        setPackage(pkg)
-                        setQueryFlags(
-                            ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
-                        )
-                    }, user
-                ).orEmpty().also { fetched ->
+                ?: loadShortcutsForPackage(pkg).also { fetched ->
                     synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] = fetched }
                 }
             shortcuts.map {
