@@ -86,6 +86,18 @@ suspend fun ensureSystemTags(tagDao: TagDao) {
         .forEach { tagDao.insert(it) }
 }
 
+internal fun resolveLaunchTarget(item: LauncherItem): LauncherItem {
+    var current = item
+    val visitedTagIds = mutableSetOf<Long>()
+    while (current is LauncherItem.Tag) {
+        if (!visitedTagIds.add(current.id)) {
+            error("Tag representative cycle detected while launching tagId=${current.id}")
+        }
+        current = current.representative
+    }
+    return current
+}
+
 fun createCallback(cb: () -> Unit, onShortcutsChanged: (String) -> Unit) = object : LauncherApps.Callback() {
     override fun onPackageAdded(packageName: String, user: UserHandle) = cb()
     override fun onPackageRemoved(packageName: String?, user: UserHandle?) = cb()
@@ -275,17 +287,11 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     fun launch(item: LauncherItem) {
         viewModelScope.launch {
-            when (item) {
-                is LauncherItem.App -> launcherApps.startMainActivity(item.info.componentName, user, null, null)
-                is LauncherItem.Shortcut -> launcherApps.startShortcut(item.info.`package`, item.info.id, null, null, user)
-                is LauncherItem.Tag -> {
-                    if (item.items.isEmpty()) {
-                        _toast.emit("This tag is empty")
-                    } else {
-                        launch(item.items[0])
-                    }
-                }
-                is LauncherItem.Placeholder -> _toast.emit(item.label)
+            when (val target = resolveLaunchTarget(item)) {
+                is LauncherItem.App -> launcherApps.startMainActivity(target.info.componentName, user, null, null)
+                is LauncherItem.Shortcut -> launcherApps.startShortcut(target.info.`package`, target.info.id, null, null, user)
+                is LauncherItem.Placeholder -> _toast.emit(target.label)
+                is LauncherItem.Tag -> error("Unreachable launch target: unresolved Tag")
             }
         }
     }
