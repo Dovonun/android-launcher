@@ -73,9 +73,6 @@ enum class PlaceholderKind { EMPTY_TAG, RECURSION, MISSING_REFERENCE }
 
 data class SheetAction(val label: String, val onTap: () -> Unit)
 
-typealias App = LauncherActivityInfo
-typealias Shortcut = ShortcutInfo
-
 object TAG {
     const val FAV: Long = 1
     const val PINNED: Long = 2
@@ -89,7 +86,7 @@ suspend fun ensureSystemTags(tagDao: TagDao) {
         .forEach { tagDao.insert(it) }
 }
 
-fun createCallback(cb: () -> Unit, cleanup: (String) -> Unit) = object : LauncherApps.Callback() {
+fun createCallback(cb: () -> Unit, onShortcutsChanged: (String) -> Unit) = object : LauncherApps.Callback() {
     override fun onPackageAdded(packageName: String, user: UserHandle) = cb()
     override fun onPackageRemoved(packageName: String?, user: UserHandle?) = cb()
     override fun onPackageChanged(packageName: String?, user: UserHandle?) = cb()
@@ -103,7 +100,7 @@ fun createCallback(cb: () -> Unit, cleanup: (String) -> Unit) = object : Launche
 
     override fun onShortcutsChanged(
         packageName: String, shortcuts: List<ShortcutInfo?>, user: UserHandle
-    ) = cleanup(packageName)
+    ) = onShortcutsChanged(packageName)
 }
 
 class AppsVM(application: Application) : AndroidViewModel(application) {

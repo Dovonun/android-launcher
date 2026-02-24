@@ -38,6 +38,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 - [x] Review DAO API surface for redundancy and document intent where both sync and reactive variants are needed.
 - [ ] Ensure naming is consistent (`TagItem`, `itemOrder`, etc.).
 - [ ] Verify no dead migrations/converters/entities remain.
+  - Implemented: DB reset to v1 with destructive migration fallback for alpha iteration.
 
 ## 5. Favorites/Pinned Ordering Robustness
 
@@ -64,7 +65,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 ## 8. Remove What We Don’t Need
 
-- [ ] Delete unused imports, dead code paths, and stale comments.
+- [x] Delete unused imports, dead code paths, and stale comments.
 - [ ] Prefer removing unnecessary abstractions over adding more wrappers.
 - [ ] Re-check each helper: keep only if it improves clarity or isolates side effects.
 - [ ] Ensure “no line is best line” principle is applied where safe.

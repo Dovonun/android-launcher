@@ -65,9 +65,7 @@ interface TagItemDao {
 
     @Transaction
     suspend fun updateOrder(tagId: Long, items: List<TagItemEntity>) {
-        // First delete existing items for this tag to avoid unique constraint violations
-        // when reordering if we use the same orders.
-        // Actually, since (tagId, order) is the PK, we must be careful.
+        // Replace whole ordering because (tagId, itemOrder) is the primary key.
         deleteByTagId(tagId)
         insertAll(items.mapIndexed { index, item ->
             item.copy(itemOrder = index)
