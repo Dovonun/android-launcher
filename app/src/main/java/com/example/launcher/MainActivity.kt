@@ -44,7 +44,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarData
@@ -125,18 +128,24 @@ class MainActivity : ComponentActivity() {
                 val listState = rememberLazyListState()
                 val snackbarHostState = remember { SnackbarHostState() }
 
+                LaunchedEffect(Unit) {
+                    appsVM.toast.collect { message ->
+                        snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
+                    }
+                }
+
                 val menu by viewVM.menu.collectAsState()
                 when (val state = menu) {
                     is MenuState.Popup -> ShortcutPopup(state, appsVM, viewVM, snackbarHostState)
                     is MenuState.Sheet -> ContextSheet(
-                        state, appsVM
+                        state, appsVM, viewVM
                     ) { viewVM.setMenu(MenuState.None) }
 
                     is MenuState.None -> Unit
                 }
                 val allApps by appsVM.uiAllGrouped.collectAsState()
                 val favorites by appsVM.favorites.collectAsState()
-                val view by viewVM.view.collectAsState()
+                val currentView by viewVM.view.collectAsState()
                 Scaffold(
                     containerColor = Color.Transparent,
                     contentColor = Color.Transparent,
@@ -152,24 +161,27 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        when (view) {
-                            is View.Favorites -> Column(
-                                verticalArrangement = Arrangement.Bottom,
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(start = H_PAD2.dp)
-                                    .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                                    .pointerInput(Unit) {
-                                        detectVerticalDragGestures(
-                                            onVerticalDrag = { change, dragAmount ->
-                                                if (change.isConsumed) return@detectVerticalDragGestures
-                                                if (dragAmount > 60f) systemVM.expandNotificationShade()
-                                            })
-                                    }) {
-                                favorites.forEach { fav ->
-                                    IconRow(
-                                        fav, appsVM, viewVM, snackbarHostState
-                                    )
+                        when (val v = currentView) {
+                            is View.Favorites -> {
+                                val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
+                                Column(
+                                    verticalArrangement = Arrangement.Bottom,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(start = H_PAD2.dp)
+                                        .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+                                        .pointerInput(Unit) {
+                                            detectVerticalDragGestures(
+                                                onVerticalDrag = { change, dragAmount ->
+                                                    if (change.isConsumed) return@detectVerticalDragGestures
+                                                    if (dragAmount > 60f) systemVM.expandNotificationShade()
+                                                })
+                                        }) {
+                                    favorites.asReversed().forEach { fav ->
+                                        IconRow(
+                                            fav, appsVM, viewVM, snackbarHostState, parent = favTag
+                                        )
+                                    }
                                 }
                             }
 
@@ -181,7 +193,7 @@ class MainActivity : ComponentActivity() {
                                     bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
                                 )
                             ) {
-                                appsVM.uiAllGrouped.value.forEach { (letter, list) ->
+                                allApps.forEach { (letter, list) ->
                                     item {
                                         Box(
                                             modifier = Modifier
@@ -213,13 +225,24 @@ class MainActivity : ComponentActivity() {
                                     item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
                             }
+
+                            is View.ManageTag -> {
+                                ManageTagScreen(
+                                    tagId = v.tagId,
+                                    tagName = v.name,
+                                    appsVM = appsVM,
+                                    viewVM = viewVM
+                                )
+                            }
                         }
-                        LetterBar(
-                            allApps,
-                            viewVM,
-                            listState,
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                        )
+                        if (currentView !is View.ManageTag) {
+                            LetterBar(
+                                allApps,
+                                viewVM,
+                                listState,
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
                     }
                 }
             }
@@ -230,6 +253,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         viewVM.softReset()
     }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -245,7 +269,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LetterBar(
-    content: Map<Char, List<UiRow>>,
+    content: Map<Char, List<LauncherItem>>,
     viewVM: ViewVM,
     listState: LazyListState,
     modifier: Modifier = Modifier
@@ -338,29 +362,27 @@ fun LetterBar(
 
 @Composable
 fun IconRow(
-    uiRow: UiRow,
+    item: LauncherItem,
     appVM: AppsVM,
     viewVM: ViewVM,
     snackbarHostState: SnackbarHostState,
+    parent: LauncherItem.Tag? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     var fired by remember { mutableStateOf(false) }
     var layoutCoordinates: LayoutCoordinates? = null
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+    LauncherRowLayout(
+        item = item,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
             .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
-            .pointerInput(Unit) {
+            .pointerInput(item, parent) {
                 detectTapGestures(onTap = {
-                    appVM.launch(uiRow.item)
+                    appVM.launch(item)
                     viewVM.leave()
-                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(uiRow.item)) })
+                }, onLongPress = { viewVM.setMenu(MenuState.Sheet(item, parent)) })
             }
-            .pointerInput(Unit) {
+            .pointerInput(item, parent) {
                 detectHorizontalDragGestures(
                     onDragStart = { fired = false }) { change, drag ->
                     if (fired) return@detectHorizontalDragGestures
@@ -369,27 +391,30 @@ fun IconRow(
                             fired = true
                             change.consume()
                             scope.launch {
-                                val entries = appVM.popupEntries(uiRow.item)
+                                val entries = appVM.popupEntriesSnapshot(item)
                                 if (entries.isEmpty()) snackbarHostState.showSnackbar(
                                     "Nothing to show for this item",
                                     duration = SnackbarDuration.Short
-                                ) else viewVM.setMenu(MenuState.Popup(entries, n))
+                                ) else {
+                                    // When swiping, the 'parent' for items inside this popup is 'item' (if it's a Tag)
+                                    viewVM.setMenu(
+                                        MenuState.Popup(
+                                            entries, n, item as? LauncherItem.Tag
+                                        )
+                                    )
+                                }
                             }
                         } ?: return@detectHorizontalDragGestures
                     }
                 }
-            }) {
-        RowIcon(uiRow.icon)
-        RowLabel(uiRow.label)
-    }
+            }
+    )
 }
 
 @Composable
-fun RowIcon(icon: ImageBitmap?) = if (icon != null) Image(
-    bitmap = icon, modifier = Modifier.size(40.dp), contentDescription = null
-) else {
-    Spacer(modifier = Modifier.size(40.dp))
-}
+fun RowIcon(icon: ImageBitmap?, size: androidx.compose.ui.unit.Dp = 40.dp) =
+    if (icon == null) Spacer(modifier = Modifier.size(size))
+    else Image(bitmap = icon, modifier = Modifier.size(size), contentDescription = null)
 
 @Composable
 fun RowLabel(text: String) = Text(
@@ -403,6 +428,20 @@ fun RowLabel(text: String) = Text(
     maxLines = 1,
     overflow = TextOverflow.Ellipsis,
 )
+
+@Composable
+fun LauncherRowLayout(item: LauncherItem, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        RowIcon(item.icon)
+        RowLabel(item.label)
+    }
+}
 
 @Composable
 fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
@@ -532,24 +571,20 @@ fun ShortcutPopup(
                             x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
                         )
                         .background(
-                            MaterialTheme.colorScheme.secondaryContainer,
-                            MaterialTheme.shapes.large
+                            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
                         .padding(horizontal = H_PAD.dp, vertical = 12.dp)
                         .fadingEdges()
                 ) {
                     items(entries) { item ->
-                        IconRow(item, appsVM, viewVM, snackbarHostState)
+                        IconRow(item, appsVM, viewVM, snackbarHostState, parent = state.parent)
                     }
                 }
             } else {
                 val text = "No shortcuts found for this App"
                 Text(
-                    text = text,
-                    fontSize = 17.sp,
-                    color = Color.Gray,
-                    fontStyle = FontStyle.Italic
+                    text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic
                 )
             }
         }
@@ -557,13 +592,16 @@ fun ShortcutPopup(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
-fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
+
+fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val entries by produceState(initialValue = emptyList(), state.item) {
-        value = appsVM.sheetEntries(state.item)
+    val entries by produceState(initialValue = emptyList<SheetAction>(), state.item, state.parent) {
+        value = appsVM.sheetActionsSnapshot(state.item, state.parent) { viewVM.setView(it) }
     }
+    val badges by appsVM.getTagsForItem(state.item).collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     ModalBottomSheet(
         onDismissRequest = reset,
@@ -571,9 +609,54 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, reset: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surface,
         windowInsets = WindowInsets(0.dp)
     ) {
-        Column(Modifier.fillMaxWidth()) {
-            entries.forEach { entry -> SheetEntry(entry.label, entry.onTap, reset) }
-            Spacer(Modifier.height(42.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = H_PAD.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp, start = 24.dp)
+            ) {
+                val title = if (state.item is LauncherItem.Tag) state.item.name else state.item.label
+                if (state.item !is LauncherItem.Tag) RowIcon(state.item.icon, size = 32.dp)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .padding(start = H_PAD.dp)
+                        .weight(1f)
+                )
+                if (badges.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        badges.forEach { tag ->
+                            SuggestionChip(
+                                onClick = { },
+                                label = { Text(tag, fontSize = 10.sp) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                border = null,
+                                modifier = Modifier.height(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(bottom = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            entries.forEach { entry ->
+                SheetEntry(entry.label, entry.onTap, reset)
+            }
         }
     }
 }

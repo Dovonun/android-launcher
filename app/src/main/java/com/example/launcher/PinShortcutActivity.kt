@@ -5,13 +5,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.launcher.TAG.PINNED
-import com.example.launcher.data.TaggedShortcutEntity
+import com.example.launcher.data.TagItemEntity
+import com.example.launcher.data.TagItemType
 import kotlinx.coroutines.launch
 
 class PinShortcutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val db = (application as NiLauncher).database
-        val shortcutDao = db.taggedShortcutDao()
+        val tagItemDao = db.tagItemDao()
 
         super.onCreate(savedInstanceState)
         val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as? LauncherApps
@@ -20,12 +21,15 @@ class PinShortcutActivity : ComponentActivity() {
         if (!request.isValid) return
         val shortcut = request.shortcutInfo ?: return
         lifecycleScope.launch {
-            shortcutDao.insert(
-                TaggedShortcutEntity(
+            val nextOrder = tagItemDao.nextOrderForTag(PINNED)
+            tagItemDao.insert(
+                TagItemEntity(
+                    tagId = PINNED,
+                    itemOrder = nextOrder,
+                    type = TagItemType.SHORTCUT,
                     packageName = shortcut.`package`,
                     shortcutId = shortcut.id,
-                    tagId = PINNED,
-                    label = shortcut.shortLabel?.toString() ?: "Pinned Shortcut"
+                    labelOverride = shortcut.shortLabel?.toString()
                 )
             )
         }
@@ -33,4 +37,3 @@ class PinShortcutActivity : ComponentActivity() {
         finish()
     }
 }
-

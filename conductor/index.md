@@ -4,6 +4,7 @@
 - [Product Definition](./product.md)
 - [Product Guidelines](./product-guidelines.md)
 - [Tech Stack](./tech-stack.md)
+- [Tag System Spec](./tag-system-spec.md)
 
 ## Workflow
 - [Workflow](./workflow.md)
