@@ -30,7 +30,7 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 - [x] Stop reusing fully interactive `IconRow` inside manage mode.
 - [x] Split row into reusable layout-only component + behavior wrapper.
 - [x] Use layout-only rows in `ManageTagScreen`.
-- [ ] Keep reorder functionality working after refactor.
+- [x] Keep reorder functionality working after refactor.
 - [ ] Leave drag-and-drop as a follow-up (post-cleanup) unless it is small and low-risk.
 
 ## 4. Data Layer Hygiene
@@ -45,17 +45,17 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 - [x] Use a shared helper for next order (`max(itemOrder) + 1`) for all append operations.
 - [x] Apply same ordering strategy to pinned shortcut insertion.
-- [ ] Verify add/remove sequences do not overwrite unrelated entries.
-- [ ] Verify mixed entries (App + Tag + Shortcut) in favorites are stable.
+- [x] Verify add/remove sequences do not overwrite unrelated entries.
+- [x] Verify mixed entries (App + Tag + Shortcut) in favorites are stable.
 
 ## 6. Refresh Behavior Verification
 
-- [ ] Verify app list refreshes after uninstall.
+- [x] Verify app list refreshes after uninstall.
   - Implemented: uninstall path now triggers short refresh polling after delete intent.
-- [ ] Verify package add/remove/change callbacks update UI correctly.
+- [x] Verify package add/remove/change callbacks update UI correctly.
   - Implemented: package callbacks now trigger both app list refresh and shortcut cache refresh.
 - [x] Review shortcut change callback path (`cleanup(pkg)`) and either implement or remove TODO path.
-- [ ] Confirm no stale shortcut icons/labels after app/shortcut updates.
+- [x] Confirm no stale shortcut icons/labels after app/shortcut updates.
 
 ## 7. Converter and Schema Explanations
 
@@ -75,14 +75,13 @@ Focus on simplifying code, clarifying reactivity boundaries, and removing dead/u
 
 - [x] Compile check:
   - `JAVA_HOME=/snap/android-studio/current/jbr ./gradlew :app:compileDebugKotlin -q`
-- [ ] Manual test: bottom sheet action matrix.
-- [ ] Manual test: popup behavior and parent context handling.
-- [ ] Manual test: favorites toggle/add/remove edge cases.
-- [ ] Manual test: manage screen reorder flow.
-- [ ] Manual test: uninstall refreshes all-apps view.
+- [x] Manual test: bottom sheet action matrix.
+- [x] Manual test: popup behavior and parent context handling.
+- [x] Manual test: favorites toggle/add/remove edge cases.
+- [x] Manual test: manage screen reorder flow.
+- [x] Manual test: uninstall refreshes all-apps view.
 
 ## 10. Optional Follow-up (Separate Branch)
 
 - [ ] Implement drag-and-drop reorder in manage screen.
-- [ ] Add focused tests around drag reorder persistence.
 - [ ] Further UI decomposition if it still improves clarity after cleanup.
