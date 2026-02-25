@@ -150,6 +150,18 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             user
         ).orEmpty()
 
+    private fun resolveShortcutsForPackage(pkg: String): List<ShortcutInfo> {
+        val fromReactiveCache = cachedShortcuts.value[pkg]
+        if (!fromReactiveCache.isNullOrEmpty()) return fromReactiveCache
+
+        val fromPopupMemo = synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] }
+        if (!fromPopupMemo.isNullOrEmpty()) return fromPopupMemo
+
+        val fetched = loadShortcutsForPackage(pkg)
+        synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] = fetched }
+        return fetched
+    }
+
     private fun refreshApps() {
         val latest = launcherApps.getActivityList(null, user)
         apps.update { latest }
@@ -303,11 +315,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         is LauncherItem.Placeholder -> emptyList()
         is LauncherItem.App -> {
             val pkg = item.info.componentName.packageName
-            val shortcuts = cachedShortcuts.value[pkg]
-                ?: synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] }
-                ?: loadShortcutsForPackage(pkg).also { fetched ->
-                    synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] = fetched }
-                }
+            val shortcuts = resolveShortcutsForPackage(pkg)
             shortcuts.map {
                 LauncherItem.Shortcut(
                     it,
@@ -475,7 +483,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
         val newTagId = tagDao.insert(TagEntity(name = "${base.label} Tag"))
         val appEntity = TagItemEntity(newTagId, 0, TagItemType.APP, base.info.componentName.packageName)
-        val systemShortcuts = cachedShortcuts.value[base.info.componentName.packageName].orEmpty()
+        val systemShortcuts = resolveShortcutsForPackage(base.info.componentName.packageName)
         val shortcutEntities = systemShortcuts.mapIndexed { idx, info ->
             TagItemEntity(
                 newTagId,
