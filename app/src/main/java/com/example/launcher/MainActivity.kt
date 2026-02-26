@@ -450,8 +450,8 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = {
-                onClick()
                 onDismiss()
+                onClick()
             })
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .height(42.dp) // same as AppRow height

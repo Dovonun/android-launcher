@@ -365,13 +365,19 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 viewModelScope.launch { removeItemFromParent(item, parent.id) }
             })
             add(SheetAction("Manage $parentLabel") {
-                onNavigate(View.ManageTag(parent.id, parent.name))
+                viewModelScope.launch {
+                    getTag(parent.id).first { it != null }
+                    onNavigate(View.ManageTag(parent.id, parent.name))
+                }
             })
         }
 
         if (item is LauncherItem.Tag) {
             add(SheetAction("Manage ${item.name}") {
-                onNavigate(View.ManageTag(item.id, item.name))
+                viewModelScope.launch {
+                    getTag(item.id).first { it != null }
+                    onNavigate(View.ManageTag(item.id, item.name))
+                }
             })
         } else {
             add(SheetAction("Create Tag") {
