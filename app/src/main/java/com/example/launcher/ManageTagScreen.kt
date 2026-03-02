@@ -2,6 +2,7 @@ package com.example.launcher
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,6 +71,8 @@ fun ManageTagScreen(
 ) {
     val tag by appsVM.getTag(tagId).collectAsState(initial = null)
     val scope = rememberCoroutineScope()
+    // Q: Why do we need a list state/LazyColumn? Wouldn't normal column be enough?
+    // Could it be for animations or for drag?
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -81,6 +85,7 @@ fun ManageTagScreen(
     var dragMoved by remember { mutableStateOf(false) }
     var pendingPersistKeys by remember { mutableStateOf<List<String>?>(null) }
 
+    // TODO: tag.items is not reactive. change this to a graph lookup or pass the elements
     LaunchedEffect(tag?.items, draggedKey, pendingPersistKeys) {
         val upstream = tag?.items ?: emptyList()
         val upstreamKeys = upstream.map(::manageItemKey)
@@ -112,6 +117,7 @@ fun ManageTagScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Again why lazy?
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -143,12 +149,15 @@ fun ManageTagScreen(
                             val reachedThreshold = abs(offset) >= rowWidthPx * dismissThresholdFraction
                             if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
                             val updated = localItems.filterNot { manageItemKey(it) == rowKey }
+                            // This if is always true
                             if (updated.size != localItems.size) {
                                 localItems = updated
                                 persistOrder(updated)
                             }
                             true
                         } else {
+                            // Q: Can this ever happen?
+                            // There is a `SwipeToDismissBoxValue.Settled` but I have no clue if this is possible in the if above.
                             true
                         }
                     }
@@ -161,6 +170,7 @@ fun ManageTagScreen(
                     abs(dismissOffset) > 1f ||
                         dismissState.currentValue != SwipeToDismissBoxValue.Settled ||
                         dismissState.targetValue != SwipeToDismissBoxValue.Settled
+                // Q: How often is this triggered? Why is settled relevant?
                 LaunchedEffect(dismissDirection, reachedThreshold) {
                     if (dismissDirection == SwipeToDismissBoxValue.Settled) {
                         thresholdArmed = false
@@ -175,6 +185,7 @@ fun ManageTagScreen(
                 SwipeToDismissBox(
                     modifier = Modifier.zIndex(if (isDragged) 10f else 0f),
                     state = dismissState,
+                    // Can't these always be enabled? Or would that allow to delete multiple with multi touch? Would not be that bad.
                     enableDismissFromStartToEnd = draggedKey == null,
                     enableDismissFromEndToStart = draggedKey == null,
                     backgroundContent = {
@@ -187,7 +198,10 @@ fun ManageTagScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 28.dp),
+                                    // 28.dp is too high I think
+                                    // 16.dp also too high
+                                    // This looks acceptable on the left
+                                    .padding(horizontal = 8.dp),
                                 contentAlignment = align
                             ) {
                                 Icon(
@@ -207,15 +221,20 @@ fun ManageTagScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
+                            // Eh, There is no animation param passed...
                             .animateItem()
+                            // Q: Why would the size change?
                             .onSizeChanged { rowWidthPx = it.width.toFloat().coerceAtLeast(1f) }
                             .graphicsLayer {
+                                // Q: This could be done without the if. Would that be worse for performance?
                                 if (isDragged) {
                                     translationY = dragOffsetY
                                 }
                             }
                             .then(
                                 if (isSelected) {
+                                    // Q: The currently dragged row should have a background!
+                                    // I thought that I saw some ugly shadow. Can this be removed?
                                     Modifier.shadow(10.dp, MaterialTheme.shapes.large)
                                 } else {
                                     Modifier
@@ -226,6 +245,8 @@ fun ManageTagScreen(
                                     onPress = {
                                         pressedKey = rowKey
                                         tryAwaitRelease()
+                                        // Q: Is this some sort of conflict resolution for the horizontal delete swipe?
+                                        // Or is this only for the color change?
                                         if (draggedKey == null) pressedKey = null
                                     }
                                 )
@@ -240,19 +261,28 @@ fun ManageTagScreen(
                                     onDragEnd = finishDrag,
                                     onDragCancel = finishDrag,
                                     onVerticalDrag = { change, dragAmount ->
+                                        // Q: right now multi touch is a bit odd.
+                                        // Wouldn't a prevent new drag if one is already in progress be better?
+                                        // Right now the first one is canceled by the second one and releasing the first one ends the second one.
                                         if (draggedKey != rowKey) return@detectVerticalDragGestures
                                         change.consume()
+                                        // Is this the correct way to do this? The current y pos would seem more correct.
+                                        // Or is this to handle small positive and negative values?
                                         dragOffsetY += dragAmount
 
                                         val draggingInfo = listState.layoutInfo.visibleItemsInfo
                                             .firstOrNull { it.key == rowKey }
                                             ?: return@detectVerticalDragGestures
 
+                                        // Not sure what this calculates. But I guess it is related to moving the other items when one is dragged to its positon.
                                         val rowSpan = draggingInfo.size.toFloat().coerceAtLeast(1f)
                                         val halfSpan = rowSpan / 2f
                                         val startIndex = localItems.indexOfFirst { manageItemKey(it) == rowKey }
                                         if (startIndex < 0) return@detectVerticalDragGestures
 
+                                        // What is going on here?
+                                        // Here var is used but it is not changed.
+                                        // This part seems to work correctly. The items move when I move over them and they pop to the correct place.
                                         var workingIndex = startIndex
                                         var workingOffset = dragOffsetY
                                         val reordered = localItems.toMutableList()
@@ -265,15 +295,19 @@ fun ManageTagScreen(
                                             reordered.add(toIndex, reordered.removeAt(workingIndex))
                                             workingOffset += if (toIndex > workingIndex) rowSpan else -rowSpan
                                             localItems = reordered
-                                            dragOffsetY = workingOffset
+                                            dragOffsetY = workingOffset // Why is this needed
                                             dragMoved = true
                                         }
                                     }
                                 )
                             }
                     ) {
+                        // This box seems a bit too nested. Why are these nestings needed? Box for the LauncherRowLayout and a box around the row? Wouldn't one row be enough?
                         Box(modifier = Modifier.fillMaxWidth()) {
                             val rowBgColor = when {
+                                // Why are both these states needed?
+                                // The background should be active if the user is touching the object should be easier than this.
+                                // In CSS it would be one hover statement
                                 isSelected -> MaterialTheme.colorScheme.secondaryContainer
                                 swipeActive -> MaterialTheme.colorScheme.secondaryContainer
                                 else -> MaterialTheme.colorScheme.surface.copy(alpha = 0f)
@@ -282,6 +316,8 @@ fun ManageTagScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    // This seems over complicated. I want a visual background for my row.
+                                    // The icon in the row does not have left padding so we have to somehow add a bit of space to the left, but other than that it should just be the background of my row.
                                     .drawWithContent {
                                         val leftInset = 0f
                                         val rightInset = 8.dp.toPx()
@@ -301,34 +337,20 @@ fun ManageTagScreen(
                                     }
                                     .padding(end = H_PAD2.dp + 8.dp)
                             ) {
-                                Box(modifier = Modifier.weight(1f)) {
+                                Box(modifier = Modifier.weight(1f).border(2.dp, Color.Blue)) {
                                     LauncherRowLayout(item = item)
                                 }
                                 DragHandleDots(
                                     modifier = Modifier
                                         .padding(start = H_PAD.dp, end = H_PAD.dp + 8.dp)
                                         .size(width = 16.dp, height = 24.dp)
+                                        .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                                 )
                             }
                         }
                     }
                 }
             }
-        }
-
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = H_PAD2.dp, top = safeTop + 8.dp),
-            shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Edit $tagName",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-            )
         }
 
         FloatingActionButton(
