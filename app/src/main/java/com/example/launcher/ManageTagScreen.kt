@@ -2,17 +2,15 @@ package com.example.launcher
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,12 +20,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -37,18 +33,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -58,37 +54,53 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+
+private data class ManageRow(
+    val rowId: Long,
+    val item: LauncherItem
+)
+
+private enum class InteractionPhase {
+    Idle,
+    Pressed,
+    DraggingVertical,
+    SwipingHorizontal,
+    SettlingBack,
+    SettlingToReorderedSlot
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ManageTagScreen(
     tagId: Long,
-    tagName: String,
+    @Suppress("UNUSED_PARAMETER") tagName: String,
     appsVM: AppsVM,
     viewVM: ViewVM
 ) {
     val tag by appsVM.getTag(tagId).collectAsState(initial = null)
     val scope = rememberCoroutineScope()
-    // Q: Why do we need a list state/LazyColumn? Wouldn't normal column be enough?
-    // Could it be for animations or for drag?
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val safeTop = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
 
-    var localItems by remember(tagId) { mutableStateOf<List<LauncherItem>>(emptyList()) }
-    var draggedKey by remember { mutableStateOf<String?>(null) }
-    var pressedKey by remember { mutableStateOf<String?>(null) }
+    var localRows by remember(tagId) { mutableStateOf<List<ManageRow>>(emptyList()) }
+    var nextRowId by remember(tagId) { mutableLongStateOf(0L) }
+    var draggedRowId by remember { mutableStateOf<Long?>(null) }
+    var activeRowId by remember { mutableStateOf<Long?>(null) }
+    var activePhase by remember { mutableStateOf(InteractionPhase.Idle) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     var dragMoved by remember { mutableStateOf(false) }
     var pendingPersistKeys by remember { mutableStateOf<List<String>?>(null) }
+    var settleGeneration by remember { mutableIntStateOf(0) }
 
-    // TODO: tag.items is not reactive. change this to a graph lookup or pass the elements
-    LaunchedEffect(tag?.items, draggedKey, pendingPersistKeys) {
-        val upstream = tag?.items ?: emptyList()
-        val upstreamKeys = upstream.map(::manageItemKey)
+    // TODO: Source these items from a reactive graph flow instead of tag.items snapshots.
+    LaunchedEffect(tag?.items, draggedRowId, pendingPersistKeys) {
+        val upstreamItems = tag?.items ?: emptyList()
+        val upstreamKeys = upstreamItems.map(::persistItemKey)
         pendingPersistKeys?.let { pending ->
             if (upstreamKeys == pending) {
                 pendingPersistKeys = null
@@ -96,28 +108,59 @@ fun ManageTagScreen(
                 return@LaunchedEffect
             }
         }
-        if (draggedKey == null) {
-            localItems = upstream
+
+        if (draggedRowId == null) {
+            val startId = nextRowId
+            localRows = upstreamItems.mapIndexed { index, item ->
+                ManageRow(rowId = startId + index, item = item)
+            }
+            nextRowId = startId + upstreamItems.size
         }
     }
 
-    val persistOrder: (List<LauncherItem>) -> Unit = { items ->
-        pendingPersistKeys = items.map(::manageItemKey)
-        scope.launch { appsVM.updateOrder(tagId, items) }
+    val persistOrder: (List<ManageRow>) -> Unit = { rows ->
+        val items = rows.map { it.item }
+        pendingPersistKeys = items.map(::persistItemKey)
+        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tagId, items) }
     }
 
-    val finishDrag: () -> Unit = {
-        if (dragMoved) {
-            persistOrder(localItems)
+    LaunchedEffect(localRows, activeRowId) {
+        if (activeRowId != null && localRows.none { it.rowId == activeRowId }) {
+            activeRowId = null
+            activePhase = InteractionPhase.Idle
         }
-        pressedKey = null
-        draggedKey = null
-        dragOffsetY = 0f
-        dragMoved = false
+    }
+
+    val finishDrag: (Long) -> Unit = { rowId ->
+        if (draggedRowId == rowId) {
+            if (dragMoved) {
+                persistOrder(localRows)
+            }
+
+            draggedRowId = null
+            dragOffsetY = 0f
+            dragMoved = false
+
+            settleGeneration += 1
+            val generation = settleGeneration
+            activeRowId = rowId
+            activePhase = InteractionPhase.SettlingToReorderedSlot
+
+            scope.launch {
+                delay(180)
+                if (
+                    settleGeneration == generation &&
+                    activeRowId == rowId &&
+                    activePhase == InteractionPhase.SettlingToReorderedSlot
+                ) {
+                    activeRowId = null
+                    activePhase = InteractionPhase.Idle
+                }
+            }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Again why lazy?
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -129,40 +172,49 @@ fun ManageTagScreen(
             verticalArrangement = Arrangement.Bottom
         ) {
             itemsIndexed(
-                items = localItems,
-                key = { _, item -> manageItemKey(item) }
-            ) { _, item ->
-                val rowKey = manageItemKey(item)
-                val isDragged = draggedKey == rowKey
-                val isSelected = isDragged || pressedKey == rowKey
-                var rowWidthPx by remember(rowKey) { mutableFloatStateOf(1f) }
-                var thresholdArmed by remember(rowKey) { mutableStateOf(false) }
-                var dismissStateRef by remember(rowKey) { mutableStateOf<SwipeToDismissBoxState?>(null) }
+                items = localRows,
+                key = { _, row -> row.rowId }
+            ) { _, row ->
+                val rowId = row.rowId
+                val isDragged = draggedRowId == rowId
+                val ownsActiveState = activeRowId == rowId && activePhase != InteractionPhase.Idle
+                val canOwnInteraction = activeRowId == null || activeRowId == rowId
+                var rowWidthPx by remember(rowId) { mutableFloatStateOf(1f) }
+                var thresholdArmed by remember(rowId) { mutableStateOf(false) }
+                var dismissStateRef by remember(rowId) { mutableStateOf<SwipeToDismissBoxState?>(null) }
                 val dismissThresholdFraction = 0.30f
 
                 val dismissState = rememberSwipeToDismissBoxState(
                     positionalThreshold = { totalDistance -> totalDistance * dismissThresholdFraction },
                     confirmValueChange = { value ->
-                        if (draggedKey != null) return@rememberSwipeToDismissBoxState false
-                        if (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart) {
-                            val offset = dismissStateRef?.let { runCatching { it.requireOffset() }.getOrDefault(0f) } ?: 0f
-                            val reachedThreshold = abs(offset) >= rowWidthPx * dismissThresholdFraction
-                            if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
-                            val updated = localItems.filterNot { manageItemKey(it) == rowKey }
-                            // This if is always true
-                            if (updated.size != localItems.size) {
-                                localItems = updated
+                        if (draggedRowId != null) return@rememberSwipeToDismissBoxState false
+                        if (activeRowId != null && activeRowId != rowId) return@rememberSwipeToDismissBoxState false
+
+                        when (value) {
+                            SwipeToDismissBoxValue.StartToEnd,
+                            SwipeToDismissBoxValue.EndToStart -> {
+                                val offset = dismissStateRef
+                                    ?.let { runCatching { it.requireOffset() }.getOrDefault(0f) }
+                                    ?: 0f
+                                val reachedThreshold = abs(offset) >= rowWidthPx * dismissThresholdFraction
+                                if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
+
+                                val updated = localRows.filterNot { it.rowId == rowId }
+                                localRows = updated
+                                if (activeRowId == rowId) {
+                                    activeRowId = null
+                                    activePhase = InteractionPhase.Idle
+                                }
                                 persistOrder(updated)
+                                true
                             }
-                            true
-                        } else {
-                            // Q: Can this ever happen?
-                            // There is a `SwipeToDismissBoxValue.Settled` but I have no clue if this is possible in the if above.
-                            true
+
+                            SwipeToDismissBoxValue.Settled -> true
                         }
                     }
                 )
                 LaunchedEffect(dismissState) { dismissStateRef = dismissState }
+
                 val dismissDirection = dismissState.dismissDirection
                 val dismissOffset = runCatching { dismissState.requireOffset() }.getOrDefault(0f)
                 val reachedThreshold = abs(dismissOffset) >= rowWidthPx * dismissThresholdFraction
@@ -170,7 +222,7 @@ fun ManageTagScreen(
                     abs(dismissOffset) > 1f ||
                         dismissState.currentValue != SwipeToDismissBoxValue.Settled ||
                         dismissState.targetValue != SwipeToDismissBoxValue.Settled
-                // Q: How often is this triggered? Why is settled relevant?
+
                 LaunchedEffect(dismissDirection, reachedThreshold) {
                     if (dismissDirection == SwipeToDismissBoxValue.Settled) {
                         thresholdArmed = false
@@ -182,12 +234,41 @@ fun ManageTagScreen(
                     }
                 }
 
+                LaunchedEffect(
+                    rowId,
+                    swipeActive,
+                    dismissDirection,
+                    draggedRowId,
+                    activeRowId,
+                    activePhase
+                ) {
+                    if (draggedRowId != null) return@LaunchedEffect
+
+                    if (swipeActive && canOwnInteraction) {
+                        activeRowId = rowId
+                        activePhase = if (dismissDirection == SwipeToDismissBoxValue.Settled) {
+                            InteractionPhase.SettlingBack
+                        } else {
+                            InteractionPhase.SwipingHorizontal
+                        }
+                    } else if (
+                        !swipeActive &&
+                        activeRowId == rowId &&
+                        (activePhase == InteractionPhase.SwipingHorizontal ||
+                            activePhase == InteractionPhase.SettlingBack)
+                    ) {
+                        activeRowId = null
+                        activePhase = InteractionPhase.Idle
+                    }
+                }
+
+                val interactionActive = ownsActiveState || swipeActive
+
                 SwipeToDismissBox(
                     modifier = Modifier.zIndex(if (isDragged) 10f else 0f),
                     state = dismissState,
-                    // Can't these always be enabled? Or would that allow to delete multiple with multi touch? Would not be that bad.
-                    enableDismissFromStartToEnd = draggedKey == null,
-                    enableDismissFromEndToStart = draggedKey == null,
+                    enableDismissFromStartToEnd = draggedRowId == null && canOwnInteraction,
+                    enableDismissFromEndToStart = draggedRowId == null && canOwnInteraction,
                     backgroundContent = {
                         if (dismissDirection != SwipeToDismissBoxValue.Settled) {
                             val align = if (dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
@@ -198,9 +279,6 @@ fun ManageTagScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    // 28.dp is too high I think
-                                    // 16.dp also too high
-                                    // This looks acceptable on the left
                                     .padding(horizontal = 8.dp),
                                 contentAlignment = align
                             ) {
@@ -221,133 +299,96 @@ fun ManageTagScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            // Eh, There is no animation param passed...
                             .animateItem()
-                            // Q: Why would the size change?
                             .onSizeChanged { rowWidthPx = it.width.toFloat().coerceAtLeast(1f) }
                             .graphicsLayer {
-                                // Q: This could be done without the if. Would that be worse for performance?
                                 if (isDragged) {
                                     translationY = dragOffsetY
                                 }
                             }
-                            .then(
-                                if (isSelected) {
-                                    // Q: The currently dragged row should have a background!
-                                    // I thought that I saw some ugly shadow. Can this be removed?
-                                    Modifier.shadow(10.dp, MaterialTheme.shapes.large)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .pointerInput(rowKey) {
+                            .pointerInput(rowId) {
                                 detectTapGestures(
                                     onPress = {
-                                        pressedKey = rowKey
+                                        if (!canOwnInteraction) return@detectTapGestures
+                                        settleGeneration += 1
+                                        activeRowId = rowId
+                                        activePhase = InteractionPhase.Pressed
+
                                         tryAwaitRelease()
-                                        // Q: Is this some sort of conflict resolution for the horizontal delete swipe?
-                                        // Or is this only for the color change?
-                                        if (draggedKey == null) pressedKey = null
+                                        if (
+                                            activeRowId == rowId &&
+                                            activePhase == InteractionPhase.Pressed
+                                        ) {
+                                            activeRowId = null
+                                            activePhase = InteractionPhase.Idle
+                                        }
                                     }
                                 )
                             }
-                            .pointerInput(rowKey) {
+                            .pointerInput(rowId) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
-                                        draggedKey = rowKey
-                                        dragOffsetY = 0f
-                                        dragMoved = false
+                                        if (canOwnInteraction) {
+                                            settleGeneration += 1
+                                            activeRowId = rowId
+                                            activePhase = InteractionPhase.DraggingVertical
+                                            draggedRowId = rowId
+                                            dragOffsetY = 0f
+                                            dragMoved = false
+                                        }
                                     },
-                                    onDragEnd = finishDrag,
-                                    onDragCancel = finishDrag,
+                                    onDragEnd = { finishDrag(rowId) },
+                                    onDragCancel = { finishDrag(rowId) },
                                     onVerticalDrag = { change, dragAmount ->
-                                        // Q: right now multi touch is a bit odd.
-                                        // Wouldn't a prevent new drag if one is already in progress be better?
-                                        // Right now the first one is canceled by the second one and releasing the first one ends the second one.
-                                        if (draggedKey != rowKey) return@detectVerticalDragGestures
+                                        if (draggedRowId != rowId) return@detectVerticalDragGestures
                                         change.consume()
-                                        // Is this the correct way to do this? The current y pos would seem more correct.
-                                        // Or is this to handle small positive and negative values?
                                         dragOffsetY += dragAmount
 
                                         val draggingInfo = listState.layoutInfo.visibleItemsInfo
-                                            .firstOrNull { it.key == rowKey }
+                                            .firstOrNull { it.key == rowId }
                                             ?: return@detectVerticalDragGestures
 
-                                        // Not sure what this calculates. But I guess it is related to moving the other items when one is dragged to its positon.
                                         val rowSpan = draggingInfo.size.toFloat().coerceAtLeast(1f)
                                         val halfSpan = rowSpan / 2f
-                                        val startIndex = localItems.indexOfFirst { manageItemKey(it) == rowKey }
-                                        if (startIndex < 0) return@detectVerticalDragGestures
+                                        val fromIndex = localRows.indexOfFirst { it.rowId == rowId }
+                                        if (fromIndex < 0) return@detectVerticalDragGestures
 
-                                        // What is going on here?
-                                        // Here var is used but it is not changed.
-                                        // This part seems to work correctly. The items move when I move over them and they pop to the correct place.
-                                        var workingIndex = startIndex
-                                        var workingOffset = dragOffsetY
-                                        val reordered = localItems.toMutableList()
                                         val toIndex = when {
-                                            workingOffset <= -halfSpan && workingIndex < reordered.lastIndex -> workingIndex + 1
-                                            workingOffset >= halfSpan && workingIndex > 0 -> workingIndex - 1
+                                            dragOffsetY <= -halfSpan && fromIndex < localRows.lastIndex -> fromIndex + 1
+                                            dragOffsetY >= halfSpan && fromIndex > 0 -> fromIndex - 1
                                             else -> -1
                                         }
                                         if (toIndex >= 0) {
-                                            reordered.add(toIndex, reordered.removeAt(workingIndex))
-                                            workingOffset += if (toIndex > workingIndex) rowSpan else -rowSpan
-                                            localItems = reordered
-                                            dragOffsetY = workingOffset // Why is this needed
+                                            val reordered = localRows.toMutableList()
+                                            reordered.add(toIndex, reordered.removeAt(fromIndex))
+                                            localRows = reordered
+
+                                            // Rebase offset after swapping index to avoid immediate back-swap jitter.
+                                            dragOffsetY += if (toIndex > fromIndex) rowSpan else -rowSpan
                                             dragMoved = true
                                         }
                                     }
                                 )
                             }
-                    ) {
-                        // This box seems a bit too nested. Why are these nestings needed? Box for the LauncherRowLayout and a box around the row? Wouldn't one row be enough?
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            val rowBgColor = when {
-                                // Why are both these states needed?
-                                // The background should be active if the user is touching the object should be easier than this.
-                                // In CSS it would be one hover statement
-                                isSelected -> MaterialTheme.colorScheme.secondaryContainer
-                                swipeActive -> MaterialTheme.colorScheme.secondaryContainer
-                                else -> MaterialTheme.colorScheme.surface.copy(alpha = 0f)
-                            }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    // This seems over complicated. I want a visual background for my row.
-                                    // The icon in the row does not have left padding so we have to somehow add a bit of space to the left, but other than that it should just be the background of my row.
-                                    .drawWithContent {
-                                        val leftInset = 0f
-                                        val rightInset = 8.dp.toPx()
-                                        val radius = 14.dp.toPx()
-                                        if (rowBgColor.alpha > 0f) {
-                                            drawRoundRect(
-                                                color = rowBgColor,
-                                                topLeft = Offset(leftInset, 0f),
-                                                size = androidx.compose.ui.geometry.Size(
-                                                    width = size.width - leftInset - rightInset,
-                                                    height = size.height
-                                                ),
-                                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius)
-                                            )
-                                        }
-                                        drawContent()
-                                    }
-                                    .padding(end = H_PAD2.dp + 8.dp)
-                            ) {
-                                Box(modifier = Modifier.weight(1f).border(2.dp, Color.Blue)) {
-                                    LauncherRowLayout(item = item)
+                            .padding(end = H_PAD2.dp + 8.dp)
+                            .clip(MaterialTheme.shapes.large)
+                            .background(
+                                if (interactionActive) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    Color.Transparent
                                 }
-                                DragHandleDots(
-                                    modifier = Modifier
-                                        .padding(start = H_PAD.dp, end = H_PAD.dp + 8.dp)
-                                        .size(width = 16.dp, height = 24.dp)
-                                        .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                )
-                            }
+                            )
+                    ) {
+                        Box(modifier = Modifier.weight(1f).border(2.dp, MaterialTheme.colorScheme.primary)) {
+                            LauncherRowLayout(item = row.item)
                         }
+                        DragIndicatorLines(
+                            modifier = Modifier
+                                .padding(start = H_PAD.dp, end = H_PAD.dp + 8.dp)
+                                .size(width = 16.dp, height = 24.dp)
+                                .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                        )
                     }
                 }
             }
@@ -367,21 +408,33 @@ fun ManageTagScreen(
 }
 
 @Composable
-private fun DragHandleDots(modifier: Modifier = Modifier) {
+private fun DragIndicatorLines(modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
     Canvas(modifier = modifier) {
-        val radius = size.minDimension / 9f
-        val left = size.width * 0.35f
-        val right = size.width * 0.65f
-        val ys = listOf(size.height * 0.2f, size.height * 0.5f, size.height * 0.8f)
-        ys.forEach { y ->
-            drawCircle(color = color, radius = radius, center = Offset(left, y))
-            drawCircle(color = color, radius = radius, center = Offset(right, y))
-        }
+        val stroke = 2.dp.toPx()
+        val xStart = size.width * 0.2f
+        val xEnd = size.width * 0.8f
+        val yTop = size.height * 0.4f
+        val yBottom = size.height * 0.6f
+
+        drawLine(
+            color = color,
+            start = Offset(xStart, yTop),
+            end = Offset(xEnd, yTop),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = color,
+            start = Offset(xStart, yBottom),
+            end = Offset(xEnd, yBottom),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
     }
 }
 
-private fun manageItemKey(item: LauncherItem): String = when (item) {
+private fun persistItemKey(item: LauncherItem): String = when (item) {
     is LauncherItem.App -> "app:${item.info.componentName.packageName}"
     is LauncherItem.Shortcut -> "shortcut:${item.info.`package`}:${item.info.id}"
     is LauncherItem.Tag -> "tag:${item.id}"
