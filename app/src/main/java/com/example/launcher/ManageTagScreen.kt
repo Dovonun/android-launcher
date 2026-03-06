@@ -3,7 +3,6 @@ package com.example.launcher
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -147,7 +146,7 @@ fun ManageTagScreen(
             activePhase = InteractionPhase.SettlingToReorderedSlot
 
             scope.launch {
-                delay(180)
+                delay(10) // <-- this is too long it feels bad
                 if (
                     settleGeneration == generation &&
                     activeRowId == rowId &&
@@ -165,7 +164,7 @@ fun ManageTagScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = H_PAD2.dp)
+                .padding(horizontal = H_PAD2.dp)
                 .padding(bottom = 1f / 8f * screenHeight),
             userScrollEnabled = false,
             reverseLayout = true,
@@ -208,7 +207,6 @@ fun ManageTagScreen(
                                 persistOrder(updated)
                                 true
                             }
-
                             SwipeToDismissBoxValue.Settled -> true
                         }
                     }
@@ -370,7 +368,6 @@ fun ManageTagScreen(
                                     }
                                 )
                             }
-                            .padding(end = H_PAD2.dp + 8.dp)
                             .clip(MaterialTheme.shapes.large)
                             .background(
                                 if (interactionActive) {
@@ -380,14 +377,13 @@ fun ManageTagScreen(
                                 }
                             )
                     ) {
-                        Box(modifier = Modifier.weight(1f).border(2.dp, MaterialTheme.colorScheme.primary)) {
+                        Box(modifier = Modifier.weight(1f)) {
                             LauncherRowLayout(item = row.item)
                         }
                         DragIndicatorLines(
                             modifier = Modifier
-                                .padding(start = H_PAD.dp, end = H_PAD.dp + 8.dp)
+                                .padding(horizontal = H_PAD.dp)
                                 .size(width = 16.dp, height = 24.dp)
-                                .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                         )
                     }
                 }
