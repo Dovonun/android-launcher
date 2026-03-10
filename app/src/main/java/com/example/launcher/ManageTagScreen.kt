@@ -88,6 +88,7 @@ fun ManageTagScreen(
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     var settleTargetId by remember { mutableStateOf<Long?>(null) }
     val settleAnim = remember { Animatable(0f) }
+    var dragStartOrder by remember { mutableStateOf<List<Long>?>(null) }
     var dragMoved by remember { mutableStateOf(false) }
 
     val persistOrder: (List<ManageRow>) -> Unit = { rows ->
@@ -97,10 +98,15 @@ fun ManageTagScreen(
     val finishDrag: (Long) -> Unit = { rowId ->
         if (draggedRowId == rowId) {
             if (dragMoved) {
-                persistOrder(localRows)
+                val startOrder = dragStartOrder
+                val finalOrder = localRows.map { it.rowId }
+                if (startOrder != null && finalOrder != startOrder) {
+                    persistOrder(localRows)
+                }
             }
 
             draggedRowId = null
+            dragStartOrder = null
             settleTargetId = rowId
             dragMoved = false
             scope.launch {
@@ -247,6 +253,7 @@ fun ManageTagScreen(
                                     onDragStart = {
                                         draggedRowId = rowId
                                         settleTargetId = null
+                                        dragStartOrder = localRows.map { it.rowId }
                                         scope.launch {
                                             settleAnim.stop()
                                             settleAnim.snapTo(0f)
