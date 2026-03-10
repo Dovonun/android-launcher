@@ -228,8 +228,8 @@ class MainActivity : ComponentActivity() {
 
                             is View.ManageTag -> {
                                 ManageTagScreen(
-                                    tagId = v.tagId,
-                                    tagName = v.name,
+                                    tag = v.tag,
+                                    items = v.items,
                                     appsVM = appsVM,
                                     viewVM = viewVM
                                 )

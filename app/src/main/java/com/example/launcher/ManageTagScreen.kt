@@ -69,7 +69,7 @@ private enum class InteractionPhase {
     Pressed,
     DraggingVertical,
     SwipingHorizontal,
-    // One moving state could be enough
+    // One moving state should be enough
     SettlingBack,
     SettlingToReorderedSlot
 }
@@ -77,64 +77,27 @@ private enum class InteractionPhase {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ManageTagScreen(
-    tagId: Long, // replace with list of items
-    @Suppress("UNUSED_PARAMETER") tagName: String,
-    appsVM: AppsVM,
+    tag: LauncherItem.Tag,
+    items: List<LauncherItem>,
+    appsVM: AppsVM, // should be both removed by callback
     viewVM: ViewVM
 ) {
-    val tag by appsVM.getTag(tagId).collectAsState(initial = null)
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState() // seems like lazy is the correct way to implement darg and drop. But check this again please.
+    val listState = rememberLazyListState() // seems like lazy is the correct way to implement drag and drop. But check this again please.
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
-    var localRows by remember(tagId) { mutableStateOf<List<ManageRow>>(emptyList()) }
-    var nextRowId by remember(tagId) { mutableLongStateOf(0L) }
-    var draggedRowId by remember { mutableStateOf<Long?>(null) }
-    var activeRowId by remember { mutableStateOf<Long?>(null) }
-    var activePhase by remember { mutableStateOf(InteractionPhase.Idle) }
+    var localRows by remember(items) { mutableStateOf<List<ManageRow>>(items.mapIndexed { index, item -> ManageRow(index.toLong(), item) }) }
+    var draggedRowId by remember { mutableStateOf<Long?>(null) } // why
+    var activeRowId by remember { mutableStateOf<Long?>(null) } // why
+    var activePhase by remember { mutableStateOf(InteractionPhase.Idle) } // why
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     var dragMoved by remember { mutableStateOf(false) }
-    var pendingPersistKeys by remember { mutableStateOf<List<String>?>(null) }
     var settleGeneration by remember { mutableIntStateOf(0) }
 
-    // TODO: Source these items from a reactive graph flow instead of tag.items snapshots.
-    // Does not have to be reactive. change pls
-    LaunchedEffect(tag?.items, draggedRowId, pendingPersistKeys) {
-        val upstreamItems = tag?.items ?: emptyList()
-        val upstreamKeys = upstreamItems.map(::persistItemKey)
-        pendingPersistKeys?.let { pending ->
-            if (upstreamKeys == pending) {
-                pendingPersistKeys = null
-            } else {
-                return@LaunchedEffect
-            }
-        }
-
-        // I don't get this
-        if (draggedRowId == null) {
-            val startId = nextRowId
-            localRows = upstreamItems.mapIndexed { index, item ->
-                ManageRow(rowId = startId + index, item = item)
-            }
-            nextRowId = startId + upstreamItems.size
-        }
-    }
-
-    // This is ideally a callback
     val persistOrder: (List<ManageRow>) -> Unit = { rows ->
         val items = rows.map { it.item }
-        pendingPersistKeys = items.map(::persistItemKey)
-        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tagId, items) } // if we can persisit on leave we could do it via one call back and remove the appsVM from this screen
-    }
-
-    // What does this do? How can a row be active that is not present?
-    // Deletion? But why not clear the row id there istead of this effect that runs on every rowId change?
-    LaunchedEffect(localRows, activeRowId) {
-        if (activeRowId != null && localRows.none { it.rowId == activeRowId }) {
-            activeRowId = null
-            activePhase = InteractionPhase.Idle
-        }
+        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, items) } // if we can persist on leave we could do it via one call back and remove the appsVM from this screen
     }
 
     val finishDrag: (Long) -> Unit = { rowId ->
@@ -153,7 +116,7 @@ fun ManageTagScreen(
             activePhase = InteractionPhase.SettlingToReorderedSlot
 
             scope.launch {
-                // This should not be needed. I want the highligh gone after it is settled!
+                // This should not be needed. I want the highlight gone after it is settled!
                 // The trash icon should be removed first of course.
                 delay(10) // <-- this is too long it feels bad
                 if (

@@ -360,14 +360,13 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
             })
         } else {
-            val parentLabel = if (parent.id == TAG.FAV) "Favorites" else parent.name
-            add(SheetAction("Remove from $parentLabel") {
+            add(SheetAction("Remove from $parent.name") {
                 viewModelScope.launch { removeItemFromParent(item, parent.id) }
             })
-            add(SheetAction("Manage $parentLabel") {
+            add(SheetAction("Manage $parent.name") {
                 viewModelScope.launch {
                     getTag(parent.id).first { it != null }
-                    onNavigate(View.ManageTag(parent.id, parent.name))
+                    onNavigate(View.ManageTag(parent, parent.items))
                 }
             })
         }
@@ -375,8 +374,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         if (item is LauncherItem.Tag) {
             add(SheetAction("Manage ${item.name}") {
                 viewModelScope.launch {
-                    getTag(item.id).first { it != null }
-                    onNavigate(View.ManageTag(item.id, item.name))
+                    onNavigate(View.ManageTag(item, item.items))
                 }
             })
         } else {
