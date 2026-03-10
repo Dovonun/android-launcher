@@ -137,10 +137,9 @@ fun ManageTagScreen(
 
                 val dismissDirection = dismissState.dismissDirection
                 val dismissOffset = runCatching { dismissState.requireOffset() }.getOrDefault(0f)
-                val swipeActive =
+                val showSwipe =
                     abs(dismissOffset) > 1f ||
-                        dismissState.currentValue != SwipeToDismissBoxValue.Settled ||
-                        dismissState.targetValue != SwipeToDismissBoxValue.Settled
+                        dismissDirection != SwipeToDismissBoxValue.Settled
 
                 LaunchedEffect(dismissOffset, rowWidthPx) {
                     reachedThreshold = abs(dismissOffset) >= rowWidthPx * dismissThresholdFraction
@@ -157,7 +156,7 @@ fun ManageTagScreen(
                     }
                 }
 
-                val interactionActive = isDragged || swipeActive
+                val interactionActive = isDragged || showSwipe
 
                 SwipeToDismissBox(
                     modifier = Modifier.zIndex(if (isDragged) 10f else 0f),
@@ -165,7 +164,7 @@ fun ManageTagScreen(
                     enableDismissFromStartToEnd = draggedRowId == null,
                     enableDismissFromEndToStart = draggedRowId == null,
                     backgroundContent = {
-                        if (dismissDirection != SwipeToDismissBoxValue.Settled) {
+                        if (showSwipe) {
                             val align = if (dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
                                 Alignment.CenterStart
                             } else {
@@ -175,13 +174,12 @@ fun ManageTagScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 8.dp),
+                                    .padding(start = 8.dp, end = H_PAD.dp),
                                 contentAlignment = align
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
-                                    // is armed should do the same no?
                                     tint = if (reachedThreshold) {
                                         MaterialTheme.colorScheme.error
                                     } else {
