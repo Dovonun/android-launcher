@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -49,6 +50,8 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+
+const val LEFT_PAD = 8
 
 private data class ManageRow(
     val rowId: Long,
@@ -69,8 +72,15 @@ fun ManageTagScreen(
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
-    var localRows by remember(items) { mutableStateOf<List<ManageRow>>(items.mapIndexed { index, item -> ManageRow(index.toLong(), item) }) }
-    var draggedRowId by remember { mutableStateOf<Long?>(null) } // why
+    var localRows by remember(items) {
+        mutableStateOf<List<ManageRow>>(items.mapIndexed { index, item ->
+            ManageRow(
+                index.toLong(),
+                item
+            )
+        })
+    }
+    var draggedRowId by remember { mutableStateOf<Long?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     var dragMoved by remember { mutableStateOf(false) }
 
@@ -98,7 +108,7 @@ fun ManageTagScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = H_PAD2.dp)
+                .padding(horizontal = (H_PAD2 - LEFT_PAD).dp)
                 .padding(bottom = 1f / 8f * screenHeight), // Should not cut of the drag. Can we make this padding be there without the cut off?
             userScrollEnabled = false,
             reverseLayout = true,
@@ -114,6 +124,7 @@ fun ManageTagScreen(
                 // Why do I need this?
                 var thresholdArmed by remember(rowId) { mutableStateOf(false) }
                 var reachedThreshold by remember(rowId) { mutableStateOf(false) }
+                val backgroundStartPad = 8.dp
                 val dismissThresholdFraction = 0.30f
 
                 // Seems overkill
@@ -130,6 +141,7 @@ fun ManageTagScreen(
                                 persistOrder(updated)
                                 true
                             }
+
                             SwipeToDismissBoxValue.Settled -> true
                         }
                     }
@@ -139,7 +151,7 @@ fun ManageTagScreen(
                 val dismissOffset = runCatching { dismissState.requireOffset() }.getOrDefault(0f)
                 val showSwipe =
                     abs(dismissOffset) > 1f ||
-                        dismissDirection != SwipeToDismissBoxValue.Settled
+                            dismissDirection != SwipeToDismissBoxValue.Settled
 
                 LaunchedEffect(dismissOffset, rowWidthPx) {
                     reachedThreshold = abs(dismissOffset) >= rowWidthPx * dismissThresholdFraction
@@ -190,8 +202,7 @@ fun ManageTagScreen(
                         }
                     }
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItem()
@@ -241,27 +252,34 @@ fun ManageTagScreen(
                                     }
                                 )
                             }
-                            .clip(MaterialTheme.shapes.large) // what is clip
-                            .background(
-                                if (interactionActive) {
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                } else {
-                                    Color.Transparent
-                                }
-                            )
                     ) {
-                        // Why box?
-                        Box(modifier = Modifier.weight(1f)) {
-                            LauncherRowLayout(item = row.item)
-                        }
-                        Icon(
-                            painter = painterResource(id = R.drawable.drag_indicator_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
-                            contentDescription = "Reorder",
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .padding(horizontal = H_PAD.dp)
-                                .size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                        )
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.large) // what is clip
+                                .background(
+                                    if (interactionActive) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        Color.Transparent
+                                    }
+                                )
+                                .padding(start = LEFT_PAD.dp)
+                        ) {
+                            // Why box?
+                            Box(modifier = Modifier.weight(1f)) {
+                                LauncherRowLayout(item = row.item)
+                            }
+                            Icon(
+                                painter = painterResource(id = R.drawable.drag_indicator_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
+                                contentDescription = "Reorder",
+                                modifier = Modifier
+                                    .padding(horizontal = H_PAD.dp)
+                                    .size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                            )
+                        }
                     }
                 }
             }
