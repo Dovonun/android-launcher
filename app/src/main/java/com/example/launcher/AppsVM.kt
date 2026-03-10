@@ -362,10 +362,10 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
             })
         } else {
-            add(SheetAction("Remove from $parent.name") {
+            add(SheetAction("Remove from ${parent.name}") {
                 viewModelScope.launch { removeItemFromParent(item, parent.id) }
             })
-            add(SheetAction("Manage $parent.name") {
+            add(SheetAction("Manage ${parent.name}") {
                 viewModelScope.launch {
                     getTag(parent.id).first { it != null }
                     onNavigate(View.ManageTag(parent, parent.items))

@@ -33,8 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.Alignment
@@ -113,10 +111,7 @@ fun ManageTagScreen(
                 settleAnim.snapTo(dragOffsetY)
                 settleAnim.animateTo(
                     targetValue = 0f,
-                    animationSpec = spring(
-                        dampingRatio = 0.85f,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    animationSpec = tween(durationMillis = 160)
                 )
                 if (settleTargetId == rowId) {
                     settleTargetId = null
@@ -125,7 +120,6 @@ fun ManageTagScreen(
         }
     }
 
-    // Why do we need a box? Seems to be because of the button...
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -145,10 +139,8 @@ fun ManageTagScreen(
                 val isDragged = draggedRowId == rowId
                 val shouldSettle = settleTargetId == rowId
                 var rowWidthPx by remember(rowId) { mutableFloatStateOf(1f) }
-                // Why do I need this?
                 var thresholdArmed by remember(rowId) { mutableStateOf(false) }
                 var reachedThreshold by remember(rowId) { mutableStateOf(false) }
-                val backgroundStartPad = 8.dp
                 val dismissThresholdFraction = 0.30f
 
                 // Seems overkill
@@ -206,7 +198,7 @@ fun ManageTagScreen(
                 SwipeToDismissBox(
                     modifier = Modifier
                         .zIndex(if (isDragged) 10f else 0f)
-                        .then(if (isDragged) Modifier else Modifier.animateItemPlacement()),
+                        .then(if (isDragged || shouldSettle) Modifier else Modifier.animateItemPlacement()),
                     state = dismissState,
                     enableDismissFromStartToEnd = draggedRowId == null,
                     enableDismissFromEndToStart = draggedRowId == null,
