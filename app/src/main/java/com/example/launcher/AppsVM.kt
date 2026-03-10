@@ -518,12 +518,28 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     suspend fun updateOrder(tagId: Long, items: List<LauncherItem>) {
         val currentEntities = tagItemDao.getItemsForTag(tagId).first()
-        
+
+        val appMap = currentEntities
+            .asSequence()
+            .filter { it.type == TagItemType.APP }
+            .filter { it.packageName != null }
+            .associateBy { it.packageName!! }
+        val shortcutMap = currentEntities
+            .asSequence()
+            .filter { it.type == TagItemType.SHORTCUT }
+            .filter { it.packageName != null && it.shortcutId != null }
+            .associateBy { it.packageName!! to it.shortcutId!! }
+        val tagMap = currentEntities
+            .asSequence()
+            .filter { it.type == TagItemType.TAG }
+            .filter { it.targetTagId != null }
+            .associateBy { it.targetTagId!! }
+
         val newEntities = items.mapIndexed { index, item ->
             val entity = when (item) {
-                is LauncherItem.App -> currentEntities.find { it.type == TagItemType.APP && it.packageName == item.info.componentName.packageName }
-                is LauncherItem.Shortcut -> currentEntities.find { it.type == TagItemType.SHORTCUT && it.packageName == item.info.`package` && it.shortcutId == item.info.id }
-                is LauncherItem.Tag -> currentEntities.find { it.type == TagItemType.TAG && it.targetTagId == item.id }
+                is LauncherItem.App -> appMap[item.info.componentName.packageName]
+                is LauncherItem.Shortcut -> shortcutMap[item.info.`package` to item.info.id]
+                is LauncherItem.Tag -> tagMap[item.id]
                 is LauncherItem.Placeholder -> null
             }
             entity?.copy(itemOrder = index)

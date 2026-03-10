@@ -32,6 +32,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -82,11 +86,12 @@ fun ManageTagScreen(
     }
     var draggedRowId by remember { mutableStateOf<Long?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var settleTargetId by remember { mutableStateOf<Long?>(null) }
+    val settleAnim = remember { Animatable(0f) }
     var dragMoved by remember { mutableStateOf(false) }
 
     val persistOrder: (List<ManageRow>) -> Unit = { rows ->
-        val items = rows.map { it.item }
-        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, items) }
+        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, rows.map { it.item }) }
     }
 
     val finishDrag: (Long) -> Unit = { rowId ->
@@ -96,9 +101,21 @@ fun ManageTagScreen(
             }
 
             draggedRowId = null
-            dragOffsetY = 0f
+            settleTargetId = rowId
             dragMoved = false
-
+            scope.launch {
+                settleAnim.snapTo(dragOffsetY)
+                settleAnim.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = 0.85f,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+                if (settleTargetId == rowId) {
+                    settleTargetId = null
+                }
+            }
         }
     }
 
@@ -120,6 +137,7 @@ fun ManageTagScreen(
             ) { _, row ->
                 val rowId = row.rowId
                 val isDragged = draggedRowId == rowId
+                val shouldSettle = settleTargetId == rowId
                 var rowWidthPx by remember(rowId) { mutableFloatStateOf(1f) }
                 // Why do I need this?
                 var thresholdArmed by remember(rowId) { mutableStateOf(false) }
@@ -169,9 +187,20 @@ fun ManageTagScreen(
                 }
 
                 val interactionActive = isDragged || showSwipe
+                val rowBackgroundColor by animateColorAsState(
+                    targetValue = if (interactionActive) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                    animationSpec = tween(durationMillis = 140),
+                    label = "RowBackgroundFade"
+                )
 
                 SwipeToDismissBox(
-                    modifier = Modifier.zIndex(if (isDragged) 10f else 0f),
+                    modifier = Modifier
+                        .zIndex(if (isDragged) 10f else 0f)
+                        .then(if (isDragged) Modifier else Modifier.animateItemPlacement()),
                     state = dismissState,
                     enableDismissFromStartToEnd = draggedRowId == null,
                     enableDismissFromEndToStart = draggedRowId == null,
@@ -205,17 +234,23 @@ fun ManageTagScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .animateItem()
                             .onSizeChanged { rowWidthPx = it.width.toFloat().coerceAtLeast(1f) }
                             .graphicsLayer {
                                 if (isDragged) {
                                     translationY = dragOffsetY
+                                } else if (shouldSettle) {
+                                    translationY = settleAnim.value
                                 }
                             }
                             .pointerInput(rowId) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                         draggedRowId = rowId
+                                        settleTargetId = null
+                                        scope.launch {
+                                            settleAnim.stop()
+                                            settleAnim.snapTo(0f)
+                                        }
                                         dragOffsetY = 0f
                                         dragMoved = false
                                     },
@@ -258,13 +293,7 @@ fun ManageTagScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(MaterialTheme.shapes.large) // what is clip
-                                .background(
-                                    if (interactionActive) {
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    } else {
-                                        Color.Transparent
-                                    }
-                                )
+                                .background(rowBackgroundColor)
                                 .padding(start = LEFT_PAD.dp)
                         ) {
                             // Why box?
