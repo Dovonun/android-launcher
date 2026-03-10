@@ -1,6 +1,5 @@
 package com.example.launcher
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -41,15 +40,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
@@ -60,14 +58,18 @@ import kotlin.math.abs
 
 private data class ManageRow(
     val rowId: Long,
+    // If a LauncherItem has an id you could remove this id.
     val item: LauncherItem
 )
 
+// Depending on if this is per row or global for one row the necessary fields change.
 private enum class InteractionPhase {
+    // Why is idle needed?
     Idle,
     Pressed,
     DraggingVertical,
     SwipingHorizontal,
+    // One moving state could be enough
     SettlingBack,
     SettlingToReorderedSlot
 }
@@ -75,14 +77,14 @@ private enum class InteractionPhase {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ManageTagScreen(
-    tagId: Long,
+    tagId: Long, // replace with list of items
     @Suppress("UNUSED_PARAMETER") tagName: String,
     appsVM: AppsVM,
     viewVM: ViewVM
 ) {
     val tag by appsVM.getTag(tagId).collectAsState(initial = null)
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyListState() // seems like lazy is the correct way to implement darg and drop. But check this again please.
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
@@ -97,6 +99,7 @@ fun ManageTagScreen(
     var settleGeneration by remember { mutableIntStateOf(0) }
 
     // TODO: Source these items from a reactive graph flow instead of tag.items snapshots.
+    // Does not have to be reactive. change pls
     LaunchedEffect(tag?.items, draggedRowId, pendingPersistKeys) {
         val upstreamItems = tag?.items ?: emptyList()
         val upstreamKeys = upstreamItems.map(::persistItemKey)
@@ -108,6 +111,7 @@ fun ManageTagScreen(
             }
         }
 
+        // I don't get this
         if (draggedRowId == null) {
             val startId = nextRowId
             localRows = upstreamItems.mapIndexed { index, item ->
@@ -117,12 +121,15 @@ fun ManageTagScreen(
         }
     }
 
+    // This is ideally a callback
     val persistOrder: (List<ManageRow>) -> Unit = { rows ->
         val items = rows.map { it.item }
         pendingPersistKeys = items.map(::persistItemKey)
-        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tagId, items) }
+        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tagId, items) } // if we can persisit on leave we could do it via one call back and remove the appsVM from this screen
     }
 
+    // What does this do? How can a row be active that is not present?
+    // Deletion? But why not clear the row id there istead of this effect that runs on every rowId change?
     LaunchedEffect(localRows, activeRowId) {
         if (activeRowId != null && localRows.none { it.rowId == activeRowId }) {
             activeRowId = null
@@ -146,6 +153,8 @@ fun ManageTagScreen(
             activePhase = InteractionPhase.SettlingToReorderedSlot
 
             scope.launch {
+                // This should not be needed. I want the highligh gone after it is settled!
+                // The trash icon should be removed first of course.
                 delay(10) // <-- this is too long it feels bad
                 if (
                     settleGeneration == generation &&
@@ -159,13 +168,14 @@ fun ManageTagScreen(
         }
     }
 
+    // Why do we need a box? Seems to be because of the button...
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = H_PAD2.dp)
-                .padding(bottom = 1f / 8f * screenHeight),
+                .padding(bottom = 1f / 8f * screenHeight), // Should not cut of the drag. Can we make this padding be there without the cut off?
             userScrollEnabled = false,
             reverseLayout = true,
             verticalArrangement = Arrangement.Bottom
@@ -177,12 +187,15 @@ fun ManageTagScreen(
                 val rowId = row.rowId
                 val isDragged = draggedRowId == rowId
                 val ownsActiveState = activeRowId == rowId && activePhase != InteractionPhase.Idle
+                // seems over engineered
                 val canOwnInteraction = activeRowId == null || activeRowId == rowId
                 var rowWidthPx by remember(rowId) { mutableFloatStateOf(1f) }
+                // Why do I need this?
                 var thresholdArmed by remember(rowId) { mutableStateOf(false) }
                 var dismissStateRef by remember(rowId) { mutableStateOf<SwipeToDismissBoxState?>(null) }
                 val dismissThresholdFraction = 0.30f
 
+                // Seems overkill
                 val dismissState = rememberSwipeToDismissBoxState(
                     positionalThreshold = { totalDistance -> totalDistance * dismissThresholdFraction },
                     confirmValueChange = { value ->
@@ -211,6 +224,7 @@ fun ManageTagScreen(
                         }
                     }
                 )
+                /// Mirroring?
                 LaunchedEffect(dismissState) { dismissStateRef = dismissState }
 
                 val dismissDirection = dismissState.dismissDirection
@@ -232,6 +246,7 @@ fun ManageTagScreen(
                     }
                 }
 
+                // seems bad
                 LaunchedEffect(
                     rowId,
                     swipeActive,
@@ -274,6 +289,7 @@ fun ManageTagScreen(
                             } else {
                                 Alignment.CenterEnd
                             }
+                            // Why box?
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -283,6 +299,7 @@ fun ManageTagScreen(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
+                                    // is armed should do the same no?
                                     tint = if (reachedThreshold) {
                                         MaterialTheme.colorScheme.error
                                     } else {
@@ -368,7 +385,7 @@ fun ManageTagScreen(
                                     }
                                 )
                             }
-                            .clip(MaterialTheme.shapes.large)
+                            .clip(MaterialTheme.shapes.large) // what is clip
                             .background(
                                 if (interactionActive) {
                                     MaterialTheme.colorScheme.secondaryContainer
@@ -377,13 +394,17 @@ fun ManageTagScreen(
                                 }
                             )
                     ) {
+                        // Why box?
                         Box(modifier = Modifier.weight(1f)) {
                             LauncherRowLayout(item = row.item)
                         }
-                        DragIndicatorLines(
+                        Icon(
+                            painter = painterResource(id = R.drawable.drag_indicator_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
+                            contentDescription = "Reorder",
                             modifier = Modifier
                                 .padding(horizontal = H_PAD.dp)
-                                .size(width = 16.dp, height = 24.dp)
+                                .size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                         )
                     }
                 }
@@ -391,7 +412,7 @@ fun ManageTagScreen(
         }
 
         FloatingActionButton(
-            onClick = { viewVM.setView(View.Favorites) },
+            onClick = { viewVM.setView(View.Favorites) }, // if this is a callback we can remove the viewVM.
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 32.dp),
@@ -403,36 +424,10 @@ fun ManageTagScreen(
     }
 }
 
-@Composable
-private fun DragIndicatorLines(modifier: Modifier = Modifier) {
-    val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-    Canvas(modifier = modifier) {
-        val stroke = 2.dp.toPx()
-        val xStart = size.width * 0.2f
-        val xEnd = size.width * 0.8f
-        val yTop = size.height * 0.4f
-        val yBottom = size.height * 0.6f
-
-        drawLine(
-            color = color,
-            start = Offset(xStart, yTop),
-            end = Offset(xEnd, yTop),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = color,
-            start = Offset(xStart, yBottom),
-            end = Offset(xEnd, yBottom),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round
-        )
-    }
-}
-
 private fun persistItemKey(item: LauncherItem): String = when (item) {
     is LauncherItem.App -> "app:${item.info.componentName.packageName}"
     is LauncherItem.Shortcut -> "shortcut:${item.info.`package`}:${item.info.id}"
     is LauncherItem.Tag -> "tag:${item.id}"
     is LauncherItem.Placeholder -> "placeholder:${item.kind}:${item.label}"
+    // What do I do with place holders? I could not show place holders. The hard case is the empty place holder. Does it vanish when I add an element? How does it work? Tags should be shown. Empty is not a problem in that case because favorites can't be empty. But this means we don't need the graph we need the list before the graph. One without reps.
 }
