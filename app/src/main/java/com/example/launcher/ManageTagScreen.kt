@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.produceState
@@ -670,16 +671,29 @@ private fun SelectorRowLayout(
     selected: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val indent by animateDpAsState(
+        targetValue = if (selected) 14.dp else 0.dp,
+        animationSpec = tween(durationMillis = 140),
+        label = "SelectorIndent"
+    )
+    val rowBackgroundColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 140),
+        label = "SelectorRowBackground"
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
         modifier = modifier
             .fillMaxWidth()
+            .background(rowBackgroundColor, MaterialTheme.shapes.large)
+            .padding(start = indent)
             .padding(vertical = 8.dp)
     ) {
-        leading()
-        RowLabel(label)
-        Spacer(modifier = Modifier.weight(1f))
         if (selected) {
             Icon(
                 imageVector = Icons.Default.Check,
@@ -687,9 +701,10 @@ private fun SelectorRowLayout(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
-        } else {
-            Spacer(modifier = Modifier.size(20.dp))
         }
+        leading()
+        RowLabel(label)
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 

@@ -11,6 +11,11 @@
 - [x] In `ManageTagScreen`, call `ensureItemsInTag` when returning from selector.
 - [x] Persist selector removals by syncing DB to list on manage entry.
 - [x] Add top "Add items…" row in `ManageTagScreen` to open selector.
+- [x] Selection check visibility (animated shift):
+  - [x] Animate indent + left check for selected rows.
+  - [x] Add selected row tint.
+  - [x] Apply to popup shortcut rows.
+  - [x] Tune spacing between check and icon/label.
 - [ ] Manual checks:
   - [ ] Open selector, verify existing items are checked.
   - [ ] Add app + shortcut + tag, confirm/back returns to manage with appended items.
