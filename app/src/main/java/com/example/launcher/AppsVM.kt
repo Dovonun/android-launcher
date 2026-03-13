@@ -1,6 +1,7 @@
 package com.example.launcher
 
 import android.app.Application
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
@@ -320,7 +321,20 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             when (val target = resolveLaunchTarget(item)) {
                 is LauncherItem.App -> launcherApps.startMainActivity(target.info.componentName, user, null, null)
-                is LauncherItem.Shortcut -> launcherApps.startShortcut(target.info.`package`, target.info.id, null, null, user)
+                is LauncherItem.Shortcut -> {
+                    val info = target.info
+                    if (!info.isEnabled) {
+                        _toast.emit(info.disabledMessage?.toString() ?: "Shortcut is disabled")
+                        return@launch
+                    }
+                    try {
+                        launcherApps.startShortcut(info.`package`, info.id, null, null, user)
+                    } catch (_: ActivityNotFoundException) {
+                        _toast.emit("Shortcut could not be started")
+                    } catch (_: SecurityException) {
+                        _toast.emit("Shortcut permission denied")
+                    }
+                }
                 is LauncherItem.Placeholder -> _toast.emit(target.label)
                 is LauncherItem.Tag -> error("Unreachable launch target: unresolved Tag")
             }
