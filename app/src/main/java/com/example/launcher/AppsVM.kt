@@ -280,6 +280,10 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     val favorites = graph.map { it[TAG.FAV]?.items ?: emptyList() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val allTags = graph.map { graphMap ->
+        graphMap.values.sortedBy { it.name.lowercase() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun getTag(id: Long): Flow<LauncherItem.Tag?> = graph.map { it[id] }
 
     fun getTagsForItem(item: LauncherItem): Flow<List<String>> = combine(
@@ -548,6 +552,78 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }.filterNotNull()
 
         tagItemDao.updateOrder(tagId, newEntities)
+    }
+
+    suspend fun ensureItemsInTag(tagId: Long, items: List<LauncherItem>) {
+        val currentEntities = tagItemDao.getItemsForTag(tagId).first()
+        val appSet = currentEntities
+            .asSequence()
+            .filter { it.type == TagItemType.APP }
+            .mapNotNull { it.packageName }
+            .toMutableSet()
+        val shortcutSet = currentEntities
+            .asSequence()
+            .filter { it.type == TagItemType.SHORTCUT }
+            .mapNotNull { entity ->
+                val pkg = entity.packageName
+                val id = entity.shortcutId
+                if (pkg == null || id == null) null else pkg to id
+            }
+            .toMutableSet()
+        val tagSet = currentEntities
+            .asSequence()
+            .filter { it.type == TagItemType.TAG }
+            .mapNotNull { it.targetTagId }
+            .toMutableSet()
+
+        items.forEach { item ->
+            when (item) {
+                is LauncherItem.App -> {
+                    val pkg = item.info.componentName.packageName
+                    if (appSet.add(pkg)) {
+                        val nextOrder = tagItemDao.nextOrderForTag(tagId)
+                        tagItemDao.insert(
+                            TagItemEntity(
+                                tagId,
+                                nextOrder,
+                                TagItemType.APP,
+                                packageName = pkg
+                            )
+                        )
+                    }
+                }
+                is LauncherItem.Shortcut -> {
+                    val key = item.info.`package` to item.info.id
+                    if (shortcutSet.add(key)) {
+                        val nextOrder = tagItemDao.nextOrderForTag(tagId)
+                        tagItemDao.insert(
+                            TagItemEntity(
+                                tagId,
+                                nextOrder,
+                                TagItemType.SHORTCUT,
+                                packageName = item.info.`package`,
+                                shortcutId = item.info.id,
+                                labelOverride = item.label
+                            )
+                        )
+                    }
+                }
+                is LauncherItem.Tag -> {
+                    if (tagSet.add(item.id)) {
+                        val nextOrder = tagItemDao.nextOrderForTag(tagId)
+                        tagItemDao.insert(
+                            TagItemEntity(
+                                tagId,
+                                nextOrder,
+                                TagItemType.TAG,
+                                targetTagId = item.id
+                            )
+                        )
+                    }
+                }
+                is LauncherItem.Placeholder -> Unit
+            }
+        }
     }
 
     private fun appsToRows(list: List<LauncherActivityInfo>) = list.map {

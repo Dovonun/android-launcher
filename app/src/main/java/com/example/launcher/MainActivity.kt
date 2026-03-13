@@ -167,6 +167,14 @@ class MainActivity : ComponentActivity() {
                                 appsVM = appsVM,
                                 viewVM = viewVM
                             )
+                        } else if (currentView is View.ManageTagAdd) {
+                            val v = currentView as View.ManageTagAdd
+                            ManageTagAddScreen(
+                                tag = v.tag,
+                                items = v.items,
+                                appsVM = appsVM,
+                                viewVM = viewVM
+                            )
                         } else {
                             val allApps by appsVM.uiAllGrouped.collectAsState()
                             when (currentView) {
@@ -237,6 +245,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 is View.ManageTag -> Unit
+                                is View.ManageTagAdd -> Unit
                             }
                             LetterBar(
                                 allApps,

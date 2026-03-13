@@ -12,6 +12,7 @@ sealed interface View {
     data object Favorites : View
     data object AllApps : View
     data class ManageTag(val tag: LauncherItem.Tag, val items: List<LauncherItem>) : View
+    data class ManageTagAdd(val tag: LauncherItem.Tag, val items: List<LauncherItem>) : View
 }
 
 sealed interface MenuState {
