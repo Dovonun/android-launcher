@@ -143,8 +143,6 @@ class MainActivity : ComponentActivity() {
 
                     is MenuState.None -> Unit
                 }
-                val allApps by appsVM.uiAllGrouped.collectAsState()
-                val favorites by appsVM.favorites.collectAsState()
                 val currentView by viewVM.view.collectAsState()
                 Scaffold(
                     containerColor = Color.Transparent,
@@ -161,81 +159,94 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        when (val v = currentView) {
-                            is View.Favorites -> {
-                                val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
-                                Column(
-                                    verticalArrangement = Arrangement.Bottom,
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .padding(start = H_PAD2.dp)
-                                        .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                                        .pointerInput(Unit) {
-                                            detectVerticalDragGestures(
-                                                onVerticalDrag = { change, dragAmount ->
-                                                    if (change.isConsumed) return@detectVerticalDragGestures
-                                                    if (dragAmount > 60f) systemVM.expandNotificationShade()
-                                                })
-                                        }) {
-                                    favorites.asReversed().forEach { fav ->
-                                        IconRow(
-                                            fav, appsVM, viewVM, snackbarHostState, parent = favTag
-                                        )
-                                    }
-                                }
-                            }
-
-                            is View.AllApps -> LazyColumn(
-                                modifier = Modifier.padding(start = H_PAD2.dp),
-                                state = listState,
-                                contentPadding = PaddingValues(
-                                    top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
-                                    bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
-                                )
-                            ) {
-                                allApps.forEach { (letter, list) ->
-                                    item {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(40.dp)
-                                                .height(40.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = letter.toString(),
-                                                style = MaterialTheme.typography.headlineSmall.copy(
-                                                    shadow = Shadow(
-                                                        color = MaterialTheme.colorScheme.surface.copy(
-                                                            alpha = 0.7f
-                                                        ), offset = Offset(0f, 0f), blurRadius = 8f
-                                                    ),
-                                                    fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
-                                                ),
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                textAlign = TextAlign.Center
+                        if (currentView is View.ManageTag) {
+                            val v = currentView as View.ManageTag
+                            ManageTagScreen(
+                                tag = v.tag,
+                                items = v.items,
+                                appsVM = appsVM,
+                                viewVM = viewVM
+                            )
+                        } else if (currentView is View.ManageTagAdd) {
+                            val v = currentView as View.ManageTagAdd
+                            ManageTagAddScreen(
+                                tag = v.tag,
+                                items = v.items,
+                                appsVM = appsVM,
+                                viewVM = viewVM
+                            )
+                        } else {
+                            val allApps by appsVM.uiAllGrouped.collectAsState()
+                            when (currentView) {
+                                is View.Favorites -> {
+                                    val favorites by appsVM.favorites.collectAsState()
+                                    val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
+                                    Column(
+                                        verticalArrangement = Arrangement.Bottom,
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .padding(start = H_PAD2.dp)
+                                            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+                                            .pointerInput(Unit) {
+                                                detectVerticalDragGestures(
+                                                    onVerticalDrag = { change, dragAmount ->
+                                                        if (change.isConsumed) return@detectVerticalDragGestures
+                                                        if (dragAmount > 60f) systemVM.expandNotificationShade()
+                                                    })
+                                            }) {
+                                        favorites.asReversed().forEach { fav ->
+                                            IconRow(
+                                                fav, appsVM, viewVM, snackbarHostState, parent = favTag
                                             )
-
                                         }
                                     }
-                                    itemsIndexed(
-                                        items = list,
-                                        key = { index, item -> "$letter-${item.label}-$index" }) { index, it ->
-                                        IconRow(it, appsVM, viewVM, snackbarHostState)
-                                    }
-                                    item { Spacer(modifier = Modifier.height(48.dp)) }
                                 }
-                            }
 
-                            is View.ManageTag -> {
-                                ManageTagScreen(
-                                    tagId = v.tagId,
-                                    tagName = v.name,
-                                    appsVM = appsVM,
-                                    viewVM = viewVM
-                                )
+                                is View.AllApps -> LazyColumn(
+                                    modifier = Modifier.padding(start = H_PAD2.dp),
+                                    state = listState,
+                                    contentPadding = PaddingValues(
+                                        top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
+                                        bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
+                                    )
+                                ) {
+                                    allApps.forEach { (letter, list) ->
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(40.dp)
+                                                    .height(40.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = letter.toString(),
+                                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                                        shadow = Shadow(
+                                                            color = MaterialTheme.colorScheme.surface.copy(
+                                                                alpha = 0.7f
+                                                            ), offset = Offset(0f, 0f), blurRadius = 8f
+                                                        ),
+                                                        fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
+                                                    ),
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    textAlign = TextAlign.Center
+                                                )
+
+                                            }
+                                        }
+                                        itemsIndexed(
+                                            items = list,
+                                            key = { index, item -> "$letter-${item.label}-$index" }
+                                        ) { index, it ->
+                                            IconRow(it, appsVM, viewVM, snackbarHostState)
+                                        }
+                                        item { Spacer(modifier = Modifier.height(48.dp)) }
+                                    }
+                                }
+
+                                is View.ManageTag -> Unit
+                                is View.ManageTagAdd -> Unit
                             }
-                        }
-                        if (currentView !is View.ManageTag) {
                             LetterBar(
                                 allApps,
                                 viewVM,
@@ -450,8 +461,8 @@ fun SheetEntry(text: String, onClick: () -> Unit, onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = {
-                onClick()
                 onDismiss()
+                onClick()
             })
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .height(42.dp) // same as AppRow height

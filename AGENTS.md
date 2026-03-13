@@ -2,6 +2,7 @@
 
 ## Project-Specific Notes (Read First)
 This launcher intentionally favors a small, explicit codebase over generic abstractions.
+- Local build note: set `JAVA_HOME=/snap/android-studio/current/jbr` before running Gradle commands.
 
 ## Style Expectations
 - Prefer minimal, functional code paths.
