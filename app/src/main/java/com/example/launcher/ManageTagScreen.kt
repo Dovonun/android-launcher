@@ -672,7 +672,7 @@ private fun SelectorRowLayout(
     modifier: Modifier = Modifier
 ) {
     val indent by animateDpAsState(
-        targetValue = if (selected) 14.dp else 0.dp,
+        targetValue = if (selected) 12.dp else 0.dp,
         animationSpec = tween(durationMillis = 140),
         label = "SelectorIndent"
     )
@@ -690,21 +690,29 @@ private fun SelectorRowLayout(
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
         modifier = modifier
             .fillMaxWidth()
-            .background(rowBackgroundColor, MaterialTheme.shapes.large)
-            .padding(start = indent)
-            .padding(vertical = 8.dp)
+            .padding(vertical = 4.dp)
     ) {
-        if (selected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(rowBackgroundColor, MaterialTheme.shapes.large)
+                .padding(start = indent)
+                .padding(vertical = 8.dp)
+        ) {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            leading()
+            RowLabel(label)
+            Spacer(modifier = Modifier.weight(1f))
         }
-        leading()
-        RowLabel(label)
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 

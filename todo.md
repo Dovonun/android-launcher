@@ -16,6 +16,10 @@
   - [x] Add selected row tint.
   - [x] Apply to popup shortcut rows.
   - [x] Tune spacing between check and icon/label.
+- [x] Selection tint refinement:
+  - [x] Inset pill tint.
+  - [x] Add row gap to prevent merge.
+  - [x] Reduce indent to 12dp.
 - [ ] Manual checks:
   - [ ] Open selector, verify existing items are checked.
   - [ ] Add app + shortcut + tag, confirm/back returns to manage with appended items.
