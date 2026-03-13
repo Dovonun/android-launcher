@@ -20,6 +20,14 @@
   - [x] Inset pill tint.
   - [x] Add row gap to prevent merge.
   - [x] Reduce indent to 12dp.
+- [x] Selection list spacing + scroll offset:
+  - [x] Add group spacers between app letters.
+  - [x] Add tag-to-app spacer.
+  - [x] Add letter-bar scroll offset to thumb zone.
+  - [x] Update scroll indexes for spacer items.
+- [x] Selection list thumb-zone alignment:
+  - [x] Add top/bottom content padding (1/3, 2/3).
+  - [x] Remove letter-bar scroll offset.
 - [ ] Manual checks:
   - [ ] Open selector, verify existing items are checked.
   - [ ] Add app + shortcut + tag, confirm/back returns to manage with appended items.

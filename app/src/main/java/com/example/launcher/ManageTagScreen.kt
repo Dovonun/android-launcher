@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -519,8 +520,11 @@ fun ManageTagAddScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = (H_PAD2 - LEFT_PAD).dp)
-                .padding(bottom = 1f / 8f * screenHeight)
+                .padding(horizontal = (H_PAD2 - LEFT_PAD).dp),
+            contentPadding = PaddingValues(
+                top = 1f / 3f * screenHeight,
+                bottom = 2f / 3f * screenHeight
+            )
         ) {
             item(key = "tag-header") {
                 SelectorHeader("#")
@@ -534,6 +538,9 @@ fun ManageTagAddScreen(
                     selected = selectedMap.containsKey(SelectionKey.Tag(tagItem.id)),
                     onToggle = { toggle(tagItem) }
                 )
+            }
+            if (tags.isNotEmpty()) {
+                item(key = "tag-spacer") { Spacer(modifier = Modifier.height(48.dp)) }
             }
             allApps.toSortedMap().forEach { (letter, list) ->
                 item(key = "header-$letter") {
@@ -560,6 +567,7 @@ fun ManageTagAddScreen(
                         }
                     )
                 }
+                item(key = "spacer-$letter") { Spacer(modifier = Modifier.height(48.dp)) }
             }
         }
 
@@ -793,10 +801,11 @@ private fun SelectorLetterBar(
             var index = 0
             add(index) // # header
             index += 1 + tags.size
+            if (tags.isNotEmpty()) index += 1 // spacer after tags
             allApps.keys.sorted().forEach { letter ->
                 add(index)
                 val count = allApps[letter]?.size ?: 0
-                index += 1 + count
+                index += 1 + count + 1 // + spacer
             }
         }
     }
