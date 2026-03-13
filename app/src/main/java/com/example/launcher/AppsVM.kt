@@ -126,6 +126,19 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val shortcutsRefreshTick = MutableStateFlow(0)
     private val popupShortcutMemo = mutableMapOf<String, List<ShortcutInfo>>()
 
+    private sealed interface TagItemKey {
+        data class App(val pkg: String) : TagItemKey
+        data class Shortcut(val pkg: String, val id: String) : TagItemKey
+        data class Tag(val id: Long) : TagItemKey
+    }
+
+    private fun itemKey(item: LauncherItem): TagItemKey? = when (item) {
+        is LauncherItem.App -> TagItemKey.App(item.info.componentName.packageName)
+        is LauncherItem.Shortcut -> TagItemKey.Shortcut(item.info.`package`, item.info.id)
+        is LauncherItem.Tag -> TagItemKey.Tag(item.id)
+        is LauncherItem.Placeholder -> null
+    }
+
     // Reactive cache for packages referenced by launcher data.
     @OptIn(ExperimentalCoroutinesApi::class)
     private val cachedShortcuts = combine(
@@ -623,6 +636,26 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                 }
                 is LauncherItem.Placeholder -> Unit
             }
+        }
+    }
+
+    suspend fun syncTagItemsToList(tagId: Long, items: List<LauncherItem>) {
+        ensureItemsInTag(tagId, items)
+        val currentEntities = tagItemDao.getItemsForTag(tagId).first()
+        val entityKeys = currentEntities.mapNotNull { entity ->
+            when (entity.type) {
+                TagItemType.APP -> entity.packageName?.let { TagItemKey.App(it) }
+                TagItemType.SHORTCUT -> {
+                    val pkg = entity.packageName
+                    val id = entity.shortcutId
+                    if (pkg == null || id == null) null else TagItemKey.Shortcut(pkg, id)
+                }
+                TagItemType.TAG -> entity.targetTagId?.let { TagItemKey.Tag(it) }
+            }
+        }
+        val itemKeys = items.mapNotNull { itemKey(it) }
+        if (entityKeys != itemKeys) {
+            updateOrder(tagId, items)
         }
     }
 

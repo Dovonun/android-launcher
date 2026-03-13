@@ -123,7 +123,7 @@ fun ManageTagScreen(
 
     LaunchedEffect(tag.id, items) {
         kotlinx.coroutines.withContext(Dispatchers.IO) {
-            appsVM.ensureItemsInTag(tag.id, items)
+            appsVM.syncTagItemsToList(tag.id, items)
         }
     }
 
@@ -142,9 +142,25 @@ fun ManageTagScreen(
     var dragStartOrder by remember { mutableStateOf<List<Long>?>(null) }
     var dragMoved by remember { mutableStateOf(false) }
 
+    var lastPersistedOrder by remember(items) {
+        mutableStateOf(items.mapNotNull { selectionKey(it) })
+    }
+
     val persistOrder: (List<ManageRow>) -> Unit = { rows ->
+        lastPersistedOrder = rows.mapNotNull { selectionKey(it.item) }
         scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, rows.map { it.item }) }
     }
+
+    val finishManage: () -> Unit = {
+        val currentKeys = localRows.mapNotNull { selectionKey(it.item) }
+        val hasUnknown = localRows.any { selectionKey(it.item) == null }
+        if (hasUnknown || currentKeys != lastPersistedOrder) {
+            persistOrder(localRows)
+        }
+        viewVM.setView(View.Favorites)
+    }
+
+    BackHandler { finishManage() }
 
     val finishDrag: (Long) -> Unit = { rowId ->
         if (draggedRowId == rowId) {
@@ -379,7 +395,7 @@ fun ManageTagScreen(
         }
 
         FloatingActionButton(
-            onClick = { viewVM.setView(View.Favorites) },
+            onClick = finishManage,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 32.dp),

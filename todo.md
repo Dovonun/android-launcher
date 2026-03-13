@@ -9,6 +9,7 @@
 - [x] Add shortcut popup for selector (swipe app row to toggle shortcuts).
 - [x] Add `AppsVM.ensureItemsInTag(tagId, items)` to insert missing items with `nextOrderForTag`.
 - [x] In `ManageTagScreen`, call `ensureItemsInTag` when returning from selector.
+- [x] Persist selector removals by syncing DB to list on manage entry.
 - [x] Add top "Add items…" row in `ManageTagScreen` to open selector.
 - [ ] Manual checks:
   - [ ] Open selector, verify existing items are checked.
