@@ -1,34 +1,23 @@
-# Tag Add/Select Flow
+# Tag Manager Plan (Work Tracker)
 
-- [x] Add `View.ManageTagAdd(tag, items)` and route it in `MainActivity`.
-- [x] Build selector composable (in `ManageTagScreen.kt`) with:
-  - [x] `#` tag section at top (tag name + `#`, no swipe).
-  - [x] App sections grouped by letter.
-  - [x] Checkmarks for selected items.
-- [x] Add selector letter bar with `#` entry for tags + A-Z entries for apps.
-- [x] Add shortcut popup for selector (swipe app row to toggle shortcuts).
-- [x] Add `AppsVM.ensureItemsInTag(tagId, items)` to insert missing items with `nextOrderForTag`.
-- [x] In `ManageTagScreen`, call `ensureItemsInTag` when returning from selector.
-- [x] Persist selector removals by syncing DB to list on manage entry.
-- [x] Add top "Add items…" row in `ManageTagScreen` to open selector.
-- [x] Selection check visibility (animated shift):
-  - [x] Animate indent + left check for selected rows.
-  - [x] Add selected row tint.
-  - [x] Apply to popup shortcut rows.
-  - [x] Tune spacing between check and icon/label.
-- [x] Selection tint refinement:
-  - [x] Inset pill tint.
-  - [x] Add row gap to prevent merge.
-  - [x] Reduce indent to 12dp.
-- [x] Selection list spacing + scroll offset:
-  - [x] Add group spacers between app letters.
-  - [x] Add tag-to-app spacer.
-  - [x] Add letter-bar scroll offset to thumb zone.
-  - [x] Update scroll indexes for spacer items.
-- [x] Selection list thumb-zone alignment:
-  - [x] Add top/bottom content padding (1/3, 2/3).
-  - [x] Remove letter-bar scroll offset.
-- [ ] Manual checks:
-  - [ ] Open selector, verify existing items are checked.
-  - [ ] Add app + shortcut + tag, confirm/back returns to manage with appended items.
-  - [ ] Letter bar `#` jumps to tag section; letters jump to app sections.
+## Summary
+Add a Tag Manager list opened from tag badges in the bottom sheet. The list supports inline rename on tap, horizontal-drag content preview popup (read-only + Manage Tag action), and long-press delete with confirmation. Favorites/Pinned are locked from rename/delete.
+
+## Progress
+- [x] Implement View state + navigation entry point (tag badge opens Tag Manager).
+- [x] Tag Manager list UI (snapshot at open): rows show tag name, lock system tags.
+- [x] Inline rename on tap (edit state + confirm/cancel).
+- [x] Horizontal drag opens preview popup (read-only list + “Manage Tag” action).
+- [x] Long-press delete confirm dialog (blocked for system tags).
+- [x] AppsVM: rename + delete helpers using TagDao.
+- [x] Wire Manage Tag navigation from popup.
+- [ ] Manual checks (see below).
+- [x] Build: `:app:compileDebugKotlin`.
+
+## Manual Checks
+- [ ] Tap tag badge opens Tag Manager list.
+- [ ] Tap row enters rename; confirm updates tag name everywhere.
+- [ ] Horizontal drag opens preview popup; items are read-only.
+- [ ] Popup “Manage Tag” navigates to existing Manage screen.
+- [ ] Long-press shows delete dialog; delete removes tag and references.
+- [ ] Favorites/Pinned cannot rename/delete.

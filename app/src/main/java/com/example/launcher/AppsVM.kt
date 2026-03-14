@@ -673,6 +673,21 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun renameTag(tagId: Long, name: String) {
+        if (tagId == TAG.FAV || tagId == TAG.PINNED) return
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        val existing = tagDao.getById(tagId) ?: return
+        if (existing.name == trimmed) return
+        tagDao.update(existing.copy(name = trimmed))
+    }
+
+    suspend fun deleteTag(tagId: Long) {
+        if (tagId == TAG.FAV || tagId == TAG.PINNED) return
+        val existing = tagDao.getById(tagId) ?: return
+        tagDao.delete(existing)
+    }
+
     private fun appsToRows(list: List<LauncherActivityInfo>) = list.map {
         LauncherItem.App(it, it.label.toString(), it.getIcon(0).toBitmap().asImageBitmap())
     }
