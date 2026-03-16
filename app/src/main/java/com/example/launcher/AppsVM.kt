@@ -295,7 +295,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allTags = graph.map { graphMap ->
-        graphMap.values.sortedBy { it.name.lowercase() }
+        graphMap.values.sortedBy { it.id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun getTag(id: Long): Flow<LauncherItem.Tag?> = graph.map { it[id] }

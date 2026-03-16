@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
@@ -269,32 +271,37 @@ fun TagManagerScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             Box(modifier = Modifier.weight(1f)) {
-                                RowLabel(tag.name)
-                            }
-                            if (isSystem) {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = "System tag",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(
-                                        id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
-                                    ),
-                                    contentDescription = "Rename tag",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .clickable { startRename(tag) }
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    RowLabel(tag.name)
+                                    if (isSystem) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "System tag",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
+                                            ),
+                                            contentDescription = "Rename tag",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .clickable { startRename(tag) }
+                                        )
+                                    }
+                                }
                             }
                         }
                         Text(
                             text = tag.items.size.toString(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(end = H_PAD.dp)
+                            modifier = Modifier.padding(end = H_PAD2.dp)
                         )
                     }
                 }
@@ -389,14 +396,29 @@ private fun TagPreviewPopup(
                                 onDismiss()
                                 onManage()
                             }
-                            .padding(vertical = 8.dp)
-                            .height(42.dp)
+                            .clip(MaterialTheme.shapes.large)
+                            .padding(vertical = 6.dp)
+                            .height(44.dp)
                     ) {
-                        Text(
-                            text = "Manage Tag",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = LEFT_PAD.dp, end = H_PAD.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = "Go to manage tag",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Manage Tag",
+                                modifier = Modifier.padding(start = H_PAD.dp).weight(1f),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
                     }
                 }
 
