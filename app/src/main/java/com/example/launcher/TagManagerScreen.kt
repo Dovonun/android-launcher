@@ -6,9 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -20,14 +21,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,16 +48,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Popup
@@ -78,6 +91,7 @@ fun TagManagerScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     val initialTags by produceState(initialValue = emptyList<LauncherItem.Tag>()) {
@@ -85,20 +99,23 @@ fun TagManagerScreen(
     }
     var tags by remember(initialTags) { mutableStateOf(initialTags) }
     var editingTagId by remember { mutableStateOf<Long?>(null) }
-    var editText by remember { mutableStateOf("") }
+    var editHasFocused by remember { mutableStateOf(false) }
+    var editValue by remember { mutableStateOf(TextFieldValue("")) }
     var deleteCandidate by remember { mutableStateOf<LauncherItem.Tag?>(null) }
     var popupState by remember { mutableStateOf<TagPreviewPopupState?>(null) }
 
     val startRename: (LauncherItem.Tag) -> Unit = { tag ->
         editingTagId = tag.id
-        editText = tag.name
+        editHasFocused = false
+        editValue = TextFieldValue(tag.name, selection = TextRange(0, tag.name.length))
     }
     val cancelRename: () -> Unit = {
         editingTagId = null
-        editText = ""
+        editHasFocused = false
+        editValue = TextFieldValue("")
     }
     fun commitRename(tag: LauncherItem.Tag) {
-        val trimmed = editText.trim()
+        val trimmed = editValue.text.trim()
         cancelRename()
         if (trimmed.isEmpty() || trimmed == tag.name) return
         tags = tags.map { if (it.id == tag.id) it.copy(name = trimmed) else it }
@@ -115,28 +132,31 @@ fun TagManagerScreen(
         scope.launch(Dispatchers.IO) { appsVM.deleteTag(tag.id) }
     }
 
-    BackHandler { viewVM.setView(View.Favorites) }
+    BackHandler {
+        if (editingTagId != null) cancelRename() else viewVM.setView(View.Favorites)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = H_PAD2.dp),
-            contentPadding = PaddingValues(
-                top = 1f / 3f * screenHeight,
-                bottom = 2f / 3f * screenHeight
+                .padding(start = H_PAD2.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                bottom = 1f / 8f * screenHeight
             ),
+            reverseLayout = true,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(
-                items = tags,
+                items = tags.asReversed(),
                 key = { it.id }
             ) { tag ->
                 val isSystem = tag.id == TAG.FAV || tag.id == TAG.PINNED
                 val isEditing = editingTagId == tag.id
                 var layoutCoordinates: LayoutCoordinates? = null
                 var fired by remember { mutableStateOf(false) }
+                val focusRequester = remember(tag.id) { FocusRequester() }
 
                 val rowAlpha = if (isSystem) 0.55f else 1f
 
@@ -146,14 +166,9 @@ fun TagManagerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .alpha(rowAlpha)
-                        .clip(MaterialTheme.shapes.large)
-                        .background(MaterialTheme.colorScheme.surface)
                         .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
                         .pointerInput(tag) {
                             detectTapGestures(
-                                onTap = {
-                                    if (!isSystem && !isEditing) startRename(tag)
-                                },
                                 onLongPress = {
                                     if (!isSystem && !isEditing) onDelete(tag)
                                 }
@@ -176,34 +191,83 @@ fun TagManagerScreen(
                                 }
                             }
                         }
-                        .padding(vertical = 6.dp, horizontal = H_PAD.dp)
+                        .padding(vertical = 6.dp)
                 ) {
                     RowIcon(tag.representative.icon)
                     if (isEditing) {
                         TextField(
-                            value = editText,
-                            onValueChange = { editText = it },
-                            modifier = Modifier.weight(1f),
+                            value = editValue,
+                            onValueChange = { editValue = it },
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                commitRename(tag)
+                                keyboardController?.hide()
+                            }),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
                                 unfocusedContainerColor = Color.Transparent,
                                 disabledContainerColor = Color.Transparent
-                            )
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { state ->
+                                    if (state.isFocused) {
+                                        editHasFocused = true
+                                    } else if (editHasFocused && editingTagId == tag.id) {
+                                        cancelRename()
+                                    }
+                                }
+                                .onPreviewKeyEvent { event ->
+                                    if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
+                                        commitRename(tag)
+                                        keyboardController?.hide()
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
                         )
-                        IconButton(onClick = { commitRename(tag) }) {
-                            Icon(Icons.Default.Check, contentDescription = "Confirm rename")
-                        }
-                        IconButton(onClick = cancelRename) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel rename")
-                        }
                     } else {
-                        RowLabel(tag.name)
-                        Spacer(modifier = Modifier.weight(1f))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                RowLabel(tag.name)
+                            }
+                            if (isSystem) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "System tag",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Rename tag",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { startRename(tag) }
+                                )
+                            }
+                        }
                         Text(
                             text = tag.items.size.toString(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+
+                if (isEditing) {
+                    androidx.compose.runtime.LaunchedEffect(tag.id, editingTagId) {
+                        if (editingTagId == tag.id) {
+                            focusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
                     }
                 }
             }
