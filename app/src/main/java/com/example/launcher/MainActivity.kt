@@ -107,6 +107,8 @@ import kotlinx.coroutines.launch
 
 const val H_PAD = 16
 const val H_PAD2 = 2 * H_PAD
+const val ROW_HEIGHT = 56
+const val POPUP_V_PAD = 12
 
 class MainActivity : ComponentActivity() {
     private val viewVM: ViewVM by viewModels()
@@ -382,6 +384,7 @@ fun IconRow(
     viewVM: ViewVM,
     snackbarHostState: SnackbarHostState,
     parent: LauncherItem.Tag? = null,
+    anchorBottomY: Float? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -412,9 +415,10 @@ fun IconRow(
                                     duration = SnackbarDuration.Short
                                 ) else {
                                     // When swiping, the 'parent' for items inside this popup is 'item' (if it's a Tag)
+                                    val anchor = anchorBottomY ?: n
                                     viewVM.setMenu(
                                         MenuState.Popup(
-                                            entries, n, item as? LauncherItem.Tag
+                                            entries, n, item as? LauncherItem.Tag, anchorBottomY = anchor
                                         )
                                     )
                                 }
@@ -560,6 +564,7 @@ fun ShortcutPopup(
     val entries = state.entries
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val yDp = with(LocalDensity.current) { state.yPos.toDp() }
+    val anchorDp = with(LocalDensity.current) { state.anchorBottomY.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp
     val reset = { viewVM.setMenu(MenuState.None) }
@@ -571,10 +576,14 @@ fun ShortcutPopup(
                 .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
         ) {
             val maxVisible = 5
-            val rowHeight = 58.dp
+            val rowHeight = ROW_HEIGHT.dp
+            val pad = POPUP_V_PAD.dp
             val maxHeight = rowHeight * maxVisible - rowHeight / 3
-            // NOTE: icon is 42dp and padding is 2 * 8dp
-            val height = if (entries.size >= maxVisible) maxHeight else 58.dp * entries.size
+            // NOTE: icon is 40dp and padding is 2 * 8dp
+            val isScrollable = entries.size >= maxVisible
+            val contentHeight = if (isScrollable) maxHeight else rowHeight * entries.size
+            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
+            val popupOffsetY = (anchorDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
             val listState = rememberLazyListState()
             if (entries.isNotEmpty()) {
                 LazyColumn(
@@ -583,17 +592,25 @@ fun ShortcutPopup(
                     modifier = Modifier
                         .heightIn(max = maxHeight)
                         .offset(
-                            x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
+                            x = H_PAD.dp,
+                            y = popupOffsetY
                         )
                         .background(
                             MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
-                        .padding(horizontal = H_PAD.dp, vertical = 12.dp)
+                        .padding(horizontal = H_PAD.dp, vertical = pad)
                         .fadingEdges()
                 ) {
                     items(entries) { item ->
-                        IconRow(item, appsVM, viewVM, snackbarHostState, parent = state.parent)
+                        IconRow(
+                            item,
+                            appsVM,
+                            viewVM,
+                            snackbarHostState,
+                            parent = state.parent,
+                            anchorBottomY = state.anchorBottomY
+                        )
                     }
                 }
             } else {

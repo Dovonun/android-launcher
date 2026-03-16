@@ -770,9 +770,12 @@ private fun SelectorShortcutPopup(
                 .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)
         ) {
             val maxVisible = 5
-            val rowHeight = 58.dp
+            val rowHeight = ROW_HEIGHT.dp
+            val pad = POPUP_V_PAD.dp
             val maxHeight = rowHeight * maxVisible - rowHeight / 3
-            val height = if (popup.entries.size >= maxVisible) maxHeight else rowHeight * popup.entries.size
+            val isScrollable = popup.entries.size >= maxVisible
+            val contentHeight = if (isScrollable) maxHeight else rowHeight * popup.entries.size
+            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
             val listState = rememberLazyListState()
             if (popup.entries.isNotEmpty()) {
                 LazyColumn(
@@ -781,13 +784,14 @@ private fun SelectorShortcutPopup(
                     modifier = Modifier
                         .heightIn(max = maxHeight)
                         .offset(
-                            x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
+                            x = H_PAD.dp,
+                            y = (yDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
                         )
                         .background(
                             MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
-                        .padding(horizontal = H_PAD.dp, vertical = 12.dp)
+                        .padding(horizontal = H_PAD.dp, vertical = pad)
                         .fadingEdges()
                 ) {
                     items(popup.entries) { item ->
