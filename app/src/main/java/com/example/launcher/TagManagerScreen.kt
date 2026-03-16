@@ -105,18 +105,22 @@ fun TagManagerScreen(
     var editingTagId by remember { mutableStateOf<Long?>(null) }
     var editHasFocused by remember { mutableStateOf(false) }
     var editValue by remember { mutableStateOf(TextFieldValue("")) }
+    var lastEditingTagId by remember { mutableStateOf<Long?>(null) }
     var deleteCandidate by remember { mutableStateOf<LauncherItem.Tag?>(null) }
     var popupState by remember { mutableStateOf<TagPreviewPopupState?>(null) }
 
-    val startRename: (LauncherItem.Tag) -> Unit = { tag ->
-        editingTagId = tag.id
-        editHasFocused = false
-        editValue = TextFieldValue(tag.name, selection = TextRange(0, tag.name.length))
-    }
     val cancelRename: () -> Unit = {
         editingTagId = null
         editHasFocused = false
         editValue = TextFieldValue("")
+    }
+    val startRename: (LauncherItem.Tag) -> Unit = { tag ->
+        if (editingTagId != null && editingTagId != tag.id) {
+            cancelRename()
+        }
+        editingTagId = tag.id
+        editHasFocused = false
+        editValue = TextFieldValue(tag.name, selection = TextRange(0, tag.name.length))
     }
     fun commitRename(tag: LauncherItem.Tag) {
         val trimmed = editValue.text.trim()
@@ -138,6 +142,17 @@ fun TagManagerScreen(
 
     BackHandler {
         if (editingTagId != null) cancelRename() else viewVM.setView(View.Favorites)
+    }
+
+    androidx.compose.runtime.LaunchedEffect(editingTagId, tags) {
+        val currentId = editingTagId
+        if (currentId != null && currentId != lastEditingTagId) {
+            tags.firstOrNull { it.id == currentId }?.let { tag ->
+                editHasFocused = false
+                editValue = TextFieldValue(tag.name, selection = TextRange(0, tag.name.length))
+            }
+        }
+        lastEditingTagId = currentId
     }
 
     val listContentPadding by remember(listState, tags, density, screenHeight) {
