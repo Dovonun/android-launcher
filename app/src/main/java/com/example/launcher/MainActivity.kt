@@ -159,7 +159,9 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        if (currentView is View.ManageTag) {
+                        if (currentView is View.TagManager) {
+                            TagManagerScreen(appsVM = appsVM, viewVM = viewVM)
+                        } else if (currentView is View.ManageTag) {
                             val v = currentView as View.ManageTag
                             ManageTagScreen(
                                 tag = v.tag,
@@ -201,6 +203,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+
+                                is View.TagManager -> Unit
 
                                 is View.AllApps -> LazyColumn(
                                     modifier = Modifier.padding(start = H_PAD2.dp),
@@ -648,7 +652,10 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
                     ) {
                         badges.forEach { tag ->
                             SuggestionChip(
-                                onClick = { },
+                                onClick = {
+                                    reset()
+                                    viewVM.setView(View.TagManager)
+                                },
                                 label = { Text(tag, fontSize = 10.sp) },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = SuggestionChipDefaults.suggestionChipColors(

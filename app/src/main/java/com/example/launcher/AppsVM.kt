@@ -295,7 +295,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allTags = graph.map { graphMap ->
-        graphMap.values.sortedBy { it.name.lowercase() }
+        graphMap.values.sortedBy { it.id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun getTag(id: Long): Flow<LauncherItem.Tag?> = graph.map { it[id] }
@@ -671,6 +671,21 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         if (entityKeys != itemKeys) {
             updateOrder(tagId, items)
         }
+    }
+
+    suspend fun renameTag(tagId: Long, name: String) {
+        if (tagId == TAG.FAV || tagId == TAG.PINNED) return
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        val existing = tagDao.getById(tagId) ?: return
+        if (existing.name == trimmed) return
+        tagDao.update(existing.copy(name = trimmed))
+    }
+
+    suspend fun deleteTag(tagId: Long) {
+        if (tagId == TAG.FAV || tagId == TAG.PINNED) return
+        val existing = tagDao.getById(tagId) ?: return
+        tagDao.delete(existing)
     }
 
     private fun appsToRows(list: List<LauncherActivityInfo>) = list.map {
