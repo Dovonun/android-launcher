@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -39,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -93,6 +94,7 @@ fun TagManagerScreen(
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val density = LocalDensity.current
 
     val initialTags by produceState(initialValue = emptyList<LauncherItem.Tag>()) {
         value = appsVM.allTags.first()
@@ -136,15 +138,46 @@ fun TagManagerScreen(
         if (editingTagId != null) cancelRename() else viewVM.setView(View.Favorites)
     }
 
+    val listContentPadding by remember(listState, tags, density, screenHeight) {
+        derivedStateOf {
+            val minPadding = 1f / 8f * screenHeight
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val totalCount = layoutInfo.totalItemsCount
+            if (totalCount == 0) {
+                return@derivedStateOf androidx.compose.foundation.layout.PaddingValues(
+                    top = minPadding,
+                    bottom = minPadding
+                )
+            }
+            if (visibleItems.size == totalCount && layoutInfo.viewportSize.height > 0) {
+                val spacingPx = with(density) { 6.dp.toPx() }
+                val contentHeightPx = visibleItems.sumOf { it.size } +
+                    spacingPx * (visibleItems.size - 1).coerceAtLeast(0)
+                val centerPaddingPx =
+                    ((layoutInfo.viewportSize.height - contentHeightPx) / 2f).coerceAtLeast(0f)
+                val centerPadding = with(density) { centerPaddingPx.toDp() }
+                val finalPadding = if (centerPadding > minPadding) centerPadding else minPadding
+                androidx.compose.foundation.layout.PaddingValues(
+                    top = finalPadding,
+                    bottom = finalPadding
+                )
+            } else {
+                androidx.compose.foundation.layout.PaddingValues(
+                    top = minPadding,
+                    bottom = minPadding
+                )
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(start = H_PAD2.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                bottom = 1f / 8f * screenHeight
-            ),
+            contentPadding = listContentPadding,
             reverseLayout = true,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -247,8 +280,11 @@ fun TagManagerScreen(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = Icons.Default.Edit,
+                                    painter = painterResource(
+                                        id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
+                                    ),
                                     contentDescription = "Rename tag",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier
                                         .size(18.dp)
                                         .clickable { startRename(tag) }
@@ -257,7 +293,8 @@ fun TagManagerScreen(
                         }
                         Text(
                             text = tag.items.size.toString(),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = H_PAD.dp)
                         )
                     }
                 }
