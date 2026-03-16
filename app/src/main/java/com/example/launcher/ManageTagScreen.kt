@@ -851,6 +851,21 @@ private fun SelectorLetterBar(
     }
     var isTouched by remember { mutableStateOf(false) }
     var letterIndex by remember { mutableStateOf<Int?>(null) }
+    val collapsedWidth = (1.5 * H_PAD2).dp
+    val expandedWidth = (2.5 * H_PAD2).dp
+    val collapsedShift = 24.dp
+    val rightInset = 12.dp
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isTouched) expandedWidth else collapsedWidth,
+        animationSpec = tween(durationMillis = 120),
+        label = "SelectorLetterBarWidth"
+    )
+    val animatedShift by animateDpAsState(
+        targetValue = if (isTouched) 0.dp else collapsedShift,
+        animationSpec = tween(durationMillis = 120),
+        label = "SelectorLetterBarShift"
+    )
+    val letterOffset = animatedShift - rightInset
     LaunchedEffect(scrollIndexes) {
         snapshotFlow { letterIndex }.distinctUntilChanged().collect { idx ->
             idx?.let {
@@ -866,7 +881,7 @@ private fun SelectorLetterBar(
         modifier = modifier
             .padding(bottom = botOffset)
             .height(height)
-            .width(if (isTouched) (2.5 * H_PAD2).dp else 1.5 * H_PAD2.dp)
+            .width(animatedWidth)
             .pointerInput(letters, scrollIndexes) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -887,6 +902,7 @@ private fun SelectorLetterBar(
         letters.forEachIndexed { i, letter ->
             Box(
                 modifier = Modifier
+                    .offset(x = letterOffset)
                     .width(letterSizeDp)
                     .height(letterSizeDp),
                 contentAlignment = Alignment.Center

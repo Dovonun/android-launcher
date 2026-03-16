@@ -69,6 +69,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -316,6 +318,21 @@ fun LetterBar(
     }
     var isTouched by remember { mutableStateOf(false) }
     var letterIndex by remember { mutableStateOf<Int?>(null) }
+    val collapsedWidth = (1.5 * H_PAD2).dp
+    val expandedWidth = (2.5 * H_PAD2).dp
+    val collapsedShift = 24.dp
+    val rightInset = 12.dp
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isTouched) expandedWidth else collapsedWidth,
+        animationSpec = tween(durationMillis = 120),
+        label = "LetterBarWidth"
+    )
+    val animatedShift by animateDpAsState(
+        targetValue = if (isTouched) 0.dp else collapsedShift,
+        animationSpec = tween(durationMillis = 120),
+        label = "LetterBarShift"
+    )
+    val letterOffset = animatedShift - rightInset
     LaunchedEffect(scrollIndexes) {
         snapshotFlow { letterIndex }.distinctUntilChanged().collect { idx ->
             idx?.let {
@@ -331,7 +348,7 @@ fun LetterBar(
         modifier = modifier
             .padding(bottom = botOffset)
             .height(height)
-            .width(if (isTouched) (2.5 * H_PAD2).dp else 1.5 * H_PAD2.dp) // Assuming H_PAD2 is defined elsewhere
+            .width(animatedWidth)
             .pointerInput(letters, scrollIndexes) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -356,6 +373,7 @@ fun LetterBar(
             letters.forEachIndexed { i, letter ->
                 Box(
                     modifier = Modifier
+                        .offset(x = letterOffset)
                         .width(letterSizeDp)
                         .height(letterSizeDp),
                     contentAlignment = Alignment.Center
