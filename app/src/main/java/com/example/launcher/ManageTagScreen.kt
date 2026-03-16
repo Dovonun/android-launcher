@@ -368,7 +368,7 @@ fun ManageTagScreen(
                         ) {
                             // Why box?
                             Box(modifier = Modifier.weight(1f)) {
-                                LauncherRowLayout(item = row.item)
+                                ReorderRow(item = row.item)
                             }
                             Icon(
                                 painter = painterResource(id = R.drawable.drag_indicator_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
@@ -597,6 +597,32 @@ fun ManageTagAddScreen(
                 onDismiss = { popupState = null }
             )
         }
+    }
+}
+
+@Composable
+private fun ReorderRow(item: LauncherItem) {
+    val label = if (item is LauncherItem.Tag) item.name else item.label
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        RowIcon(item.icon)
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge.copy(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = MaterialTheme.colorScheme.surface,
+                    offset = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    blurRadius = 8f
+                )
+            ),
+            maxLines = 1
+        )
     }
 }
 
