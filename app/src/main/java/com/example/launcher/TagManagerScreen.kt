@@ -415,7 +415,7 @@ private fun TagPreviewPopup(
     val contentHeightRaw = manageRowHeight + (rowHeight * previewItems.size) + extraRowHeight
     val contentHeight = contentHeightRaw.coerceAtMost(maxHeight)
     val isScrollable = contentHeightRaw >= maxHeight
-    val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
+    val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad + pad
     val listState = rememberLazyListState()
 
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = onDismiss) {
