@@ -389,7 +389,15 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             val favoriteLabel = if (inFavorites) "Remove from Favorites" else "Add to Favorites"
             add(SheetAction(favoriteLabel) {
                 viewModelScope.launch {
-                    if (inFavorites) removeItemFromParent(item, TAG.FAV) else addItemToFavorites(item)
+                    if (inFavorites) {
+                        removeItemFromParent(item, TAG.FAV)
+                    } else {
+                        val key = itemKey(item)
+                        val favTag = getTag(TAG.FAV).first { it != null } ?: return@launch
+                        val exists = key != null && favTag.items.any { itemKey(it) == key }
+                        val nextItems = if (exists || key == null) favTag.items else favTag.items + item
+                        onNavigate(View.ManageTag(favTag, nextItems, skipInitialSync = !exists && key != null))
+                    }
                 }
             })
         } else {

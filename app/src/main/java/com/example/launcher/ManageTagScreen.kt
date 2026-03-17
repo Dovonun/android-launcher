@@ -116,16 +116,19 @@ fun ManageTagScreen(
     tag: LauncherItem.Tag,
     items: List<LauncherItem>,
     appsVM: AppsVM, // should be both removed by callback
-    viewVM: ViewVM
+    viewVM: ViewVM,
+    skipInitialSync: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
-    LaunchedEffect(tag.id, items) {
-        kotlinx.coroutines.withContext(Dispatchers.IO) {
-            appsVM.syncTagItemsToList(tag.id, items)
+    LaunchedEffect(tag.id, items, skipInitialSync) {
+        if (!skipInitialSync) {
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                appsVM.syncTagItemsToList(tag.id, items)
+            }
         }
     }
 
@@ -147,16 +150,24 @@ fun ManageTagScreen(
     var lastPersistedOrder by remember(items) {
         mutableStateOf(items.mapNotNull { selectionKey(it) })
     }
+    var needsInitialPersist by remember(skipInitialSync) {
+        mutableStateOf(skipInitialSync)
+    }
 
     val persistOrder: (List<ManageRow>) -> Unit = { rows ->
         lastPersistedOrder = rows.mapNotNull { selectionKey(it.item) }
-        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, rows.map { it.item }) }
+        if (needsInitialPersist) {
+            scope.launch(Dispatchers.IO) { appsVM.syncTagItemsToList(tag.id, rows.map { it.item }) }
+            needsInitialPersist = false
+        } else {
+            scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, rows.map { it.item }) }
+        }
     }
 
     val finishManage: () -> Unit = {
         val currentKeys = localRows.mapNotNull { selectionKey(it.item) }
         val hasUnknown = localRows.any { selectionKey(it.item) == null }
-        if (hasUnknown || currentKeys != lastPersistedOrder) {
+        if (needsInitialPersist || hasUnknown || currentKeys != lastPersistedOrder) {
             persistOrder(localRows)
         }
         viewVM.setView(View.Favorites)

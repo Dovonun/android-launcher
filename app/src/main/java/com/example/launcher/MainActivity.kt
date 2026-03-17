@@ -171,7 +171,8 @@ class MainActivity : ComponentActivity() {
                                 tag = v.tag,
                                 items = v.items,
                                 appsVM = appsVM,
-                                viewVM = viewVM
+                                viewVM = viewVM,
+                                skipInitialSync = v.skipInitialSync
                             )
                         } else if (currentView is View.ManageTagAdd) {
                             val v = currentView as View.ManageTagAdd
