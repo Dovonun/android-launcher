@@ -84,12 +84,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 const val LEFT_PAD = 8
+private const val PERSIST_DEBOUNCE_MS = 150L
 
 private data class ManageRow(
     val rowId: Long,
@@ -153,24 +155,51 @@ fun ManageTagScreen(
     var needsInitialPersist by remember(skipInitialSync) {
         mutableStateOf(skipInitialSync)
     }
+    var persistJob by remember { mutableStateOf<Job?>(null) }
 
-    val persistOrder: (List<ManageRow>) -> Unit = { rows ->
-        lastPersistedOrder = rows.mapNotNull { selectionKey(it.item) }
-        if (needsInitialPersist) {
-            scope.launch(Dispatchers.IO) { appsVM.syncTagItemsToList(tag.id, rows.map { it.item }) }
-            needsInitialPersist = false
+    val runPersist: suspend (List<ManageRow>, Boolean) -> Unit = { rows, forceSync ->
+        val itemsToPersist = rows.map { it.item }
+        val nextKeys = rows.mapNotNull { selectionKey(it.item) }
+        val shouldSync = forceSync || needsInitialPersist
+        if (shouldSync) {
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                appsVM.syncTagItemsToList(tag.id, itemsToPersist)
+            }
         } else {
-            scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, rows.map { it.item }) }
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                appsVM.updateOrder(tag.id, itemsToPersist)
+            }
+        }
+        lastPersistedOrder = nextKeys
+        needsInitialPersist = false
+    }
+
+    val schedulePersist: (List<ManageRow>) -> Unit = { rows ->
+        persistJob?.cancel()
+        val snapshot = rows.toList()
+        persistJob = scope.launch {
+            kotlinx.coroutines.delay(PERSIST_DEBOUNCE_MS)
+            runPersist(snapshot, false)
+            persistJob = null
         }
     }
 
     val finishManage: () -> Unit = {
         val currentKeys = localRows.mapNotNull { selectionKey(it.item) }
         val hasUnknown = localRows.any { selectionKey(it.item) == null }
-        if (needsInitialPersist || hasUnknown || currentKeys != lastPersistedOrder) {
-            persistOrder(localRows)
+        val hasPending = persistJob?.isActive == true
+        if (!needsInitialPersist && !hasUnknown && currentKeys == lastPersistedOrder && !hasPending) {
+            viewVM.setView(View.Favorites)
+        } else {
+            val snapshot = localRows.toList()
+            val forceSync = needsInitialPersist || hasUnknown
+            scope.launch {
+                persistJob?.cancel()
+                persistJob = null
+                runPersist(snapshot, forceSync)
+                viewVM.setView(View.Favorites)
+            }
         }
-        viewVM.setView(View.Favorites)
     }
 
     BackHandler { finishManage() }
@@ -181,7 +210,7 @@ fun ManageTagScreen(
                 val startOrder = dragStartOrder
                 val finalOrder = localRows.map { it.rowId }
                 if (startOrder != null && finalOrder != startOrder) {
-                    persistOrder(localRows)
+                    schedulePersist(localRows)
                 }
             }
 
@@ -236,7 +265,7 @@ fun ManageTagScreen(
                                 if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
                                 val updated = localRows.filterNot { it.rowId == rowId }
                                 localRows = updated
-                                persistOrder(updated)
+                                schedulePersist(updated)
                                 true
                             }
 
