@@ -83,15 +83,12 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 const val LEFT_PAD = 8
-private const val PERSIST_DEBOUNCE_MS = 150L
 
 private data class ManageRow(
     val rowId: Long,
@@ -127,10 +124,10 @@ fun ManageTagScreen(
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     LaunchedEffect(tag.id, items, skipInitialSync) {
-        if (!skipInitialSync) {
-            kotlinx.coroutines.withContext(Dispatchers.IO) {
-                appsVM.syncTagItemsToList(tag.id, items)
-            }
+        if (skipInitialSync) {
+            appsVM.syncTagItemsInMemory(tag.id, items)
+        } else {
+            appsVM.syncTagItemsToList(tag.id, items)
         }
     }
 
@@ -149,56 +146,12 @@ fun ManageTagScreen(
     var dragStartOrder by remember { mutableStateOf<List<Long>?>(null) }
     var dragMoved by remember { mutableStateOf(false) }
 
-    var lastPersistedOrder by remember(items) {
-        mutableStateOf(items.mapNotNull { selectionKey(it) })
-    }
-    var needsInitialPersist by remember(skipInitialSync) {
-        mutableStateOf(skipInitialSync)
-    }
-    var persistJob by remember { mutableStateOf<Job?>(null) }
-
-    val runPersist: suspend (List<ManageRow>, Boolean) -> Unit = { rows, forceSync ->
-        val itemsToPersist = rows.map { it.item }
-        val nextKeys = rows.mapNotNull { selectionKey(it.item) }
-        val shouldSync = forceSync || needsInitialPersist
-        if (shouldSync) {
-            kotlinx.coroutines.withContext(Dispatchers.IO) {
-                appsVM.syncTagItemsToList(tag.id, itemsToPersist)
-            }
-        } else {
-            kotlinx.coroutines.withContext(Dispatchers.IO) {
-                appsVM.updateOrder(tag.id, itemsToPersist)
-            }
-        }
-        lastPersistedOrder = nextKeys
-        needsInitialPersist = false
-    }
-
-    val schedulePersist: (List<ManageRow>) -> Unit = { rows ->
-        persistJob?.cancel()
-        val snapshot = rows.toList()
-        persistJob = scope.launch {
-            kotlinx.coroutines.delay(PERSIST_DEBOUNCE_MS)
-            runPersist(snapshot, false)
-            persistJob = null
-        }
-    }
-
     val finishManage: () -> Unit = {
-        val currentKeys = localRows.mapNotNull { selectionKey(it.item) }
-        val hasUnknown = localRows.any { selectionKey(it.item) == null }
-        val hasPending = persistJob?.isActive == true
-        if (!needsInitialPersist && !hasUnknown && currentKeys == lastPersistedOrder && !hasPending) {
+        val snapshot = localRows.toList()
+        scope.launch {
+            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+            appsVM.flushTagItems(tag.id)
             viewVM.setView(View.Favorites)
-        } else {
-            val snapshot = localRows.toList()
-            val forceSync = needsInitialPersist || hasUnknown
-            scope.launch {
-                persistJob?.cancel()
-                persistJob = null
-                runPersist(snapshot, forceSync)
-                viewVM.setView(View.Favorites)
-            }
         }
     }
 
@@ -210,7 +163,10 @@ fun ManageTagScreen(
                 val startOrder = dragStartOrder
                 val finalOrder = localRows.map { it.rowId }
                 if (startOrder != null && finalOrder != startOrder) {
-                    schedulePersist(localRows)
+                    val snapshot = localRows.toList()
+                    scope.launch {
+                        appsVM.updateOrder(tag.id, snapshot.map { it.item })
+                    }
                 }
             }
 
@@ -265,7 +221,10 @@ fun ManageTagScreen(
                                 if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
                                 val updated = localRows.filterNot { it.rowId == rowId }
                                 localRows = updated
-                                schedulePersist(updated)
+                                val snapshot = updated.toList()
+                                scope.launch {
+                                    appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+                                }
                                 true
                             }
 
