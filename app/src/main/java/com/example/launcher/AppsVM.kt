@@ -548,7 +548,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
                         val favTag = getTag(TAG.FAV).first { it != null } ?: return@launch
                         val exists = key != null && favTag.items.any { itemKey(it) == key }
                         val nextItems = if (exists || key == null) favTag.items else favTag.items + item
-                        onNavigate(View.ManageTag(favTag, nextItems, skipInitialSync = !exists && key != null))
+                        onNavigate(View.ManageTag(favTag, nextItems))
                     }
                 }
             })

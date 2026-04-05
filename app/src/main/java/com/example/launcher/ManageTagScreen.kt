@@ -57,7 +57,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -74,14 +73,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -115,20 +119,15 @@ fun ManageTagScreen(
     tag: LauncherItem.Tag,
     items: List<LauncherItem>,
     appsVM: AppsVM, // should be both removed by callback
-    viewVM: ViewVM,
-    skipInitialSync: Boolean = false
+    viewVM: ViewVM
 ) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
-    LaunchedEffect(tag.id, items, skipInitialSync) {
-        if (skipInitialSync) {
-            appsVM.syncTagItemsInMemory(tag.id, items)
-        } else {
-            appsVM.syncTagItemsToList(tag.id, items)
-        }
+    LaunchedEffect(tag.id, items) {
+        appsVM.syncTagItemsInMemory(tag.id, items)
     }
 
     var localRows by remember(items) {
@@ -268,7 +267,12 @@ fun ManageTagScreen(
                 SwipeToDismissBox(
                     modifier = Modifier
                         .zIndex(if (isDragged) 10f else 0f)
-                        .then(if (isDragged || shouldSettle) Modifier else Modifier.animateItemPlacement()),
+                        .then(if (isDragged || shouldSettle) Modifier else Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<IntOffset>(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    visibilityThreshold = IntOffset.VisibilityThreshold
+                                )
+                        )
+                        ),
                     state = dismissState,
                     enableDismissFromStartToEnd = draggedRowId == null,
                     enableDismissFromEndToStart = draggedRowId == null,
@@ -889,11 +893,7 @@ private fun SelectorLetterBar(
                         isTouched = true
                         change.consume()
                         val idx = ((change.position.y / size.height) * letters.size).toInt()
-                        if (idx in letters.indices) {
-                            letterIndex = idx
-                        } else {
-                            letterIndex = null
-                        }
+                        letterIndex = if (idx in letters.indices) { idx } else { null }
                     }
                     isTouched = false
                 }

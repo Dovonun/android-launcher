@@ -14,8 +14,7 @@ sealed interface View {
     data object TagManager : View
     data class ManageTag(
         val tag: LauncherItem.Tag,
-        val items: List<LauncherItem>,
-        val skipInitialSync: Boolean = false
+        val items: List<LauncherItem>
     ) : View
     data class ManageTagAdd(val tag: LauncherItem.Tag, val items: List<LauncherItem>) : View
 }
