@@ -572,7 +572,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             })
         } else {
             add(SheetAction("Create Tag") {
-                viewModelScope.launch { createTagFromItem(item) }
+                viewModelScope.launch { createTagFromItem(item, onNavigate) }
             })
         }
 
@@ -669,32 +669,41 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun createTagFromItem(item: LauncherItem) {
-        val base = when (item) {
-            is LauncherItem.App -> item
-            is LauncherItem.Shortcut -> {
-                val appInfo = apps.value.find { it.componentName.packageName == item.info.`package` } ?: return
-                LauncherItem.App(appInfo, appInfo.label.toString(), appInfo.getIcon(0).toBitmap().asImageBitmap())
-            }
+    private suspend fun createTagFromItem(item: LauncherItem, onNavigate: (View) -> Unit) {
+        val tagItems = when (item) {
+            is LauncherItem.App -> listOf(item) + popupEntriesSnapshot(item)
+            is LauncherItem.Shortcut -> listOf(item)
             is LauncherItem.Tag -> return
             is LauncherItem.Placeholder -> return
         }
-        val newTagName = "${base.label} Tag"
+        val newTagName = "${item.label} Tag"
         val newTagId = tagDao.insert(TagEntity(name = newTagName))
         val newTag = TagEntity(id = newTagId, name = newTagName)
-        val appEntity = TagItemEntity(newTagId, 0, TagItemType.APP, base.info.componentName.packageName)
-        val systemShortcuts = resolveShortcutsForPackage(base.info.componentName.packageName)
-        val shortcutEntities = systemShortcuts.mapIndexed { idx, info ->
-            TagItemEntity(
-                newTagId,
-                idx + 1,
-                TagItemType.SHORTCUT,
-                info.`package`,
-                info.id,
-                labelOverride = info.shortLabel?.toString()
-            )
+        val tagEntities = tagItems.mapIndexedNotNull { index, entry ->
+            when (entry) {
+                is LauncherItem.App -> TagItemEntity(
+                    newTagId,
+                    index,
+                    TagItemType.APP,
+                    entry.info.componentName.packageName
+                )
+                is LauncherItem.Shortcut -> TagItemEntity(
+                    newTagId,
+                    index,
+                    TagItemType.SHORTCUT,
+                    entry.info.`package`,
+                    entry.info.id,
+                    labelOverride = entry.label
+                )
+                is LauncherItem.Tag -> TagItemEntity(
+                    newTagId,
+                    index,
+                    TagItemType.TAG,
+                    targetTagId = entry.id
+                )
+                is LauncherItem.Placeholder -> null
+            }
         }
-        val tagItems = listOf(appEntity) + shortcutEntities
         val favs = currentTagItems(TAG.FAV)
         val nextOrder = (favs.maxOfOrNull { it.itemOrder } ?: -1) + 1
         val favEntity = TagItemEntity(TAG.FAV, nextOrder, TagItemType.TAG, targetTagId = newTagId)
@@ -705,11 +714,21 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             pendingTagItems.add(TAG.FAV)
         }
         setTags(tagState.value + newTag)
-        setTagItems(newTagId, tagItems)
+        setTagItems(newTagId, tagEntities)
         setTagItems(TAG.FAV, favs + favEntity)
         schedulePersist(newTagId)
         schedulePersist(TAG.FAV)
         _toast.emit("Tag created and added to Favorites")
+
+        val representative = tagItems.firstOrNull()
+            ?: LauncherItem.Placeholder(PlaceholderKind.EMPTY_TAG, "Empty tag")
+        val uiTag = LauncherItem.Tag(
+            id = newTagId,
+            name = newTagName,
+            representative = representative,
+            getItems = { tagItems }
+        )
+        onNavigate(View.ManageTag(uiTag, tagItems))
     }
 
     private fun resolveTerminalItem(item: LauncherItem): LauncherItem {
