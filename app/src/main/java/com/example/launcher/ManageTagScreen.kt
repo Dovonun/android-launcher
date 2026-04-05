@@ -530,7 +530,7 @@ fun ManageTagAddScreen(
             )
         ) {
             item(key = "tag-header") {
-                SelectorHeader("#")
+                SelectorHeader("Tags")
             }
             items(
                 items = tags,
@@ -633,7 +633,8 @@ private fun ReorderRow(item: LauncherItem) {
 private fun SelectorHeader(text: String) {
     Box(
         modifier = Modifier
-            .width(40.dp)
+            .widthIn(min = 40.dp)
+            .padding(horizontal = 6.dp)
             .height(40.dp),
         contentAlignment = Alignment.Center
     ) {
