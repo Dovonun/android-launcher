@@ -69,6 +69,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -107,6 +109,8 @@ import kotlinx.coroutines.launch
 
 const val H_PAD = 16
 const val H_PAD2 = 2 * H_PAD
+const val ROW_HEIGHT = 56
+const val POPUP_V_PAD = 12
 
 class MainActivity : ComponentActivity() {
     private val viewVM: ViewVM by viewModels()
@@ -118,7 +122,7 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this) { viewVM.back() }
         enableEdgeToEdge()
         val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.hide(WindowInsetsCompat.Type.statusBars())
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         setContent {
@@ -273,7 +277,7 @@ class MainActivity : ComponentActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             WindowInsetsControllerCompat(window, window.decorView).apply {
-                hide(WindowInsetsCompat.Type.systemBars())
+                hide(WindowInsetsCompat.Type.statusBars())
                 systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
@@ -314,6 +318,21 @@ fun LetterBar(
     }
     var isTouched by remember { mutableStateOf(false) }
     var letterIndex by remember { mutableStateOf<Int?>(null) }
+    val collapsedWidth = (1.5 * H_PAD2).dp
+    val expandedWidth = (2.5 * H_PAD2).dp
+    val collapsedShift = 24.dp
+    val rightInset = 12.dp
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isTouched) expandedWidth else collapsedWidth,
+        animationSpec = tween(durationMillis = 120),
+        label = "LetterBarWidth"
+    )
+    val animatedShift by animateDpAsState(
+        targetValue = if (isTouched) 0.dp else collapsedShift,
+        animationSpec = tween(durationMillis = 120),
+        label = "LetterBarShift"
+    )
+    val letterOffset = animatedShift - rightInset
     LaunchedEffect(scrollIndexes) {
         snapshotFlow { letterIndex }.distinctUntilChanged().collect { idx ->
             idx?.let {
@@ -329,7 +348,7 @@ fun LetterBar(
         modifier = modifier
             .padding(bottom = botOffset)
             .height(height)
-            .width(if (isTouched) (2.5 * H_PAD2).dp else 1.5 * H_PAD2.dp) // Assuming H_PAD2 is defined elsewhere
+            .width(animatedWidth)
             .pointerInput(letters, scrollIndexes) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -354,6 +373,7 @@ fun LetterBar(
             letters.forEachIndexed { i, letter ->
                 Box(
                     modifier = Modifier
+                        .offset(x = letterOffset)
                         .width(letterSizeDp)
                         .height(letterSizeDp),
                     contentAlignment = Alignment.Center
@@ -382,6 +402,7 @@ fun IconRow(
     viewVM: ViewVM,
     snackbarHostState: SnackbarHostState,
     parent: LauncherItem.Tag? = null,
+    anchorBottomY: Float? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -412,9 +433,10 @@ fun IconRow(
                                     duration = SnackbarDuration.Short
                                 ) else {
                                     // When swiping, the 'parent' for items inside this popup is 'item' (if it's a Tag)
+                                    val anchor = anchorBottomY ?: n
                                     viewVM.setMenu(
                                         MenuState.Popup(
-                                            entries, n, item as? LauncherItem.Tag
+                                            entries, n, item as? LauncherItem.Tag, anchorBottomY = anchor
                                         )
                                     )
                                 }
@@ -560,6 +582,7 @@ fun ShortcutPopup(
     val entries = state.entries
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     val yDp = with(LocalDensity.current) { state.yPos.toDp() }
+    val anchorDp = with(LocalDensity.current) { state.anchorBottomY.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp
     val reset = { viewVM.setMenu(MenuState.None) }
@@ -571,10 +594,14 @@ fun ShortcutPopup(
                 .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
         ) {
             val maxVisible = 5
-            val rowHeight = 58.dp
+            val rowHeight = ROW_HEIGHT.dp
+            val pad = POPUP_V_PAD.dp
             val maxHeight = rowHeight * maxVisible - rowHeight / 3
-            // NOTE: icon is 42dp and padding is 2 * 8dp
-            val height = if (entries.size >= maxVisible) maxHeight else 58.dp * entries.size
+            // NOTE: icon is 40dp and padding is 2 * 8dp
+            val isScrollable = entries.size >= maxVisible
+            val contentHeight = if (isScrollable) maxHeight else rowHeight * entries.size
+            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
+            val popupOffsetY = (anchorDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
             val listState = rememberLazyListState()
             if (entries.isNotEmpty()) {
                 LazyColumn(
@@ -583,17 +610,25 @@ fun ShortcutPopup(
                     modifier = Modifier
                         .heightIn(max = maxHeight)
                         .offset(
-                            x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
+                            x = H_PAD.dp,
+                            y = popupOffsetY
                         )
                         .background(
                             MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
-                        .padding(horizontal = H_PAD.dp, vertical = 12.dp)
+                        .padding(horizontal = H_PAD.dp, vertical = pad)
                         .fadingEdges()
                 ) {
                     items(entries) { item ->
-                        IconRow(item, appsVM, viewVM, snackbarHostState, parent = state.parent)
+                        IconRow(
+                            item,
+                            appsVM,
+                            viewVM,
+                            snackbarHostState,
+                            parent = state.parent,
+                            anchorBottomY = state.anchorBottomY
+                        )
                     }
                 }
             } else {

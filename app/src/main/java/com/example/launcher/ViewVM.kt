@@ -12,14 +12,22 @@ sealed interface View {
     data object Favorites : View
     data object AllApps : View
     data object TagManager : View
-    data class ManageTag(val tag: LauncherItem.Tag, val items: List<LauncherItem>) : View
+    data class ManageTag(
+        val tag: LauncherItem.Tag,
+        val items: List<LauncherItem>
+    ) : View
     data class ManageTagAdd(val tag: LauncherItem.Tag, val items: List<LauncherItem>) : View
 }
 
 sealed interface MenuState {
     data object None : MenuState
     data class Sheet(val item: LauncherItem, val parent: LauncherItem.Tag? = null) : MenuState
-    data class Popup(val entries: List<LauncherItem>, val yPos: Float, val parent: LauncherItem.Tag? = null) : MenuState
+    data class Popup(
+        val entries: List<LauncherItem>,
+        val yPos: Float,
+        val parent: LauncherItem.Tag? = null,
+        val anchorBottomY: Float = yPos
+    ) : MenuState
 }
 
 class ViewVM : ViewModel() {

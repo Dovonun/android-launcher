@@ -397,13 +397,25 @@ private fun TagPreviewPopup(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp
     val maxVisible = 6
-    val rowHeight = 58.dp
+    val rowHeight = ROW_HEIGHT.dp
+    val pad = POPUP_V_PAD.dp
+    val manageRowHeight = 44.dp
+    val textRowHeight = with(LocalDensity.current) {
+        MaterialTheme.typography.bodyLarge.lineHeight.toDp()
+    } + 16.dp
     val items = popup.entries
     val previewItems = items.take(maxVisible)
     val hasMore = items.size > maxVisible
-    val count = 1 + previewItems.size + if (hasMore) 1 else 0
     val maxHeight = rowHeight * maxVisible - rowHeight / 3
-    val height = if (count >= maxVisible) maxHeight else rowHeight * count
+    val extraRowHeight = when {
+        previewItems.isEmpty() -> textRowHeight
+        hasMore -> textRowHeight
+        else -> 0.dp
+    }
+    val contentHeightRaw = manageRowHeight + (rowHeight * previewItems.size) + extraRowHeight
+    val contentHeight = contentHeightRaw.coerceAtMost(maxHeight)
+    val isScrollable = contentHeightRaw >= maxHeight
+    val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad + pad
     val listState = rememberLazyListState()
 
     Popup(properties = PopupProperties(focusable = true), onDismissRequest = onDismiss) {
@@ -417,10 +429,13 @@ private fun TagPreviewPopup(
                 reverseLayout = true,
                 modifier = Modifier
                     .heightIn(max = maxHeight)
-                    .offset(x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp))
+                    .offset(
+                        x = H_PAD.dp,
+                        y = (yDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
+                    )
                     .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(16.dp))
                     .widthIn(max = maxWidth)
-                    .padding(horizontal = H_PAD.dp, vertical = 12.dp)
+                    .padding(horizontal = H_PAD.dp, vertical = pad)
             ) {
                 item(key = "manage") {
                     Row(

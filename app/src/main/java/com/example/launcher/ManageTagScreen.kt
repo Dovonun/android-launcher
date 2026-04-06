@@ -57,7 +57,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -74,16 +73,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -124,9 +127,7 @@ fun ManageTagScreen(
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     LaunchedEffect(tag.id, items) {
-        kotlinx.coroutines.withContext(Dispatchers.IO) {
-            appsVM.syncTagItemsToList(tag.id, items)
-        }
+        appsVM.syncTagItemsInMemory(tag.id, items)
     }
 
     var localRows by remember(items) {
@@ -144,22 +145,13 @@ fun ManageTagScreen(
     var dragStartOrder by remember { mutableStateOf<List<Long>?>(null) }
     var dragMoved by remember { mutableStateOf(false) }
 
-    var lastPersistedOrder by remember(items) {
-        mutableStateOf(items.mapNotNull { selectionKey(it) })
-    }
-
-    val persistOrder: (List<ManageRow>) -> Unit = { rows ->
-        lastPersistedOrder = rows.mapNotNull { selectionKey(it.item) }
-        scope.launch(Dispatchers.IO) { appsVM.updateOrder(tag.id, rows.map { it.item }) }
-    }
-
     val finishManage: () -> Unit = {
-        val currentKeys = localRows.mapNotNull { selectionKey(it.item) }
-        val hasUnknown = localRows.any { selectionKey(it.item) == null }
-        if (hasUnknown || currentKeys != lastPersistedOrder) {
-            persistOrder(localRows)
+        val snapshot = localRows.toList()
+        scope.launch {
+            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+            appsVM.flushTagItems(tag.id)
+            viewVM.setView(View.Favorites)
         }
-        viewVM.setView(View.Favorites)
     }
 
     BackHandler { finishManage() }
@@ -170,7 +162,10 @@ fun ManageTagScreen(
                 val startOrder = dragStartOrder
                 val finalOrder = localRows.map { it.rowId }
                 if (startOrder != null && finalOrder != startOrder) {
-                    persistOrder(localRows)
+                    val snapshot = localRows.toList()
+                    scope.launch {
+                        appsVM.updateOrder(tag.id, snapshot.map { it.item })
+                    }
                 }
             }
 
@@ -225,7 +220,10 @@ fun ManageTagScreen(
                                 if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
                                 val updated = localRows.filterNot { it.rowId == rowId }
                                 localRows = updated
-                                persistOrder(updated)
+                                val snapshot = updated.toList()
+                                scope.launch {
+                                    appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+                                }
                                 true
                             }
 
@@ -269,7 +267,12 @@ fun ManageTagScreen(
                 SwipeToDismissBox(
                     modifier = Modifier
                         .zIndex(if (isDragged) 10f else 0f)
-                        .then(if (isDragged || shouldSettle) Modifier else Modifier.animateItemPlacement()),
+                        .then(if (isDragged || shouldSettle) Modifier else Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<IntOffset>(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    visibilityThreshold = IntOffset.VisibilityThreshold
+                                )
+                        )
+                        ),
                     state = dismissState,
                     enableDismissFromStartToEnd = draggedRowId == null,
                     enableDismissFromEndToStart = draggedRowId == null,
@@ -368,7 +371,7 @@ fun ManageTagScreen(
                         ) {
                             // Why box?
                             Box(modifier = Modifier.weight(1f)) {
-                                LauncherRowLayout(item = row.item)
+                                ReorderRow(item = row.item)
                             }
                             Icon(
                                 painter = painterResource(id = R.drawable.drag_indicator_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
@@ -527,7 +530,7 @@ fun ManageTagAddScreen(
             )
         ) {
             item(key = "tag-header") {
-                SelectorHeader("#")
+                SelectorHeader("Tags")
             }
             items(
                 items = tags,
@@ -601,10 +604,37 @@ fun ManageTagAddScreen(
 }
 
 @Composable
+private fun ReorderRow(item: LauncherItem) {
+    val label = if (item is LauncherItem.Tag) item.name else item.label
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        RowIcon(item.icon)
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge.copy(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = MaterialTheme.colorScheme.surface,
+                    offset = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    blurRadius = 8f
+                )
+            ),
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
 private fun SelectorHeader(text: String) {
     Box(
         modifier = Modifier
-            .width(40.dp)
+            .widthIn(min = 40.dp)
+            .padding(horizontal = 6.dp)
             .height(40.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -744,9 +774,12 @@ private fun SelectorShortcutPopup(
                 .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)
         ) {
             val maxVisible = 5
-            val rowHeight = 58.dp
+            val rowHeight = ROW_HEIGHT.dp
+            val pad = POPUP_V_PAD.dp
             val maxHeight = rowHeight * maxVisible - rowHeight / 3
-            val height = if (popup.entries.size >= maxVisible) maxHeight else rowHeight * popup.entries.size
+            val isScrollable = popup.entries.size >= maxVisible
+            val contentHeight = if (isScrollable) maxHeight else rowHeight * popup.entries.size
+            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
             val listState = rememberLazyListState()
             if (popup.entries.isNotEmpty()) {
                 LazyColumn(
@@ -755,13 +788,14 @@ private fun SelectorShortcutPopup(
                     modifier = Modifier
                         .heightIn(max = maxHeight)
                         .offset(
-                            x = H_PAD.dp, y = (yDp - height - safeTopDp).coerceAtLeast(0.dp)
+                            x = H_PAD.dp,
+                            y = (yDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
                         )
                         .background(
                             MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
                         )
                         .widthIn(max = maxWidth)
-                        .padding(horizontal = H_PAD.dp, vertical = 12.dp)
+                        .padding(horizontal = H_PAD.dp, vertical = pad)
                         .fadingEdges()
                 ) {
                     items(popup.entries) { item ->
@@ -821,6 +855,21 @@ private fun SelectorLetterBar(
     }
     var isTouched by remember { mutableStateOf(false) }
     var letterIndex by remember { mutableStateOf<Int?>(null) }
+    val collapsedWidth = (1.5 * H_PAD2).dp
+    val expandedWidth = (2.5 * H_PAD2).dp
+    val collapsedShift = 24.dp
+    val rightInset = 12.dp
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isTouched) expandedWidth else collapsedWidth,
+        animationSpec = tween(durationMillis = 120),
+        label = "SelectorLetterBarWidth"
+    )
+    val animatedShift by animateDpAsState(
+        targetValue = if (isTouched) 0.dp else collapsedShift,
+        animationSpec = tween(durationMillis = 120),
+        label = "SelectorLetterBarShift"
+    )
+    val letterOffset = animatedShift - rightInset
     LaunchedEffect(scrollIndexes) {
         snapshotFlow { letterIndex }.distinctUntilChanged().collect { idx ->
             idx?.let {
@@ -836,7 +885,7 @@ private fun SelectorLetterBar(
         modifier = modifier
             .padding(bottom = botOffset)
             .height(height)
-            .width(if (isTouched) (2.5 * H_PAD2).dp else 1.5 * H_PAD2.dp)
+            .width(animatedWidth)
             .pointerInput(letters, scrollIndexes) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -845,11 +894,7 @@ private fun SelectorLetterBar(
                         isTouched = true
                         change.consume()
                         val idx = ((change.position.y / size.height) * letters.size).toInt()
-                        if (idx in letters.indices) {
-                            letterIndex = idx
-                        } else {
-                            letterIndex = null
-                        }
+                        letterIndex = if (idx in letters.indices) { idx } else { null }
                     }
                     isTouched = false
                 }
@@ -857,6 +902,7 @@ private fun SelectorLetterBar(
         letters.forEachIndexed { i, letter ->
             Box(
                 modifier = Modifier
+                    .offset(x = letterOffset)
                     .width(letterSizeDp)
                     .height(letterSizeDp),
                 contentAlignment = Alignment.Center
