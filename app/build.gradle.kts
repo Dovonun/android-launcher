@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.launcher"
+    namespace = "com.ni.launcher"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.launcher"
+        applicationId = "com.ni.launcher"
         minSdk = 30
         targetSdk = 35
         versionCode = 1

@@ -1,4 +1,4 @@
-package com.example.launcher
+package com.ni.launcher
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

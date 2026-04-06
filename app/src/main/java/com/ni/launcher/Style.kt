@@ -1,4 +1,4 @@
-package com.example.launcher
+package com.ni.launcher
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape

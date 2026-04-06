@@ -1,4 +1,4 @@
-package com.example.launcher
+package com.ni.launcher
 
 import android.app.Application
 import android.content.ActivityNotFoundException
@@ -14,11 +14,11 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.launcher.data.TagDao
-import com.example.launcher.data.TagEntity
-import com.example.launcher.data.TagItemDao
-import com.example.launcher.data.TagItemEntity
-import com.example.launcher.data.TagItemType
+import com.ni.launcher.data.TagDao
+import com.ni.launcher.data.TagEntity
+import com.ni.launcher.data.TagItemDao
+import com.ni.launcher.data.TagItemEntity
+import com.ni.launcher.data.TagItemType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

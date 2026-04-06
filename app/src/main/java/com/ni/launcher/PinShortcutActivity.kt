@@ -1,12 +1,12 @@
-package com.example.launcher
+package com.ni.launcher
 
 import android.content.pm.LauncherApps
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
-import com.example.launcher.TAG.PINNED
-import com.example.launcher.data.TagItemEntity
-import com.example.launcher.data.TagItemType
+import com.ni.launcher.TAG.PINNED
+import com.ni.launcher.data.TagItemEntity
+import com.ni.launcher.data.TagItemType
 import kotlinx.coroutines.launch
 
 class PinShortcutActivity : ComponentActivity() {

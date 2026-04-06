@@ -1,4 +1,4 @@
-package com.example.launcher
+package com.ni.launcher
 
 import android.app.Application
 import android.util.Log

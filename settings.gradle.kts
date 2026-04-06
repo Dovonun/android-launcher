@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "launcher"
+rootProject.name = "Ni-Launcher"
 include(":app")
  

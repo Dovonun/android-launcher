@@ -1,4 +1,4 @@
-package com.example.launcher
+package com.ni.launcher
 
 import org.junit.Assert.assertSame
 import org.junit.Test
