@@ -11,8 +11,8 @@ class NiLauncher : Application() {
             AppDatabase::class.java,
             "launcher.db"
         )
-            .fallbackToDestructiveMigration()
-            .fallbackToDestructiveMigrationOnDowngrade()
+            .fallbackToDestructiveMigration(true)
+            .fallbackToDestructiveMigrationOnDowngrade(true)
             .build()
     }
 }

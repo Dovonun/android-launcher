@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.Packaging
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -9,12 +10,13 @@ plugins {
 
 android {
     namespace = "com.ni.launcher"
-    compileSdk = 35
+    compileSdk = 36
+    compileSdkExtension = 1
 
     defaultConfig {
         applicationId = "com.ni.launcher"
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -37,11 +39,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
     buildFeatures {
         compose = true
@@ -58,6 +62,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.text)
     implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     kapt(libs.androidx.room.compiler)

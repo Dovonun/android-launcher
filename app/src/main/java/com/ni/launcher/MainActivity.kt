@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         viewVM.softReset()
     }
@@ -657,7 +657,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         onDismissRequest = reset,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        windowInsets = WindowInsets(0.dp)
+        contentWindowInsets = { WindowInsets(0.dp) }
     ) {
         Column(
             Modifier
