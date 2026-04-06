@@ -211,26 +211,31 @@ fun ManageTagScreen(
 
                 // Seems overkill
                 val dismissState = rememberSwipeToDismissBoxState(
-                    positionalThreshold = { totalDistance -> totalDistance * dismissThresholdFraction },
-                    confirmValueChange = { value ->
-                        if (draggedRowId != null) return@rememberSwipeToDismissBoxState false
-                        when (value) {
-                            SwipeToDismissBoxValue.StartToEnd,
-                            SwipeToDismissBoxValue.EndToStart -> {
-                                if (!reachedThreshold) return@rememberSwipeToDismissBoxState false
-                                val updated = localRows.filterNot { it.rowId == rowId }
-                                localRows = updated
-                                val snapshot = updated.toList()
-                                scope.launch {
-                                    appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
-                                }
-                                true
-                            }
-
-                            SwipeToDismissBoxValue.Settled -> true
-                        }
-                    }
+                    positionalThreshold = { totalDistance -> totalDistance * dismissThresholdFraction }
                 )
+
+                LaunchedEffect(
+                    dismissState.currentValue,
+                    draggedRowId,
+                    reachedThreshold
+                ) {
+                    when (dismissState.currentValue) {
+                        SwipeToDismissBoxValue.StartToEnd,
+                        SwipeToDismissBoxValue.EndToStart -> {
+                            if (draggedRowId != null || !reachedThreshold) {
+                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                                return@LaunchedEffect
+                            }
+                            val updated = localRows.filterNot { it.rowId == rowId }
+                            localRows = updated
+                            val snapshot = updated.toList()
+                            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+                            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                        }
+
+                        SwipeToDismissBoxValue.Settled -> Unit
+                    }
+                }
 
                 val dismissDirection = dismissState.dismissDirection
                 val dismissOffset = runCatching { dismissState.requireOffset() }.getOrDefault(0f)

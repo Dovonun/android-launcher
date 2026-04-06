@@ -581,7 +581,6 @@ fun ShortcutPopup(
     val haptic = LocalHapticFeedback.current
     val entries = state.entries
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val yDp = with(LocalDensity.current) { state.yPos.toDp() }
     val anchorDp = with(LocalDensity.current) { state.anchorBottomY.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp

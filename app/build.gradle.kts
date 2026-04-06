@@ -1,4 +1,3 @@
-import com.android.build.api.dsl.Packaging
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -45,6 +44,11 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
+            allWarningsAsErrors.set(true)
+            freeCompilerArgs.addAll(
+                "-Wextra",
+                "-progressive"
+            )
         }
     }
     buildFeatures {
