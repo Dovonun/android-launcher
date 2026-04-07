@@ -1,0 +1,158 @@
+name: Android CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' ||
+      (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-'))
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - run: chmod +x gradlew
+
+      - name: Validate
+        run: ./gradlew lint test assembleDebug --quiet
+
+  beta_release:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - run: chmod +x gradlew
+
+      - name: Compute beta version
+        id: version
+        env:
+          APP_VERSION_BASE: ${{ vars.APP_VERSION_BASE }}
+        run: |
+          BASE_VERSION="${APP_VERSION_BASE:-$(grep '^APP_VERSION_BASE=' gradle.properties | cut -d= -f2)}"
+          VERSION_NAME="${BASE_VERSION}-beta.${GITHUB_RUN_NUMBER}"
+          TAG_NAME="v${VERSION_NAME}"
+          echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore keystore
+        run: printf "%s" "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+      - name: Build signed beta release
+        run: >
+          ./gradlew
+          assertReleaseSigningConfigured
+          assembleRelease
+          -PciVersionName=${{ steps.version.outputs.version_name }}
+          -PciVersionCode=${{ github.run_number }}
+          -PreleaseApkName=ni-launcher-beta.apk
+          --quiet
+        env:
+          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+      - name: Push beta tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "${{ steps.version.outputs.tag_name }}"
+          git push origin "refs/tags/${{ steps.version.outputs.tag_name }}" --force
+
+      - name: Publish beta prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: Ni Launcher ${{ steps.version.outputs.version_name }}
+          prerelease: true
+          generate_release_notes: true
+          files: app/build/outputs/apk/release/ni-launcher-beta.apk
+
+  stable_release:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - run: chmod +x gradlew
+
+      - name: Read base version
+        id: base_version
+        env:
+          APP_VERSION_BASE: ${{ vars.APP_VERSION_BASE }}
+        run: |
+          BASE_VERSION="${APP_VERSION_BASE:-$(grep '^APP_VERSION_BASE=' gradle.properties | cut -d= -f2)}"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${TAG_VERSION}" != "${BASE_VERSION}" ]; then
+            echo "Stable tag ${TAG_VERSION} does not match APP_VERSION_BASE ${BASE_VERSION}" >&2
+            exit 1
+          fi
+          echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore keystore
+        run: printf "%s" "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+      - name: Build signed stable release
+        run: >
+          ./gradlew
+          assertReleaseSigningConfigured
+          assembleRelease
+          -PciVersionName=${{ steps.base_version.outputs.base_version }}
+          -PciVersionCode=${{ github.run_number }}
+          -PreleaseApkName=ni-launcher-release.apk
+          --quiet
+        env:
+          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+      - name: Publish stable release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/ni-launcher-release.apk
+          generate_release_notes: true
