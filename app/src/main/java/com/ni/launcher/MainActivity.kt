@@ -1,4 +1,4 @@
-package com.example.launcher
+package com.ni.launcher
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         viewVM.softReset()
     }
@@ -581,7 +581,6 @@ fun ShortcutPopup(
     val haptic = LocalHapticFeedback.current
     val entries = state.entries
     val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val yDp = with(LocalDensity.current) { state.yPos.toDp() }
     val anchorDp = with(LocalDensity.current) { state.anchorBottomY.toDp() }
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val maxWidth = screenWidth - H_PAD2.dp
@@ -657,7 +656,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
         onDismissRequest = reset,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        windowInsets = WindowInsets(0.dp)
+        contentWindowInsets = { WindowInsets(0.dp) }
     ) {
         Column(
             Modifier

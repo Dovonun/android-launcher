@@ -1,4 +1,4 @@
-package com.example.launcher.data
+package com.ni.launcher.data
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow

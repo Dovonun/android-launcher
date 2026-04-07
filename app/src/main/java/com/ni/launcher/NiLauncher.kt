@@ -1,8 +1,8 @@
-package com.example.launcher
+package com.ni.launcher
 
 import android.app.Application
 import androidx.room.Room
-import com.example.launcher.data.AppDatabase
+import com.ni.launcher.data.AppDatabase
 
 class NiLauncher : Application() {
     val database: AppDatabase by lazy {
@@ -11,8 +11,8 @@ class NiLauncher : Application() {
             AppDatabase::class.java,
             "launcher.db"
         )
-            .fallbackToDestructiveMigration()
-            .fallbackToDestructiveMigrationOnDowngrade()
+            .fallbackToDestructiveMigration(true)
+            .fallbackToDestructiveMigrationOnDowngrade(true)
             .build()
     }
 }

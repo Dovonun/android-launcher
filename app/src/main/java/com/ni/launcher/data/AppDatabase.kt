@@ -1,4 +1,4 @@
-package com.example.launcher.data
+package com.ni.launcher.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
