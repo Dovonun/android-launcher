@@ -1,3 +1,4 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,17 +8,34 @@ plugins {
     kotlin("kapt")
 }
 
+val appVersionBase = providers.gradleProperty("APP_VERSION_BASE").get()
+val ciVersionName = providers.gradleProperty("ciVersionName").orElse(appVersionBase)
+val ciVersionCode = providers.gradleProperty("ciVersionCode").orElse("1").map(String::toInt)
+val releaseApkName = providers.gradleProperty("releaseApkName").orElse("ni-launcher-release.apk")
+val releaseStoreFilePath = System.getenv("RELEASE_STORE_FILE")
+
 android {
     namespace = "com.ni.launcher"
     compileSdk = 36
     compileSdkExtension = 1
 
+    signingConfigs {
+        create("release") {
+            if (!releaseStoreFilePath.isNullOrBlank()) {
+                storeFile = file(releaseStoreFilePath)
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.ni.launcher"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = ciVersionCode.get()
+        versionName = ciVersionName.get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
@@ -34,7 +52,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release").takeIf {
+                !releaseStoreFilePath.isNullOrBlank()
+            }
         }
     }
     compileOptions {
@@ -53,6 +73,14 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+}
+
+android.applicationVariants.configureEach {
+    outputs.configureEach {
+        if (buildType.name == "release") {
+            (this as BaseVariantOutputImpl).outputFileName = releaseApkName.get()
+        }
     }
 }
 
@@ -85,5 +113,20 @@ configurations.all {
     resolutionStrategy {
         force("org.jetbrains:annotations:23.0.0")
         exclude(group = "com.intellij", module = "annotations")
+    }
+}
+
+tasks.register("assertReleaseSigningConfigured") {
+    doLast {
+        check(!releaseStoreFilePath.isNullOrBlank()) { "RELEASE_STORE_FILE is not set." }
+        check(!System.getenv("RELEASE_STORE_PASSWORD").isNullOrBlank()) {
+            "RELEASE_STORE_PASSWORD is not set."
+        }
+        check(!System.getenv("RELEASE_KEY_ALIAS").isNullOrBlank()) {
+            "RELEASE_KEY_ALIAS is not set."
+        }
+        check(!System.getenv("RELEASE_KEY_PASSWORD").isNullOrBlank()) {
+            "RELEASE_KEY_PASSWORD is not set."
+        }
     }
 }
