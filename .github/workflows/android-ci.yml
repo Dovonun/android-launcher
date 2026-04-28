@@ -38,7 +38,7 @@ jobs:
       - run: chmod +x gradlew
 
       - name: Validate
-        run: ./gradlew lint test assembleDebug --quiet
+        run: ./gradlew lint test assembleDebug assembleDevRelease --quiet
 
   beta_release:
     runs-on: ubuntu-latest
@@ -76,10 +76,11 @@ jobs:
         run: >
           ./gradlew
           assertReleaseSigningConfigured
-          assembleRelease
+          assemblePublicRelease
           -PciVersionName=${{ steps.version.outputs.version_name }}
           -PciVersionCode=${{ github.run_number }}
           -PreleaseApkName=ni-launcher-beta.apk
+          -PuseReleaseSigning=true
           --quiet
         env:
           RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
@@ -101,7 +102,7 @@ jobs:
           name: Ni Launcher ${{ steps.version.outputs.version_name }}
           prerelease: true
           generate_release_notes: true
-          files: app/build/outputs/apk/release/ni-launcher-beta.apk
+          files: app/build/outputs/apk/public/release/ni-launcher-beta.apk
 
   stable_release:
     runs-on: ubuntu-latest
@@ -140,10 +141,11 @@ jobs:
         run: >
           ./gradlew
           assertReleaseSigningConfigured
-          assembleRelease
+          assemblePublicRelease
           -PciVersionName=${{ steps.base_version.outputs.base_version }}
           -PciVersionCode=${{ github.run_number }}
           -PreleaseApkName=ni-launcher-release.apk
+          -PuseReleaseSigning=true
           --quiet
         env:
           RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
@@ -154,5 +156,5 @@ jobs:
       - name: Publish stable release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/ni-launcher-release.apk
+          files: app/build/outputs/apk/public/release/ni-launcher-release.apk
           generate_release_notes: true

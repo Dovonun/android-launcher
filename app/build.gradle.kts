@@ -13,6 +13,9 @@ val ciVersionName = providers.gradleProperty("ciVersionName").orElse(appVersionB
 val ciVersionCode = providers.gradleProperty("ciVersionCode").orElse("1").map(String::toInt)
 val releaseApkName = providers.gradleProperty("releaseApkName").orElse("ni-launcher-release.apk")
 val releaseStoreFilePath = System.getenv("RELEASE_STORE_FILE")
+val useReleaseSigning = providers.gradleProperty("useReleaseSigning")
+    .orElse(if (releaseStoreFilePath.isNullOrBlank()) "false" else "true")
+    .map(String::toBoolean)
 
 android {
     namespace = "com.ni.launcher"
@@ -44,7 +47,22 @@ android {
         }
     }
 
+    flavorDimensions += "edition"
+    productFlavors {
+        create("public") {
+            dimension = "edition"
+        }
+        create("dev") {
+            dimension = "edition"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
+    }
+
     buildTypes {
+        debug {
+            versionNameSuffix = "${versionNameSuffix ?: ""}-debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -52,8 +70,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release").takeIf {
-                !releaseStoreFilePath.isNullOrBlank()
+            signingConfig = if (useReleaseSigning.get()) {
+                signingConfigs.getByName("release").takeIf {
+                    !releaseStoreFilePath.isNullOrBlank()
+                }
+            } else {
+                signingConfigs.getByName("debug")
             }
         }
     }
@@ -78,8 +100,13 @@ android {
 
 android.applicationVariants.configureEach {
     outputs.configureEach {
-        if (buildType.name == "release") {
-            (this as BaseVariantOutputImpl).outputFileName = releaseApkName.get()
+        val output = this as BaseVariantOutputImpl
+        output.outputFileName = when {
+            flavorName == "public" && buildType.name == "release" -> releaseApkName.get()
+            flavorName == "dev" && buildType.name == "release" -> "ni-launcher-dev-release.apk"
+            flavorName == "dev" && buildType.name == "debug" -> "ni-launcher-dev-debug.apk"
+            flavorName == "public" && buildType.name == "debug" -> "ni-launcher-public-debug.apk"
+            else -> output.outputFileName
         }
     }
 }
