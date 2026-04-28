@@ -22,6 +22,9 @@ Ni-Launcher is a fast, minimal Android launcher focused on reducing distractions
 ### Beta APK
 Beta builds are published from merges to `main` as GitHub prereleases.
 
+### Local Development
+Local side-by-side development builds use the `com.ni.launcher.dev` application id and install as `Ni-Launcher Dev`, so you can keep the public app installed from Obtainium while testing local changes.
+
 ### Obtainium
 For automated updates via [Obtainium](https://github.com/ImranR98/Obtainium), add this repository URL:
 `https://github.com/Dovonun/android-launcher`
