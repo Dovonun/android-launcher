@@ -68,7 +68,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
@@ -104,7 +103,6 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 const val H_PAD = 16
@@ -333,16 +331,17 @@ fun LetterBar(
         label = "LetterBarShift"
     )
     val letterOffset = animatedShift - rightInset
-    LaunchedEffect(scrollIndexes) {
-        snapshotFlow { letterIndex }.distinctUntilChanged().collect { idx ->
-            idx?.let {
-                scrollIndexes.getOrNull(idx)?.let { target ->
-                    listState.scrollToItem(target)
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                }
+    fun selectLetter(idx: Int?) {
+        if (idx == letterIndex) return
+        letterIndex = idx
+        idx?.let {
+            scrollIndexes.getOrNull(it)?.let { target ->
+                listState.requestScrollToItem(target)
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
         }
     }
+
     Column(
         verticalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
@@ -353,16 +352,16 @@ fun LetterBar(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     viewVM.setView(View.AllApps)
-                    letterIndex = ((down.position.y / size.height) * letters.size).toInt()
+                    selectLetter(((down.position.y / size.height) * letters.size).toInt())
                     drag(down.id) { change ->
                         isTouched = true
                         change.consume()
                         val idx = ((change.position.y / size.height) * letters.size).toInt()
                         if (idx in letters.indices) {
-                            letterIndex = idx
+                            selectLetter(idx)
                             viewVM.setView(View.AllApps)
                         } else {
-                            letterIndex = null
+                            selectLetter(null)
                             viewVM.setView(View.Favorites)
                         }
                     }
