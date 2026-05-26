@@ -43,4 +43,4 @@ You can verify the authenticity of stable APKs using [AppVerifier](https://githu
   <img src="screenshots/ocean_letterbar_20260522-104553.png" width="240" alt="Ni-Launcher app list with letter bar">
 </p>
 
-<sub>Wallpaper in screenshots: [Lighthouse, Tower, Ocean by Leolo212 on Pixabay](https://pixabay.com/photos/lighthouse-tower-ocean-sea-beach-5622924/), used under the Pixabay Content License.</sub>
+<sub>Wallpaper in screenshots: [Lighthouse, Tower, Ocean by Leolo212](https://pixabay.com/photos/lighthouse-tower-ocean-sea-beach-5622924/).</sub>
