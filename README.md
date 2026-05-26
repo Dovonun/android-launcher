@@ -29,6 +29,14 @@ Local side-by-side development builds use the `com.ni.launcher.dev` application 
 For automated updates via [Obtainium](https://github.com/ImranR98/Obtainium), add this repository URL:
 `https://github.com/Dovonun/android-launcher`
 
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.ni.launcher%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FDovonun%2Fandroid-launcher%22%2C%22author%22%3A%22Dovonun%22%2C%22name%22%3A%22Ni-Launcher%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22verifyLatestTag%5C%22%3Atrue%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22ni-launcher-release.apk%5C%22%7D%22%2C%22overrideSource%22%3Anull%7D"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" width="170" alt="Get it on Obtainium"></a>
+
+The badge URL can be regenerated with:
+
+```sh
+python3 -c 'import json, urllib.parse; payload={"id":"com.ni.launcher","url":"https://github.com/Dovonun/android-launcher","author":"Dovonun","name":"Ni-Launcher","preferredApkIndex":0,"additionalSettings":json.dumps({"verifyLatestTag":True,"apkFilterRegEx":"ni-launcher-release.apk"},separators=(",",":")),"overrideSource":None}; uri="obtainium://app/"+json.dumps(payload,separators=(",",":")); print("https://apps.obtainium.imranr.dev/redirect?r="+urllib.parse.quote(uri,safe=""))'
+```
+
 ## Security & Verification
 
 ### AppVerifier
