@@ -39,8 +39,8 @@ python3 -c 'import json, urllib.parse; payload={"id":"com.ni.launcher","url":"ht
 
 ## Security & Verification
 
-### AppVerifier
-You can verify the authenticity of stable APKs using [AppVerifier](https://github.com/stefan-niedermann/AppVerifier).
+### Optional: AppVerifier
+You can verify the authenticity of APK releases using [AppVerifier](https://github.com/stefan-niedermann/AppVerifier).
 
 - **Application ID:** `com.ni.launcher`
 - **Certificate SHA-256 Fingerprint:** 6B:B3:73:F1:26:D5:C0:FF:A8:FF:FD:31:2C:7E:D9:B4:90:91:8E:73:38:27:44:BB:76:8D:74:9B:1E:64:E2:57
