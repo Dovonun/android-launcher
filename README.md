@@ -47,6 +47,7 @@ You can verify the authenticity of stable APKs using [AppVerifier](https://githu
 ## Screenshots
 
 <p>
+  <img src="screenshots/default-pink_main.png" width="240" alt="Ni-Launcher home screen with default pink wallpaper">
   <img src="screenshots/ocean_main_20260522-103217.png" width="240" alt="Ni-Launcher home screen with ocean wallpaper">
   <img src="screenshots/ocean_letterbar_20260522-104553.png" width="240" alt="Ni-Launcher app list with letter bar">
 </p>
