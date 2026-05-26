@@ -38,4 +38,9 @@ You can verify the authenticity of stable APKs using [AppVerifier](https://githu
 - **Certificate SHA-256 Fingerprint:** 6B:B3:73:F1:26:D5:C0:FF:A8:FF:FD:31:2C:7E:D9:B4:90:91:8E:73:38:27:44:BB:76:8D:74:9B:1E:64:E2:57
 ## Screenshots
 
-Screenshots will be added soon.
+<p>
+  <img src="screenshots/ocean_main_20260522-103217.png" width="240" alt="Ni-Launcher home screen with ocean wallpaper">
+  <img src="screenshots/ocean_letterbar_20260522-104553.png" width="240" alt="Ni-Launcher app list with letter bar">
+</p>
+
+<sub>Wallpaper in screenshots: [Lighthouse, Tower, Ocean by Leolo212 on Pixabay](https://pixabay.com/photos/lighthouse-tower-ocean-sea-beach-5622924/), used under the Pixabay Content License.</sub>
