@@ -29,13 +29,29 @@ Local side-by-side development builds use the `com.ni.launcher.dev` application 
 For automated updates via [Obtainium](https://github.com/ImranR98/Obtainium), add this repository URL:
 `https://github.com/Dovonun/android-launcher`
 
+During beta, prerelease updates are enabled in the Obtainium badge.
+
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.ni.launcher%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FDovonun%2Fandroid-launcher%22%2C%22author%22%3A%22Dovonun%22%2C%22name%22%3A%22Ni-Launcher%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%7D%22%7D"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" width="170" alt="Get it on Obtainium"></a>
+
+The badge URL can be regenerated with:
+
+```sh
+python3 -c 'import json, urllib.parse; payload={"id":"com.ni.launcher","url":"https://github.com/Dovonun/android-launcher","author":"Dovonun","name":"Ni-Launcher","additionalSettings":json.dumps({"includePrereleases":True},separators=(",",":"))}; uri="obtainium://app/"+json.dumps(payload,separators=(",",":")); print("https://apps.obtainium.imranr.dev/redirect?r="+urllib.parse.quote(uri,safe=""))'
+```
+
 ## Security & Verification
 
-### AppVerifier
-You can verify the authenticity of stable APKs using [AppVerifier](https://github.com/stefan-niedermann/AppVerifier).
+### Optional: AppVerifier
+You can verify the authenticity of APK releases using [AppVerifier](https://github.com/stefan-niedermann/AppVerifier).
 
 - **Application ID:** `com.ni.launcher`
 - **Certificate SHA-256 Fingerprint:** 6B:B3:73:F1:26:D5:C0:FF:A8:FF:FD:31:2C:7E:D9:B4:90:91:8E:73:38:27:44:BB:76:8D:74:9B:1E:64:E2:57
 ## Screenshots
 
-Screenshots will be added soon.
+<p>
+  <img src="screenshots/default-pink_main.png" width="240" alt="Ni-Launcher home screen with default pink wallpaper">
+  <img src="screenshots/ocean_main_20260522-103217.png" width="240" alt="Ni-Launcher home screen with ocean wallpaper">
+  <img src="screenshots/ocean_letterbar_20260522-104553.png" width="240" alt="Ni-Launcher app list with letter bar">
+</p>
+
+Wallpaper in screenshots: [Lighthouse, Tower, Ocean by Leolo212](https://pixabay.com/photos/lighthouse-tower-ocean-sea-beach-5622924/)
