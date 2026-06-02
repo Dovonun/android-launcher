@@ -39,6 +39,14 @@ The badge URL can be regenerated with:
 python3 -c 'import json, urllib.parse; payload={"id":"com.ni.launcher","url":"https://github.com/Dovonun/android-launcher","author":"Dovonun","name":"Ni-Launcher","additionalSettings":json.dumps({"includePrereleases":True},separators=(",",":"))}; uri="obtainium://app/"+json.dumps(payload,separators=(",",":")); print("https://apps.obtainium.imranr.dev/redirect?r="+urllib.parse.quote(uri,safe=""))'
 ```
 
+
+## Project Docs
+
+- [Product](docs/product.md)
+- [Architecture](docs/architecture.md)
+- [Development](docs/development.md)
+- [Design decisions](docs/decisions/)
+
 ## Security & Verification
 
 ### Optional: AppVerifier
