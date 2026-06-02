@@ -13,5 +13,3 @@ The bottom sheet is the context menu for apps, shortcuts, and tags.
 3. If the selected item is a tag, show manage-tag.
 4. If the selected item is not a tag, show create-tag.
 5. If the resolved target is an app, show app settings and uninstall.
-
-Keep this decision engine small and predictable.

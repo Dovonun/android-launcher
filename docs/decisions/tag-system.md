@@ -15,11 +15,3 @@ Empty, recursive, or missing references should be displayed as placeholders inst
 Tag items have a stable order. The first item is the representative.
 
 Lists render bottom-up so the first item appears at the bottom of the screen. This keeps the main action near the user's thumb and makes tags feel like they open upward.
-
-## Storage
-`tag_items` maps ordered slots inside a tag:
-
-- `tagId`
-- `itemOrder`
-- item reference fields for app, shortcut, or nested tag
-- optional label override

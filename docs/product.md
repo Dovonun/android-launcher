@@ -1,14 +1,14 @@
 # Product
 
-Ni-Launcher is a fast, minimal Android launcher for people who want less distraction and more predictable navigation.
+Ni-Launcher is a fast, performant Android launcher focused on reducing friction and distractions. It tries to make the intended action easy without layout shift or surprise navigation.
 
 ## Audience
 - GrapheneOS and privacy-focused Android users.
 - Minimalists who want a launcher that stays out of the way.
 
 ## Goals
-- **Offline by default:** no internet permission.
 - **No layout shift:** navigation should feel stable and predictable.
+- **Performance:** interactions should be fast enough to feel instant.
 - **Fast access:** favorites, tags, and gestures should get users to apps quickly.
 - **Small codebase:** prefer boring, readable Kotlin over framework-shaped complexity.
 
