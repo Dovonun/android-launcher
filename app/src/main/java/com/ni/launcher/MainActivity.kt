@@ -185,7 +185,10 @@ class MainActivity : ComponentActivity() {
                                 is View.Favorites -> {
                                     val favorites by appsVM.favorites.collectAsState()
                                     val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
-                                    Column(
+                                    val favoritesListState = rememberLazyListState()
+                                    LazyColumn(
+                                        state = favoritesListState,
+                                        reverseLayout = true,
                                         verticalArrangement = Arrangement.Bottom,
                                         modifier = Modifier
                                             .fillMaxHeight()
@@ -198,7 +201,7 @@ class MainActivity : ComponentActivity() {
                                                         if (dragAmount > 60f) systemVM.expandNotificationShade()
                                                     })
                                             }) {
-                                        favorites.asReversed().forEach { fav ->
+                                        items(favorites) { fav ->
                                             IconRow(
                                                 fav, appsVM, viewVM, snackbarHostState, parent = favTag
                                             )
