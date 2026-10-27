@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import com.ni.launcher.TAG
 
 /*
- * Immutable in-memory launcher graph (eager graph layer, job 1).
+ * Immutable in-memory launcher graph (eager graph layer).
  *
  * Plain value types: no Android framework classes (Compose ImageBitmap is the one exception), no
  * lambdas, so `equals` is structural and StateFlow conflation works. See vault: projects/ni-launcher-eager-graph-architecture.md §4.
@@ -45,8 +45,7 @@ data class UserData(val tags: Map<Long, TagNode>, val nextTagId: Long = FIRST_US
 
     /**
      * Creates TAG.FAV ("Favorites") and TAG.PINNED ("Pinned") if missing. Existing system tags are
-     * kept as-is (names are not reset), matching `ensureSystemTags`, whose insert is IGNORE.
-     * Replaces `ensureSystemTags` (AppsVM.kt:88).
+     * kept as-is (names are not reset), as the former DB-side `ensureSystemTags` (insert IGNORE) did.
      */
     fun withSystemTags(): UserData {
         var t = tags
@@ -59,7 +58,7 @@ data class UserData(val tags: Map<Long, TagNode>, val nextTagId: Long = FIRST_US
      * Load-time normalization: drops duplicate keys within a tag (first wins), drops tag edges to
      * tags that don't exist (the DB FK makes these impossible, but keep the invariant explicit)
      * and fixes [nextTagId]. Cycles between tags are allowed (as today); readers must use a
-     * visited set, see [tagRefsReachableFrom].
+     * visited set (see Projections.tagView).
      */
     fun sanitized(): UserData {
         val fixed = tags.mapValues { (_, t) ->
@@ -78,23 +77,6 @@ data class UserData(val tags: Map<Long, TagNode>, val nextTagId: Long = FIRST_US
             val valid = k !is ItemKey.Tag || k.id in tags || k.id in extraTagIds
             valid && seen.add(k)
         }
-    }
-
-    /**
-     * All tag ids reachable from [from] through tag edges (including [from] if it exists).
-     * Cycle-safe (iterative, visited set).
-     */
-    fun tagRefsReachableFrom(from: Long): Set<Long> {
-        val visited = LinkedHashSet<Long>()
-        val stack = ArrayDeque<Long>()
-        stack.addLast(from)
-        while (stack.isNotEmpty()) {
-            val id = stack.removeLast()
-            val node = tags[id] ?: continue
-            if (!visited.add(id)) continue
-            node.children.forEach { e -> (e.key as? ItemKey.Tag)?.let { stack.addLast(it.id) } }
-        }
-        return visited
     }
 
     companion object {

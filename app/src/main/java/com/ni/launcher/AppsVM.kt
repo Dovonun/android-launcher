@@ -234,10 +234,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         store.dispatch(Command.Reorder(tagId, keysOf(items)))
     }
 
-    /** Appends items missing from [tagId]. */
-    fun ensureItemsInTag(tagId: Long, items: List<LauncherItem>) {
-        store.dispatch(Command.Add(tagId, items.mapNotNull { it.toEdge() }))
-    }
 
     /** Makes [tagId]'s children exactly [items], in order (ensure + reorder). */
     fun syncTagItemsToList(tagId: Long, items: List<LauncherItem>) {

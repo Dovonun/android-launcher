@@ -55,7 +55,7 @@ class LauncherGraphStore(
         }
     }
 
-    /** Main-safe, non-suspending. Returns false only if the store was shut down. */
+    /** Main-safe, non-suspending. Returns false only if the inbox is closed (never, in practice). */
     fun dispatch(cmd: Command): Boolean = inbox.trySend(Msg.Cmd(cmd)).isSuccess
 
     /**
@@ -80,11 +80,6 @@ class LauncherGraphStore(
         val done = CompletableDeferred<Long>()
         if (!inbox.trySend(Msg.Barrier(done)).isSuccess) return
         persister.flush(done.await())
-    }
-
-    /** Stops accepting commands; already-queued commands are still applied. */
-    fun close() {
-        inbox.close()
     }
 
     private suspend fun loadWithRetry(): UserData {

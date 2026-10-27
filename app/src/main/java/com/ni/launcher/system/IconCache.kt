@@ -86,9 +86,6 @@ class IconCache(
         }
     }
 
-    /** Release shortcut icons first under memory pressure (apps are referenced by the graph). */
-    fun trimShortcuts() = shortcuts.evictAll()
-
     private fun putIfAbsent(cache: BitmapLru, key: String, bmp: ImageBitmap): ImageBitmap =
         synchronized(cache) {
             cache.get(key) ?: bmp.also { cache.put(key, it) }

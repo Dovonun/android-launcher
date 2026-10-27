@@ -23,7 +23,8 @@ class NiLauncher : Application() {
             AppDatabase::class.java,
             "launcher.db"
         )
-            .fallbackToDestructiveMigration(true)
+            // No destructive fallback on upgrade: a version bump must ship a Migration (schemas are
+            // exported to app/schemas). Downgrades (installing an older build) still reset.
             .fallbackToDestructiveMigrationOnDowngrade(true)
             .build()
     }

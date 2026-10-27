@@ -1,7 +1,7 @@
 package com.ni.launcher.model
 
 /**
- * Storage hook for [LauncherGraphStore]. The real Room implementation (job 2) is the only class
+ * Storage hook for [LauncherGraphStore]. The Room implementation (RoomGraphPersister) is the only class
  * that knows Room: it loads once at startup and writes dirty tags behind (coalesced, ~150 ms).
  *
  * Threading contract:
@@ -24,11 +24,4 @@ data class UserDataDiff(val changed: Set<Long>, val removed: Set<Long>) {
             removed = old.tags.keys - new.tags.keys,
         )
     }
-}
-
-/** No storage: loads [initial] and drops writes. Placeholder until the Room persister lands. */
-class NoOpGraphPersister(private val initial: UserData = UserData.EMPTY) : GraphPersister {
-    override suspend fun load(): UserData = initial
-    override fun markDirty(old: UserData, new: UserData, version: Long) = Unit
-    override suspend fun flush(version: Long) = Unit
 }

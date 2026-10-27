@@ -6,14 +6,14 @@ import com.ni.launcher.TAG
  * Every mutation of [LauncherGraph] is a Command handled by [reduce] on the store's single model
  * thread. [persist] = true means the store marks changed tags dirty for the [GraphPersister].
  *
- * Mapping to today's AppsVM:
- * - ensureItemsInTag / addItemToFavorites -> [Add] (appends missing keys, keeps existing edges)
+ * Mapping to the AppsVM intents (pre-graph names in parentheses where they differ):
+ * - (ensureItemsInTag / addItemToFavorites) -> [Add] (appends missing keys, keeps existing edges)
  * - removeItemFromParent                  -> [Remove]
  * - updateOrder                           -> [Reorder] (keeps only keys present in both, like buildEntitiesForOrder)
  * - syncTagItemsToList / syncTagItemsInMemory -> [SetItems] (ensure + reorder in one step)
  * - renameTag / deleteTag                 -> [Rename] / [Delete]
  * - createTagFromItem                     -> [Create] (id from LauncherGraphStore.newTagId())
- * - label override                        -> [SetLabel]
+ * - label override                        -> [SetLabel] (no UI yet)
  * - PinShortcutActivity insert            -> [PinShortcut]
  */
 sealed interface Command {
