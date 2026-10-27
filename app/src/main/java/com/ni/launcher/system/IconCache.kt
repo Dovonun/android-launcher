@@ -45,7 +45,11 @@ class IconCache(
     fun shortcutKey(si: ShortcutInfo): String =
         "${si.`package`}/${si.id}#${si.userHandle.hashCode()}@${si.lastChangedTimestamp}"
 
+    /** Cached app icon for [key] without decoding. */
     fun peekApp(key: String): ImageBitmap? = apps.get(key)
+
+    /** Cached shortcut icon without decoding. */
+    fun peekShortcut(si: ShortcutInfo): ImageBitmap? = shortcuts.get(shortcutKey(si))
 
     @WorkerThread
     fun app(info: LauncherActivityInfo, lastUpdateTime: Long): ImageBitmap? {
