@@ -24,6 +24,21 @@ interface TagDao {
     // Reactive UI graph and badges subscribe to this flow.
     fun getAllFlow(): Flow<List<TagEntity>>
 
+    // --- Graph persister (one-shot, non-Flow) ---
+    @Query("SELECT * FROM tags")
+    suspend fun getAll(): List<TagEntity>
+
+    @Query("SELECT id FROM tags")
+    suspend fun getAllIds(): List<Long>
+
+    // Upsert = insert or UPDATE (not REPLACE), so existing rows are never deleted and the
+    // tag_items FK cascade is not triggered.
+    @Upsert
+    suspend fun upsertAll(tags: List<TagEntity>)
+
+    @Query("DELETE FROM tags WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     // Utility: insert or get existing tag
     suspend fun insertOrGet(name: String): TagEntity {
         val existing = getByName(name)
@@ -59,6 +74,10 @@ interface TagItemDao {
 
     @Query("SELECT COUNT(*) FROM tag_items WHERE tagId = :tagId AND type = 'SHORTCUT' AND packageName = :packageName AND shortcutId = :shortcutId")
     suspend fun countShortcutInTag(tagId: Long, packageName: String, shortcutId: String): Int
+
+    // --- Graph persister (one-shot, non-Flow) ---
+    @Query("SELECT * FROM tag_items ORDER BY tagId, itemOrder ASC")
+    suspend fun getAll(): List<TagItemEntity>
 
     @Query("SELECT MAX(itemOrder) FROM tag_items WHERE tagId = :tagId")
     suspend fun getMaxOrderForTag(tagId: Long): Int?
