@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -426,6 +427,17 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    // Per-package app popup entries, built off the main thread from the same sources as graph.
+    val appPopupEntries: StateFlow<Map<String, List<LauncherItem>>> = combine(
+        cachedShortcuts, tagItemState
+    ) { shortcuts, itemEntities ->
+        val managedRowsByPkg = managedShortcutRowsByPackage(itemEntities)
+        shortcuts.mapValues { (pkg, pkgShortcuts) ->
+            buildAppPopupEntries(pkgShortcuts, managedRowsByPkg[pkg].orEmpty())
+        }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     // Reactive all-apps list for main screen rendering.
     val uiAllGrouped = combine(
         apps,
@@ -500,16 +512,52 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         is LauncherItem.Placeholder -> emptyList()
         is LauncherItem.App -> {
             val pkg = item.info.componentName.packageName
-            val shortcuts = resolveShortcutsForPackage(pkg)
-            shortcuts.map {
-                LauncherItem.Shortcut(
-                    it,
-                    it.shortLabel.toString(),
-                    launcherApps.getShortcutIconDrawable(it, 0)?.toBitmap()?.asImageBitmap()
-                )
-            }
+            appPopupEntries.value[pkg] ?: buildAppPopupEntries(
+                resolveShortcutsForPackage(pkg),
+                managedShortcutRowsByPackage(tagItemState.value)[pkg].orEmpty()
+            )
         }
     }
+
+    // Managed-list SHORTCUT rows grouped by package: PINNED tag first, then other tags by id, each by itemOrder.
+    private fun managedShortcutRowsByPackage(itemEntities: List<TagItemEntity>): Map<String, List<TagItemEntity>> =
+        itemEntities.asSequence()
+            .filter { it.type == TagItemType.SHORTCUT && it.packageName != null && it.shortcutId != null }
+            .sortedWith(
+                compareBy<TagItemEntity> { if (it.tagId == TAG.PINNED) 0 else 1 }
+                    .thenBy { it.tagId }
+                    .thenBy { it.itemOrder }
+            )
+            .groupBy { it.packageName!! }
+
+    // App popup order: manifest shortcuts, then dynamic ones (each by rank), then managed-list entries,
+    // then shortcuts pinned in Android (in query order); de-duplicated by shortcut id, first occurrence wins.
+    private fun buildAppPopupEntries(
+        shortcuts: List<ShortcutInfo>,
+        managedRows: List<TagItemEntity>
+    ): List<LauncherItem> {
+        val seenIds = mutableSetOf<String>()
+        val system = shortcuts
+            .filter { it.isDeclaredInManifest || it.isDynamic }
+            .sortedWith(compareBy<ShortcutInfo> { if (it.isDeclaredInManifest) 0 else 1 }.thenBy { it.rank })
+            .filter { seenIds.add(it.id) }
+            .map { shortcutItem(it, null) }
+        val managed = managedRows.mapNotNull { row ->
+            val info = shortcuts.find { it.id == row.shortcutId } ?: return@mapNotNull null
+            if (!seenIds.add(info.id)) return@mapNotNull null
+            shortcutItem(info, row.labelOverride)
+        }
+        val pinned = shortcuts
+            .filter { it.isPinned && seenIds.add(it.id) }
+            .map { shortcutItem(it, null) }
+        return system + managed + pinned
+    }
+
+    private fun shortcutItem(info: ShortcutInfo, labelOverride: String?) = LauncherItem.Shortcut(
+        info,
+        labelOverride ?: info.shortLabel.toString(),
+        launcherApps.getShortcutIconDrawable(info, 0)?.toBitmap()?.asImageBitmap()
+    )
 
     fun openAppSettings(item: LauncherActivityInfo) {
         launcherApps.startAppDetailsActivity(item.componentName, user, null, null)
