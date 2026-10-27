@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.ni.launcher.data.AppDatabase
 import com.ni.launcher.data.RoomGraphPersister
 import com.ni.launcher.model.LauncherGraphStore
+import com.ni.launcher.system.SystemSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +37,10 @@ class NiLauncher : Application() {
     lateinit var graphStore: LauncherGraphStore
         private set
 
+    /** LauncherApps -> SystemChanged adapter; started in [onCreate], work runs on IO. */
+    lateinit var systemSource: SystemSource
+        private set
+
     override fun onCreate() {
         super.onCreate()
         val persister = RoomGraphPersister(database, appScope)
@@ -44,6 +49,7 @@ class NiLauncher : Application() {
             persister = persister,
             onError = { cmd, e -> Log.wtf(LOG_TAG, "graph store error (cmd=$cmd)", e) },
         )
+        systemSource = SystemSource(this, graphStore, appScope).also { it.start() }
     }
 
     /**

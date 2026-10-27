@@ -1,12 +1,13 @@
 package com.ni.launcher.model
 
+import androidx.compose.ui.graphics.ImageBitmap
 import com.ni.launcher.TAG
 
 /*
  * Immutable in-memory launcher graph (eager graph layer, job 1).
  *
- * Pure-JVM value types: no Android framework classes, no lambdas, so `equals` is structural and
- * StateFlow conflation works. See vault: projects/ni-launcher-eager-graph-architecture.md §4.
+ * Plain value types: no Android framework classes (Compose ImageBitmap is the one exception), no
+ * lambdas, so `equals` is structural and StateFlow conflation works. See vault: projects/ni-launcher-eager-graph-architecture.md §4.
  */
 
 /** Identity of a graph node. Apps are keyed by package, matching today's tag_items semantics. */
@@ -102,16 +103,19 @@ data class UserData(val tags: Map<Long, TagNode>, val nextTagId: Long = FIRST_US
 }
 
 /**
- * Minimal system node for a launchable app. SystemSource (job 3) fills these in and may extend
- * them (e.g. ComponentName / ImageBitmap icon); kept framework-free for now.
+ * A launchable app (filled by SystemSource). [component] is `ComponentName.flattenToString()`;
+ * apps are keyed by package in [SystemData.apps] (first launcher activity wins, as today).
+ * [icon] is a 40dp bitmap from IconCache; the same key yields the same instance, so `equals`
+ * (reference equality for ImageBitmap) stays stable across refreshes. Null until decoded.
  */
 data class AppNode(
     val pkg: String,
-    val activityClass: String,
+    val component: String,
     val label: String,
+    val icon: ImageBitmap? = null,
 )
 
-/** Minimal system node for a shortcut; see [AppNode]. */
+/** A shortcut (manifest, dynamic or pinned) of [pkg]; see [AppNode] for [icon]. */
 data class ShortcutNode(
     val pkg: String,
     val id: String,
@@ -123,6 +127,9 @@ data class ShortcutNode(
     val pinned: Boolean = false,
     val rank: Int = 0,
     val changedAt: Long = 0L,
+    /** `ComponentName.flattenToString()` of the shortcut's activity, if any. */
+    val activity: String? = null,
+    val icon: ImageBitmap? = null,
 )
 
 /** Derived system state; never persisted. Shortcuts are grouped by package. */
