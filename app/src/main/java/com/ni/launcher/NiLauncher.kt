@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.ni.launcher.data.AppDatabase
 import com.ni.launcher.data.RoomGraphPersister
 import com.ni.launcher.model.LauncherGraphStore
+import com.ni.launcher.model.LauncherProjections
 import com.ni.launcher.system.SystemSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,10 +32,14 @@ class NiLauncher : Application() {
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
-     * In-memory launcher graph (eager graph layer). Created once in [onCreate]; it loads Room on
-     * IO and then only writes when a persisted command is dispatched. Not read by the UI yet.
+     * In-memory launcher graph: the single source of truth for tags and system data. Created once
+     * in [onCreate]; loads Room on IO, then writes behind (see RoomGraphPersister).
      */
     lateinit var graphStore: LauncherGraphStore
+        private set
+
+    /** UI projections of [graphStore] (Eagerly shared in [appScope]). */
+    lateinit var projections: LauncherProjections
         private set
 
     /** LauncherApps -> SystemChanged adapter; started in [onCreate], work runs on IO. */
@@ -49,11 +54,12 @@ class NiLauncher : Application() {
             persister = persister,
             onError = { cmd, e -> Log.wtf(LOG_TAG, "graph store error (cmd=$cmd)", e) },
         )
+        projections = LauncherProjections(graphStore, appScope)
         systemSource = SystemSource(this, graphStore, appScope).also { it.start() }
     }
 
     /**
-     * Flush pending graph writes; call from the launcher's onStop (lifecycle-process /
+     * Flush pending graph writes; called from MainActivity.onStop (lifecycle-process /
      * ProcessLifecycleOwner is not a dependency). Runs in [appScope], NonCancellable.
      */
     fun flushGraphAsync(): Job = appScope.launch {

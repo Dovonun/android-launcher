@@ -103,8 +103,8 @@ data class UserData(val tags: Map<Long, TagNode>, val nextTagId: Long = FIRST_US
 }
 
 /**
- * A launchable app (filled by SystemSource). [component] is `ComponentName.flattenToString()`;
- * apps are keyed by package in [SystemData.apps] (first launcher activity wins, as today).
+ * A launchable activity (filled by SystemSource). [component] is
+ * `ComponentName.flattenToString()` and is the key in [SystemData.apps].
  * [icon] is a 40dp bitmap from IconCache; the same key yields the same instance, so `equals`
  * (reference equality for ImageBitmap) stays stable across refreshes. Null until decoded.
  */
@@ -132,11 +132,23 @@ data class ShortcutNode(
     val icon: ImageBitmap? = null,
 )
 
-/** Derived system state; never persisted. Shortcuts are grouped by package. */
+/**
+ * Derived system state; never persisted.
+ * [apps] is keyed by component (`ComponentName.flattenToString()`) in getActivityList order, so a
+ * package with several launcher activities has several entries (All Apps shows each, as before).
+ * [shortcuts] is grouped by package.
+ */
 data class SystemData(
     val apps: Map<String, AppNode>,
     val shortcuts: Map<String, List<ShortcutNode>>,
 ) {
+    /** First launcher activity per package; tag edges (ItemKey.App) resolve through this. */
+    val appByPkg: Map<String, AppNode> by lazy {
+        val out = LinkedHashMap<String, AppNode>()
+        for (a in apps.values) out.putIfAbsent(a.pkg, a)
+        out
+    }
+
     companion object {
         val EMPTY = SystemData(emptyMap(), emptyMap())
     }

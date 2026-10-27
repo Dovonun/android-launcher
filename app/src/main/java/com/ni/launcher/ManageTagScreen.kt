@@ -105,8 +105,8 @@ private sealed interface SelectionKey {
 }
 
 private fun selectionKey(item: LauncherItem): SelectionKey? = when (item) {
-    is LauncherItem.App -> SelectionKey.App(item.info.componentName.packageName)
-    is LauncherItem.Shortcut -> SelectionKey.Shortcut(item.info.`package`, item.info.id)
+    is LauncherItem.App -> SelectionKey.App(item.node.pkg)
+    is LauncherItem.Shortcut -> SelectionKey.Shortcut(item.node.pkg, item.node.id)
     is LauncherItem.Tag -> SelectionKey.Tag(item.id)
     is LauncherItem.Placeholder -> null
 }
@@ -145,11 +145,8 @@ fun ManageTagScreen(
 
     val finishManage: () -> Unit = {
         val snapshot = localRows.toList()
-        scope.launch {
-            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
-            appsVM.flushTagItems(tag.id)
-            viewVM.setView(View.Favorites)
-        }
+        appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+        viewVM.setView(View.Favorites)
     }
 
     BackHandler { finishManage() }
@@ -161,9 +158,7 @@ fun ManageTagScreen(
                 val finalOrder = localRows.map { it.rowId }
                 if (startOrder != null && finalOrder != startOrder) {
                     val snapshot = localRows.toList()
-                    scope.launch {
-                        appsVM.updateOrder(tag.id, snapshot.map { it.item })
-                    }
+                    appsVM.updateOrder(tag.id, snapshot.map { it.item })
                 }
             }
 
@@ -462,7 +457,8 @@ fun ManageTagAddScreen(
     val allApps by produceState(initialValue = emptyMap<Char, List<LauncherItem.App>>(), tag.id) {
         val grouped = appsVM.uiAllGrouped.first()
         value = grouped.mapValues { (_, list) ->
-            list.filterIsInstance<LauncherItem.App>()
+            // One row per package: selection and LazyColumn keys are per package.
+            list.filterIsInstance<LauncherItem.App>().distinctBy { it.node.pkg }
         }.filterValues { it.isNotEmpty() }
     }
 
@@ -501,15 +497,15 @@ fun ManageTagAddScreen(
             }
             allApps.toSortedMap().forEach { (_, list) ->
                 list.forEach { appItem ->
-                    val key = SelectionKey.App(appItem.info.componentName.packageName)
+                    val key = SelectionKey.App(appItem.node.pkg)
                     if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(appItem)
                 }
             }
             allApps.toSortedMap().forEach { (_, list) ->
                 list.forEach { appItem ->
-                    val shortcuts = shortcutCache[appItem.info.componentName.packageName].orEmpty()
+                    val shortcuts = shortcutCache[appItem.node.pkg].orEmpty()
                     shortcuts.forEach { shortcut ->
-                        val key = SelectionKey.Shortcut(shortcut.info.`package`, shortcut.info.id)
+                        val key = SelectionKey.Shortcut(shortcut.node.pkg, shortcut.node.id)
                         if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(shortcut)
                     }
                 }
@@ -554,12 +550,12 @@ fun ManageTagAddScreen(
                 }
                 items(
                     items = list,
-                    key = { it.info.componentName.packageName }
+                    key = { it.node.pkg }
                 ) { appItem ->
                     AppSelectorRow(
                         appItem = appItem,
                         selected = selectedMap.containsKey(
-                            SelectionKey.App(appItem.info.componentName.packageName)
+                            SelectionKey.App(appItem.node.pkg)
                         ),
                         onToggle = { toggle(appItem) },
                         onOpenPopup = { yPos ->
@@ -567,7 +563,7 @@ fun ManageTagAddScreen(
                                 val entries = appsVM.popupEntriesSnapshot(appItem)
                                     .filterIsInstance<LauncherItem.Shortcut>()
                                 if (entries.isEmpty()) return@launch
-                                shortcutCache = shortcutCache + (appItem.info.componentName.packageName to entries)
+                                shortcutCache = shortcutCache + (appItem.node.pkg to entries)
                                 popupState = SelectorPopupState(appItem, entries, yPos)
                             }
                         }
@@ -802,7 +798,7 @@ private fun SelectorShortcutPopup(
                         .fadingEdges()
                 ) {
                     items(popup.entries) { item ->
-                        val key = SelectionKey.Shortcut(item.info.`package`, item.info.id)
+                        val key = SelectionKey.Shortcut(item.node.pkg, item.node.id)
                         val selected = selectedMap.containsKey(key)
                         SelectorRowLayout(
                             leading = { RowIcon(item.icon) },

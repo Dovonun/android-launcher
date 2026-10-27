@@ -175,18 +175,20 @@ class SystemSource(
                 val list = queryActivities()
                 val prev = cur.apps
                 val apps = LinkedHashMap<String, AppNode>(list.size)
+                val updateTimes = HashMap<String, Long>()
                 for (info in list) {
                     val pkg = info.componentName.packageName
-                    if (pkg in apps) continue // keyed by package: first activity wins (as today)
-                    val entry = AppEntry(info, lastUpdateTime(info))
-                    entries[pkg] = entry
+                    val component = info.componentName.flattenToString()
+                    if (component in apps) continue
+                    val entry = AppEntry(info, updateTimes.getOrPut(pkg) { lastUpdateTime(info) })
+                    entries[component] = entry
                     val node = AppNode(
                         pkg = pkg,
-                        component = info.componentName.flattenToString(),
+                        component = component,
                         label = info.label?.toString().orEmpty(),
                         icon = iconCache.peekApp(iconCache.appKey(info, entry.lastUpdateTime)),
                     )
-                    apps[pkg] = prev[pkg]?.takeIf { it == node } ?: node
+                    apps[component] = prev[component]?.takeIf { it == node } ?: node
                 }
                 cur.copy(apps = reuseMap(prev, apps))
             }
@@ -194,10 +196,11 @@ class SystemSource(
             // 2. favorites' app icons (wait briefly for Loaded without blocking a thread)
             val user = withTimeoutOrNull(LOADED_WAIT_MS) { store.graph.first { it.loaded } }?.user
             val favPkgs = user?.let { favoriteAppPackages(it) }.orEmpty()
-            stage(2, "favorite icons (${favPkgs.size})", t0) { cur -> withAppIcons(cur, entries, favPkgs) }
+            val favComponents = entries.filter { (_, e) -> e.info.componentName.packageName in favPkgs }.keys
+            stage(2, "favorite icons (${favComponents.size})", t0) { cur -> withAppIcons(cur, entries, favComponents) }
 
             // 3. remaining app icons in batches
-            val rest = entries.keys.filter { it !in favPkgs && current.apps[it]?.icon == null }
+            val rest = entries.keys.filter { it !in favComponents && current.apps[it]?.icon == null }
             rest.chunked(ICON_BATCH).forEachIndexed { i, batch ->
                 yield()
                 stage(3, "app icons batch ${i + 1}/${(rest.size + ICON_BATCH - 1) / ICON_BATCH}", t0) { cur ->
@@ -245,14 +248,19 @@ class SystemSource(
         }
     }
 
-    private fun withAppIcons(cur: SystemData, entries: Map<String, AppEntry>, pkgs: Collection<String>): SystemData {
+    /** Decodes missing icons for [components] (keys of [SystemData.apps]). */
+    private fun withAppIcons(
+        cur: SystemData,
+        entries: Map<String, AppEntry>,
+        components: Collection<String>,
+    ): SystemData {
         var apps: MutableMap<String, AppNode>? = null
-        for (pkg in pkgs) {
-            val node = cur.apps[pkg] ?: continue
+        for (component in components) {
+            val node = cur.apps[component] ?: continue
             if (node.icon != null) continue
-            val e = entries[pkg] ?: continue
+            val e = entries[component] ?: continue
             val icon = iconCache.app(e.info, e.lastUpdateTime) ?: continue
-            (apps ?: LinkedHashMap(cur.apps).also { apps = it })[pkg] = node.copy(icon = icon)
+            (apps ?: LinkedHashMap(cur.apps).also { apps = it })[component] = node.copy(icon = icon)
         }
         return apps?.let { cur.copy(apps = it) } ?: cur
     }
