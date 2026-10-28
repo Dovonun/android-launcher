@@ -1,0 +1,727 @@
+10-28 11:04:40.683 24606 24628 I TestRunner: started: addAppToFavoritesShowsOnHomeAndSurvivesForceStop(com.ni.launcher.e2e.LauncherE2ETest)
+10-28 11:04:40.770 24606 24628 I UiDevice: Creating a new instance, old instance exists: false
+10-28 11:04:40.975 24606 24630 V UiAutomation: Init UiAutomation@b39f3d8[id=48, flags=0]
+10-28 11:04:41.145 24606 24628 D UiDevice: Setting accessibility service flags: 65618
+10-28 11:04:41.482 24606 24628 D UiDevice: Executing shell command: pm clear com.ni.launcher.dev
+10-28 11:04:41.653  2646  3878 E FrameEvents: updateAcquireFence: Did not find frame.
+10-28 11:04:42.105   446   446 I keystore: clear_uid 10177
+10-28 11:04:42.232 15070 15070 D CarrierSvcBindHelper: No carrier app for: 0
+10-28 11:04:42.254 16537 16537 I GeofencerStateMachine: removeGeofences: removeRequest=RemoveGeofencingRequest[REMOVE_ALL packageName=com.ni.launcher.dev]
+10-28 11:04:42.326 24606 24628 D UiDevice: Executing shell command: cmd package set-home-activity com.ni.launcher.dev/com.ni.launcher.MainActivity
+10-28 11:04:42.344 12716 12716 I CarrierServices: [2] RcsAutoStartReceiver.a: enableRcs changed from true to true
+10-28 11:04:42.881  2092  2978 W system_server: Long monitor contention with owner PackageManager (2162) at void com.android.server.pm.PackageManagerService$PackageHandler.doHandleMessage(android.os.Message)(PackageManagerService.java:1808) waiters=1 in android.content.pm.ProviderInfo com.android.server.pm.ComponentResolver.queryProvider(java.lang.String, int, int) for 109ms
+10-28 11:04:43.109 21656 23936 I ProvidersCache: Provider returned no roots. Possibly naughty: com.google.android.apps.docs.storage
+10-28 11:04:43.662 24606 24628 D UiDevice: Pressing home button.
+10-28 11:04:43.832  3960 13795 I MediaProvider: Begin Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package:com.ni.launcher.dev flg=0x1000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+10-28 11:04:43.843  9395 24542 I Icing   : doRemovePackageData com.ni.launcher.dev [CONTEXT service_id=21 ]
+10-28 11:04:43.851 16537 24655 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_DATA_CLEARED [CONTEXT service_id=17 ]
+10-28 11:04:44.002  2418  2418 V ShadeControllerImpl: NotificationShadeWindow: com.android.systemui.statusbar.phone.NotificationShadeWindowView{b235fdc I.E...... ......ID 0,0-1080,1920} canPanelBeCollapsed(): false
+10-28 11:04:44.029  3960 13795 I MediaProvider: End Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package:com.ni.launcher.dev flg=0x1000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+10-28 11:04:44.042  2092  2115 D EventSequenceValidator: inc AccIntentStartedEvents to 18
+10-28 11:04:44.344  2092  3850 W system_server: Long monitor contention with owner android.ui (2112) at void com.android.server.wm.TaskChangeNotificationController.forAllLocalListeners(com.android.server.wm.TaskChangeNotificationController$TaskStackConsumer, android.os.Message)(TaskChangeNotificationController.java:351) waiters=0 in boolean com.android.server.wm.WindowProcessController.hasActivities() for 238ms
+10-28 11:04:44.709  2092  2115 W system_server: Long monitor contention with owner Binder:2092_12 (3850) at void com.android.server.am.ActivityManagerService.serviceDoneExecuting(android.os.IBinder, int, int, int)(ActivityManagerService.java:15232) waiters=1 in void com.android.server.am.ActivityManagerService$LocalService.updateCpuStats() for 280ms
+10-28 11:04:44.911  1978  1978 D Zygote  : Forked child process 24660
+10-28 11:04:44.930   440   670 E IPCThreadState: binder thread pool (1 threads) starved for 112 ms
+10-28 11:04:45.014 24606 24628 W InteractionController: Timed out waiting 1000ms for command and events.
+10-28 11:04:45.078 24660 24660 I ni.launcher.de: Late-enabling -Xcheck:jni
+10-28 11:04:45.088 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:45.296 24660 24660 I ni.launcher.de: Unquickening 12 vdex files!
+10-28 11:04:45.327 24660 24660 W ni.launcher.de: Unexpected CPU variant for X86 using defaults: x86
+10-28 11:04:45.421 10190 10197 I adbd    : jdwp connection from 24660
+10-28 11:04:45.958 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:45.959 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:46.287 24660 24660 I ni.launcher.de: The ClassLoaderContext is a special shared library.
+10-28 11:04:46.823 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:47.182 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:47.188 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:48.008 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:48.216 24660 24660 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-28 11:04:48.231 24660 24660 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-28 11:04:48.310 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:48.321 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:48.903 24660 24684 D libEGL  : loaded /vendor/lib/egl/libEGL_emulation.so
+10-28 11:04:48.969 24660 24684 D libEGL  : loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
+10-28 11:04:49.049 24660 24684 D libEGL  : loaded /vendor/lib/egl/libGLESv2_emulation.so
+10-28 11:04:49.086 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:49.564 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:49.580 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:50.312 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:50.923 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:50.949 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:50.997 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:51.077 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:51.078 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:51.102 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:51.151 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:51.179 24660 24674 I ni.launcher.de: WaitForGcToComplete blocked CollectorTransition on None for 10.548ms
+10-28 11:04:51.718 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:51.749 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:51.806 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:51.904 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:51.916 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:52.053  2092  3850 W system_server: Long monitor contention with owner android.anim (2116) at void com.android.server.wm.WindowSurfacePlacer$Traverser.run()(WindowSurfacePlacer.java:59) waiters=0 in android.view.MagnificationSpec com.android.server.wm.WindowManagerService$LocalService.getCompatibleMagnificationSpecForWindow(android.os.IBinder) for 105ms
+10-28 11:04:52.093 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:52.242 24660 24660 I Choreographer: Skipped 214 frames!  The application may be doing too much work on its main thread.
+10-28 11:04:52.348 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:52.926 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:52.961 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:53.009 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:53.112 24660 24681 I ni.launcher.de: Waiting for a blocking GC ProfileSaver
+10-28 11:04:53.121 24660 24681 I ni.launcher.de: WaitForGcToComplete blocked ProfileSaver on RunEmptyCheckpoint for 9.749ms
+10-28 11:04:53.145 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:53.146 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:53.181 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:53.237 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:53.782 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:53.847 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:53.929 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:54.051 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:54.061 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:54.119 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:54.221 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:54.231 16537 17342 W Conscrypt: Could not set socket write timeout: java.net.SocketException: Socket closed
+10-28 11:04:54.242 16537 17342 W Conscrypt: 	at com.google.android.gms.org.conscrypt.Platform.setSocketWriteTimeout(:com.google.android.gms@201817022@20.18.17 (040700-311416286):2)
+10-28 11:04:54.242 16537 17342 W Conscrypt: 	at com.google.android.gms.org.conscrypt.ConscryptFileDescriptorSocket.setSoWriteTimeout(:com.google.android.gms@201817022@20.18.17 (040700-311416286):0)
+10-28 11:04:54.746 16537 17342 W Conscrypt: Could not set socket write timeout: java.net.SocketException: Socket closed
+10-28 11:04:54.747 16537 17342 W Conscrypt: 	at com.google.android.gms.org.conscrypt.Platform.setSocketWriteTimeout(:com.google.android.gms@201817022@20.18.17 (040700-311416286):2)
+10-28 11:04:54.747 16537 17342 W Conscrypt: 	at com.google.android.gms.org.conscrypt.ConscryptFileDescriptorSocket.setSoWriteTimeout(:com.google.android.gms@201817022@20.18.17 (040700-311416286):0)
+10-28 11:04:54.801 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:54.845 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:54.940 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:55.036 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:55.051 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:55.093 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:55.175 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:55.399 14121 14133 W .apps.wellbein: Suspending all threads took: 6.079ms
+10-28 11:04:55.725  9395 23159 I Checkin : [EventLogChimeraService] Opted in for usage reporting: false
+10-28 11:04:55.726  9395 23159 I Checkin : [EventLogChimeraService] Aggregate from 1793180159963 (log), 1793180159963 (data)
+10-28 11:04:55.755 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:56.001 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:56.235 16125 21759 I PBSessionCacheImpl: Deleted sessionId[70920293162246540] from persistence.
+10-28 11:04:56.355  2092  3848 W system_server: Long monitor contention with owner Binder:2092_17 (4232) at void com.android.server.am.ActivityManagerService.serviceDoneExecuting(android.os.IBinder, int, int, int)(ActivityManagerService.java:15232) waiters=0 in void com.android.server.am.ActivityManagerService.trimApplications(java.lang.String) for 168ms
+10-28 11:04:56.446 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:56.668 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:56.680 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:56.749 16125 16256 W SearchServiceCore: Abort, client detached.
+10-28 11:04:56.773 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:56.916 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:56.971 16537 24177 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:04:56.972 16537 24177 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:04:57.055  2578  3253 D NetworkMonitor/100: Forcing reevaluation for UID 10122. Dns signal count: 0
+10-28 11:04:57.059 16537 24177 W WakeLock: GCM_CONN_ALARM counter does not exist
+10-28 11:04:57.395  2578 24692 D NetworkMonitor/100: PROBE_DNS connectivitycheck.gstatic.com 268ms OK 198.18.0.1
+10-28 11:04:57.470 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:57.545 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:57.601  2578 24691 D NetworkMonitor/100: PROBE_DNS www.google.com 478ms OK 198.18.0.1
+10-28 11:04:57.681 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:57.798  2578 24692 D NetworkMonitor/100: PROBE_HTTP http://connectivitycheck.gstatic.com/generate_204 time=322ms ret=500 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 500 Internal Server Error], Cache-Control=[private, no-store], Connection=[close], Content-Length=[0], Date=[Wed, 28 Oct 2026 10:04:58 GMT], Server=[Pingora], X-Android-Received-Millis=[1793181897764], X-Android-Response-Source=[NETWORK 500], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181897648]}
+10-28 11:04:57.811 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:57.812 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:57.846 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:57.927 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:58.478 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:58.543  2578 24691 D NetworkMonitor/100: PROBE_HTTPS https://www.google.com/generate_204 time=904ms ret=204 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 204 No Content], Alt-Svc=[h3=":443"; ma=2592000,h3-29=":443"; ma=2592000], Connection=[close], Content-Length=[0], Cross-Origin-Resource-Policy=[cross-origin], Date=[Wed, 28 Oct 2026 10:04:59 GMT], X-Android-Received-Millis=[1793181898525], X-Android-Response-Source=[NETWORK 204], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181898448]}
+10-28 11:04:58.578 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:58.671 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:58.749  2578 24690 D NetworkMonitor/100: isCaptivePortal: isSuccessful()=true isPortal()=false RedirectUrl=null isPartialConnectivity()=false Time=1474ms
+10-28 11:04:58.803 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:58.818 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:58.866 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:58.962 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:59.507 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:59.558 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:59.600 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:04:59.695 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:04:59.701 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:04:59.725 24606 24628 W UiDevice: Active window root not found.
+10-28 11:04:59.786 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:00.112  2418  2418 D KeyguardClockSwitch: Updating clock: 1105
+10-28 11:05:00.312 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:00.497 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:00.636 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:00.718 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:00.720 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:01.009 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:01.125 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:01.484 24660 24660 W ni.launcher.de: Accessing hidden method Landroid/os/SystemProperties;->addChangeCallback(Ljava/lang/Runnable;)V (greylist, reflection, allowed)
+10-28 11:05:01.661 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:01.702 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:01.791 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:01.912 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:01.922 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:01.980 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:02.078 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:02.296 16537 24704 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:05:02.605 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:02.640 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:02.712 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:02.826 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:02.842 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:02.870 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:02.877 16537 24704 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:05:02.878 16537 24704 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:05:02.944 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:02.979 16537 24706 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:05:03.102 16537 24706 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:05:03.102 16537 24706 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:05:03.115  2578  3253 D NetworkMonitor/100: Forcing reevaluation for UID 10122. Dns signal count: 0
+10-28 11:05:03.434  2578 24708 D NetworkMonitor/100: PROBE_DNS www.google.com 248ms OK 198.18.0.1
+10-28 11:05:03.491  2578 24709 D NetworkMonitor/100: PROBE_DNS connectivitycheck.gstatic.com 277ms OK 198.18.0.1
+10-28 11:05:03.525 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:03.579 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:03.730 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:03.766  2578 24709 D NetworkMonitor/100: PROBE_HTTP http://connectivitycheck.gstatic.com/generate_204 time=214ms ret=500 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 500 Internal Server Error], Cache-Control=[private, no-store], Connection=[close], Content-Length=[0], Date=[Wed, 28 Oct 2026 10:05:04 GMT], Server=[Pingora], X-Android-Received-Millis=[1793181903762], X-Android-Response-Source=[NETWORK 500], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181903707]}
+10-28 11:05:03.886 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:03.887 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:03.937 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:04.003 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:04.383  2578 24708 D NetworkMonitor/100: PROBE_HTTPS https://www.google.com/generate_204 time=851ms ret=204 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 204 No Content], Alt-Svc=[h3=":443"; ma=2592000,h3-29=":443"; ma=2592000], Connection=[close], Content-Length=[0], Cross-Origin-Resource-Policy=[cross-origin], Date=[Wed, 28 Oct 2026 10:05:05 GMT], X-Android-Received-Millis=[1793181904368], X-Android-Response-Source=[NETWORK 204], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181904321]}
+10-28 11:05:04.463  2578 24707 D NetworkMonitor/100: isCaptivePortal: isSuccessful()=true isPortal()=false RedirectUrl=null isPartialConnectivity()=false Time=1251ms
+10-28 11:05:04.538 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:04.578 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:04.637 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:04.692 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:04.721 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:04.793 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:04.870 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:05.389 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:05.454 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:05.586 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:05.688 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:05.690 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:05.727 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:05.830 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:06.245 24660 24724 W ni.launcher.de: JNI critical lock held for 34.740ms on Thread[22,tid=24724,Runnable,Thread*=0x92186210,peer=0x97343e00,"arch_disk_io_0"]
+10-28 11:05:06.362 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:06.434 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:06.522 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:06.565 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:06.581 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:06.657 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:06.738 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:07.291 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:07.330 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:07.394 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:07.452 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:07.475 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:07.562 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:07.642 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:07.873 24660 24725 W ni.launcher.de: Long monitor contention with owner arch_disk_io_0 (24724) at java.lang.Object kotlin.SynchronizedLazyImpl.getValue()(LazyJVM.kt:81) waiters=0 in java.lang.Object kotlin.SynchronizedLazyImpl.getValue() for 2.106s
+10-28 11:05:07.906 24660 24726 W ni.launcher.de: Long monitor contention with owner arch_disk_io_0 (24724) at java.lang.Object kotlin.SynchronizedLazyImpl.getValue()(LazyJVM.kt:81) waiters=1 in java.lang.Object kotlin.SynchronizedLazyImpl.getValue() for 2.138s
+10-28 11:05:08.178 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:08.258 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:08.315 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:08.400 24660 24674 I ni.launcher.de: Background concurrent copying GC freed 7222(809KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 3118KB/6236KB, paused 8.250ms total 1.310s
+10-28 11:05:08.502 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:08.520 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:08.547 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:08.625 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:09.146 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:09.197 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:09.279 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:09.306 24660 24725 W ni.launcher.de: JNI critical lock held for 21.149ms on Thread[23,tid=24725,Runnable,Thread*=0x92181c10,peer=0x97584628,"arch_disk_io_1"]
+10-28 11:05:09.342 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:09.357 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:09.410 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:09.468 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:10.012 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:10.065 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:10.161 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:10.270 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:10.272 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:10.371  2092  2115 W system_server: Long monitor contention with owner Binder:2092_17 (4232) at android.content.res.Configuration com.android.server.wm.ActivityTaskManagerService.getGlobalConfigurationForPid(int)(ActivityTaskManagerService.java:976) waiters=1 in void com.android.server.wm.WindowManagerService$H.handleMessage(android.os.Message) for 124ms
+10-28 11:05:10.462   353   600 W ServiceManager: Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10177 pid=24660
+10-28 11:05:10.469   353   600 D PermissionCache: checking android.permission.ACCESS_SURFACE_FLINGER for uid=10177 => denied (33323 us)
+10-28 11:05:10.478 24606 24628 W UiDevice: Active window root not found.
+10-28 11:05:10.770 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:10.786 24660 24682 D HostConnection: HostConnection::get() New Host Connection established 0xe82e3e10, tid 24682
+10-28 11:05:11.009 24606 24628 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@22d5d; boundsInParent: Rect(0, 0 - 1080, 63); boundsInScreen: Rect(0, 0 - 1080, 63); packageName: com.android.systemui; className: android.widget.FrameLayout; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; viewIdResName: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_SELECT - null, AccessibilityAction: ACTION_CLEAR_SELECTION - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SHOW_ON_SCREEN - null]
+10-28 11:05:11.010 24606 24628 W ByMatcher: Skipping null child (0 of 1)
+10-28 11:05:11.030 24606 24628 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@22d5d; boundsInParent: Rect(0, 0 - 1080, 63); boundsInScreen: Rect(0, 0 - 1080, 63); packageName: com.android.systemui; className: android.widget.FrameLayout; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; viewIdResName: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_SELECT - null, AccessibilityAction: ACTION_CLEAR_SELECTION - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SHOW_ON_SCREEN - null]
+10-28 11:05:11.031 24606 24628 W ByMatcher: Skipping null child (0 of 1)
+10-28 11:05:11.062 24660 24682 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0
+10-28 11:05:11.248   180   180 I hwservicemanager: getTransport: Cannot find entry android.hardware.configstore@1.0::ISurfaceFlingerConfigs/default in either framework or device manifest.
+10-28 11:05:11.338 24660 24682 D EGL_emulation: eglCreateContext: 0xe82e39b0: maj 3 min 0 rcv 3
+10-28 11:05:11.374 24660 24682 D EGL_emulation: eglMakeCurrent: 0xe82e39b0: ver 3 0 (tinfo 0xe8670e10) (first time)
+10-28 11:05:11.538 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:11.702   180   180 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device manifest.
+10-28 11:05:11.717 24660 24682 I Gralloc4: mapper 4.x is not supported
+10-28 11:05:11.874 24660 24682 D HostConnection: createUnique: call
+10-28 11:05:11.875 24660 24682 D HostConnection: HostConnection::get() New Host Connection established 0xe82e34e0, tid 24682
+10-28 11:05:12.091 24660 24682 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0
+10-28 11:05:12.527 24660 24682 I OpenGLRenderer: Davey! duration=23854ms; Flags=1, IntendedVsync=9936108529926, Vsync=9939675196450, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=9939686127411, AnimationStart=9939686208251, PerformTraversalsStart=9939693603051, DrawStart=9959561434451, SyncQueued=9959658156331, SyncStart=9959662631591, IssueDrawCommandsStart=9959665935811, SwapBuffers=9959913707621, FrameCompleted=9959967847841, DequeueBufferDuration=1030070, QueueBufferDuration=5322290, GpuCompleted=0,
+10-28 11:05:12.726  2092  2115 W system_server: Long monitor contention with owner android.anim (2116) at android.content.res.Configuration com.android.server.wm.ActivityTaskManagerService.getGlobalConfigurationForPid(int)(ActivityTaskManagerService.java:976) waiters=0 in void com.android.server.wm.WindowManagerService$H.handleMessage(android.os.Message) for 144ms
+10-28 11:05:13.320 16537 24735 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:05:13.879 16537 24735 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:05:13.879 16537 24735 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:05:13.972 16537 24737 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:05:14.494 16537 24737 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:05:14.495 16537 24737 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:05:14.546  2578  3253 D NetworkMonitor/100: Forcing reevaluation for UID 10122. Dns signal count: 0
+10-28 11:05:14.799  2578 24741 D NetworkMonitor/100: PROBE_DNS connectivitycheck.gstatic.com 217ms OK 198.18.0.1
+10-28 11:05:14.865  2578 24740 D NetworkMonitor/100: PROBE_DNS www.google.com 289ms OK 198.18.0.1
+10-28 11:05:14.995  2578 24741 D NetworkMonitor/100: PROBE_HTTP http://connectivitycheck.gstatic.com/generate_204 time=136ms ret=500 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 500 Internal Server Error], Cache-Control=[private, no-store], Connection=[close], Content-Length=[0], Date=[Wed, 28 Oct 2026 10:05:15 GMT], Server=[Pingora], X-Android-Received-Millis=[1793181914990], X-Android-Response-Source=[NETWORK 500], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181914959]}
+10-28 11:05:15.376 24660 24660 I Choreographer: Skipped 1300 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:15.380  2092  2333 I InputDispatcher: 966b527 com.ni.launcher.dev/com.ni.launcher.MainActivity (server) spent 2607ms processing FocusEvent(hasFocus=true)
+10-28 11:05:15.607 24660 24682 I OpenGLRenderer: Davey! duration=21895ms; Flags=0, IntendedVsync=9941141863058, Vsync=9962808528858, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=9962824361621, AnimationStart=9962824433711, PerformTraversalsStart=9962954169241, DrawStart=9962958476031, SyncQueued=9962960839211, SyncStart=9962973438261, IssueDrawCommandsStart=9962976140291, SwapBuffers=9963010894371, FrameCompleted=9963049904031, DequeueBufferDuration=813730, QueueBufferDuration=13751790, GpuCompleted=0,
+10-28 11:05:15.638  2578 24740 D NetworkMonitor/100: PROBE_HTTPS https://www.google.com/generate_204 time=720ms ret=204 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 204 No Content], Alt-Svc=[h3=":443"; ma=2592000,h3-29=":443"; ma=2592000], Connection=[close], Content-Length=[0], Cross-Origin-Resource-Policy=[cross-origin], Date=[Wed, 28 Oct 2026 10:05:16 GMT], X-Android-Received-Millis=[1793181915602], X-Android-Response-Source=[NETWORK 204], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181915539]}
+10-28 11:05:15.719  2578 24739 D NetworkMonitor/100: isCaptivePortal: isSuccessful()=true isPortal()=false RedirectUrl=null isPartialConnectivity()=false Time=1116ms
+10-28 11:05:15.723 24660 24748 D ProfileInstaller: Installing profile for com.ni.launcher.dev
+10-28 11:05:16.333 24660 24660 I Choreographer: Skipped 51 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:16.618 24660 24682 I OpenGLRenderer: Davey! duration=1131ms; Flags=1, IntendedVsync=9962925211876, Vsync=9963775211842, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=9963784853231, AnimationStart=9963784925631, PerformTraversalsStart=9963785004281, DrawStart=9964029361531, SyncQueued=9964033313991, SyncStart=9964036310841, IssueDrawCommandsStart=9964036603971, SwapBuffers=9964041428871, FrameCompleted=9964059512471, DequeueBufferDuration=4630110, QueueBufferDuration=3111190, GpuCompleted=0,
+10-28 11:05:16.819 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:16.822 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:17.171 24606 24628 D UiDevice: Clicking on (1060, 768).
+10-28 11:05:17.405   342   342 I android.hardware.vibrator-service.example: Vibrator reporting capabilities
+10-28 11:05:20.307 24660 24660 I Choreographer: Skipped 132 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:20.326  2092  2333 I InputDispatcher: 966b527 com.ni.launcher.dev/com.ni.launcher.MainActivity (server) spent 2689ms processing MotionEvent(deviceId=-1, source=0x00001002, displayId=0, action=UP, actionButton=0x00000000, flags=0x00000000, metaState=0x00000000, buttonState=0x00000000, classification=NONE, edgeFlags=0x00000000, xPrecision=1.0, yPrecision=1.0, xCursorPosition=nan, yCursorPosition=nan, pointers=[0: (1060.0, 768.0)]), policyFlags=0x6b000000
+10-28 11:05:20.379 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:20.691 24660 24682 I OpenGLRenderer: Davey! duration=3284ms; Flags=0, IntendedVsync=9964841900208, Vsync=9964958566870, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=9964961061251, AnimationStart=9964961123401, PerformTraversalsStart=9965875705221, DrawStart=9967548980651, SyncQueued=9967684763601, SyncStart=9967692577161, IssueDrawCommandsStart=9967699745711, SwapBuffers=9968080833131, FrameCompleted=9968133941081, DequeueBufferDuration=10840360, QueueBufferDuration=3894470, GpuCompleted=0,
+10-28 11:05:21.018 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:21.019 24606 24628 D UiDevice: Retrieving nodes with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E', TEXT='[A-Z#]'].
+10-28 11:05:21.427  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():180 call()
+10-28 11:05:21.428  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():184 No submit PeriodicStats since input started.
+10-28 11:05:21.625 24606 24628 W ni.launcher.e2: Accessing hidden method Landroid/view/MotionEvent;->setDisplayId(I)V (blacklist,test-api, reflection, allowed)
+10-28 11:05:22.173 24606 24628 D UiDevice: Retrieving nodes with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E', TEXT='[A-Z#]'].
+10-28 11:05:23.530 24606 24628 D UiDevice: Swiping from (1026, 1474) to (1026, 1475) in 40 steps.
+10-28 11:05:23.610   342   342 I android.hardware.vibrator-service.example: Vibrator reporting capabilities
+10-28 11:05:25.080 24660 24660 I Choreographer: Skipped 79 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:25.194 24660 24682 I OpenGLRenderer: Davey! duration=1571ms; Flags=0, IntendedVsync=9971058617916, Vsync=9971075284582, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=9971078966561, AnimationStart=9971079027791, PerformTraversalsStart=9971187213081, DrawStart=9971192559581, SyncQueued=9972446087441, SyncStart=9972453152871, IssueDrawCommandsStart=9972459143051, SwapBuffers=9972622581821, FrameCompleted=9972637225841, DequeueBufferDuration=2713670, QueueBufferDuration=8127960, GpuCompleted=0,
+10-28 11:05:25.261 24660 24682 I OpenGLRenderer: Davey! duration=1409ms; Flags=0, IntendedVsync=9971191904380, Vsync=9972508570994, OldestInputEvent=9971086000000, NewestInputEvent=9971086000000, HandleInputStart=9972528246431, AnimationStart=9972531317111, PerformTraversalsStart=9972531428861, DrawStart=9972540924801, SyncQueued=9972542291651, SyncStart=9972645414181, IssueDrawCommandsStart=9972645731091, SwapBuffers=9972656222561, FrameCompleted=9972704823401, DequeueBufferDuration=22114320, QueueBufferDuration=23223120, GpuCompleted=0,
+10-28 11:05:26.810 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:27.250 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:27.251 24606 24628 D UiDevice: Retrieving nodes with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E', TEXT='\QSettings\E'].
+10-28 11:05:27.712 24606 24628 D UiDevice: Swiping from (326, 756) to (326, 756) in 300 steps.
+10-28 11:05:29.601 24660 24674 I ni.launcher.de: Background young concurrent copying GC freed 25766(1592KB) AllocSpace objects, 6(120KB) LOS objects, 28% free, 4429KB/6236KB, paused 1.813ms total 291.507ms
+10-28 11:05:30.930 24660 24682 I OpenGLRenderer: Davey! duration=2619ms; Flags=1, IntendedVsync=9975742317833, Vsync=9975775651165, OldestInputEvent=9975744000000, NewestInputEvent=9975744000000, HandleInputStart=9975777709131, AnimationStart=9975779290281, PerformTraversalsStart=9976315637371, DrawStart=9978223119931, SyncQueued=9978310553371, SyncStart=9978321552431, IssueDrawCommandsStart=9978322164471, SwapBuffers=9978342451751, FrameCompleted=9978372759581, DequeueBufferDuration=845210, QueueBufferDuration=8126940, GpuCompleted=72904372627112541,
+10-28 11:05:30.951  2092  2333 I InputDispatcher: 966b527 com.ni.launcher.dev/com.ni.launcher.MainActivity (server) spent 2027ms processing FocusEvent(hasFocus=false)
+10-28 11:05:30.973 24660 24660 I Choreographer: Skipped 156 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:30.986  2092  2333 I InputDispatcher: 966b527 com.ni.launcher.dev/com.ni.launcher.MainActivity (server) spent 2625ms processing MotionEvent(deviceId=-1, source=0x00001002, displayId=0, action=MOVE, actionButton=0x00000000, flags=0x00000000, metaState=0x00000000, buttonState=0x00000000, classification=NONE, edgeFlags=0x00000000, xPrecision=1.0, yPrecision=1.0, xCursorPosition=nan, yCursorPosition=nan, pointers=[0: (326.0, 756.0)]), policyFlags=0x6b000000
+10-28 11:05:31.024   342   342 I android.hardware.vibrator-service.example: Vibrator reporting capabilities
+10-28 11:05:31.056   342   342 I android.hardware.vibrator-service.example: Vibrator off
+10-28 11:05:31.090   342   342 I android.hardware.vibrator-service.example: Vibrator perform
+10-28 11:05:31.096  2092  5922 E VibratorService: Failed to issue command to vibrator HAL. Retrying.
+10-28 11:05:31.155   179   179 I servicemanager: Found android.hardware.vibrator.IVibrator/default in device VINTF manifest.
+10-28 11:05:31.190   342   342 I android.hardware.vibrator-service.example: Vibrator perform
+10-28 11:05:31.197  2092  5922 E VibratorService: Failed to issue command to vibrator HAL. Retrying.
+10-28 11:05:31.199   179   179 I servicemanager: Found android.hardware.vibrator.IVibrator/default in device VINTF manifest.
+10-28 11:05:31.234   342   342 I android.hardware.vibrator-service.example: Vibrator on for timeoutMs: 1
+10-28 11:05:31.261   342   342 I android.hardware.vibrator-service.example: Vibrator set amplitude: 1
+10-28 11:05:31.293   342   342 I android.hardware.vibrator-service.example: Vibrator on for timeoutMs: 21
+10-28 11:05:31.297   342   342 I android.hardware.vibrator-service.example: Vibrator set amplitude: 1
+10-28 11:05:31.341   342   342 I android.hardware.vibrator-service.example: Vibrator off
+10-28 11:05:31.746 16125 24703 W GmsLocationProvider: Error removing location updates: 16
+10-28 11:05:31.979 24660 24682 I OpenGLRenderer: Davey! duration=3623ms; Flags=1, IntendedVsync=9975792326712, Vsync=9978392326608, OldestInputEvent=9975791000000, NewestInputEvent=9975791000000, HandleInputStart=9978417084891, AnimationStart=9978432676681, PerformTraversalsStart=9979025332701, DrawStart=9979130068961, SyncQueued=9979381922561, SyncStart=9979388688791, IssueDrawCommandsStart=9979389255141, SwapBuffers=9979398867551, FrameCompleted=9979422105151, DequeueBufferDuration=725930, QueueBufferDuration=4103670, GpuCompleted=43984843964424,
+10-28 11:05:32.064 24660 24660 I Choreographer: Skipped 62 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:32.807 24660 24682 I OpenGLRenderer: Davey! duration=1780ms; Flags=1, IntendedVsync=9978458741095, Vsync=9979492074387, OldestInputEvent=9978460000000, NewestInputEvent=9978460000000, HandleInputStart=9979510387571, AnimationStart=9979514588191, PerformTraversalsStart=9979775614631, DrawStart=9979929026871, SyncQueued=9979965886711, SyncStart=9979974621741, IssueDrawCommandsStart=9979975007671, SwapBuffers=9980226400441, FrameCompleted=9980247884391, DequeueBufferDuration=7863920, QueueBufferDuration=4159780, GpuCompleted=144115222452437075,
+10-28 11:05:32.881 24660 24660 I Choreographer: Skipped 47 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:33.215 24660 24682 I OpenGLRenderer: Davey! duration=1124ms; Flags=0, IntendedVsync=9979525250687, Vsync=9980308583989, OldestInputEvent=9979526000000, NewestInputEvent=9979526000000, HandleInputStart=9980324859081, AnimationStart=9980337207301, PerformTraversalsStart=9980526548251, DrawStart=9980529143741, SyncQueued=9980536012791, SyncStart=9980544654391, IssueDrawCommandsStart=9980545050991, SwapBuffers=9980576238361, FrameCompleted=9980658186661, DequeueBufferDuration=50158020, QueueBufferDuration=5376640, GpuCompleted=72339451266727936,
+10-28 11:05:34.675 16537 24751 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:05:35.228 16537 24751 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:05:35.233 16537 24751 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:05:35.274 16537 24753 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:05:35.336 16537 24753 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:05:35.336 16537 24753 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:05:35.368  2578  3253 D NetworkMonitor/100: Forcing reevaluation for UID 10122. Dns signal count: 0
+10-28 11:05:35.712  2578 24755 D NetworkMonitor/100: PROBE_DNS www.google.com 293ms OK 198.18.0.1
+10-28 11:05:35.773  2578 24756 D NetworkMonitor/100: PROBE_DNS connectivitycheck.gstatic.com 330ms OK 198.18.0.1
+10-28 11:05:35.952  2578 24756 D NetworkMonitor/100: PROBE_HTTP http://connectivitycheck.gstatic.com/generate_204 time=139ms ret=500 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 500 Internal Server Error], Cache-Control=[private, no-store], Connection=[close], Content-Length=[0], Date=[Wed, 28 Oct 2026 10:05:36 GMT], Server=[Pingora], X-Android-Received-Millis=[1793181935949], X-Android-Response-Source=[NETWORK 500], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181935933]}
+10-28 11:05:36.083  2578  2594 I rkstack.proces: Background concurrent copying GC freed 17169(846KB) AllocSpace objects, 32(1600KB) LOS objects, 49% free, 2681KB/5362KB, paused 1.886ms total 343.428ms
+10-28 11:05:36.140  2578 24755 D NetworkMonitor/100: PROBE_HTTPS https://www.google.com/generate_204 time=401ms ret=204 request={Connection=[close], User-Agent=[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.32 Safari/537.36]} headers={null=[HTTP/1.1 204 No Content], Alt-Svc=[h3=":443"; ma=2592000,h3-29=":443"; ma=2592000], Connection=[close], Content-Length=[0], Cross-Origin-Resource-Policy=[cross-origin], Date=[Wed, 28 Oct 2026 10:05:36 GMT], X-Android-Received-Millis=[1793181936123], X-Android-Response-Source=[NETWORK 204], X-Android-Selected-Protocol=[http/1.1], X-Android-Sent-Millis=[1793181936055]}
+10-28 11:05:36.182  2578 24754 D NetworkMonitor/100: isCaptivePortal: isSuccessful()=true isPortal()=false RedirectUrl=null isPartialConnectivity()=false Time=746ms
+10-28 11:05:37.906  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():180 call()
+10-28 11:05:37.907  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():184 No submit PeriodicStats since input started.
+10-28 11:05:46.618 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:46.629   474   474 W livelock: sample 5.520s
+10-28 11:05:47.107 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:47.108 24606 24628 D UiDevice: Retrieving node with selector: BySelector [TEXT='\QAdd to Favorites\E'].
+10-28 11:05:47.575 24606 24628 D UiObject2: Clicking on (389, 1346).
+10-28 11:05:47.579 24606 24628 W UiObject2: Clicking on non-clickable object: android.view.accessibility.AccessibilityNodeInfo@acea; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(226, 1315 - 552, 1378); packageName: com.ni.launcher.dev; className: android.widget.TextView; text: Add to Favorites; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; viewIdResName: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_NEXT_AT_MOVEMENT_GRANULARITY - null, AccessibilityAction: ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SET_SELECTION - null]
+10-28 11:05:47.722 24606 24628 W GestureController: Gestures took longer than expected (129ms >> 16ms), device might be in a busy state.
+10-28 11:05:47.724 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:50.416 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=null, displayId=0, id=494, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:05:50.780 24606 24628 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@80006eac; boundsInParent: Rect(0, 0 - 1080, 1920); boundsInScreen: Rect(0, 0 - 1080, 1920); packageName: com.ni.launcher.dev; className: android.widget.FrameLayout; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; viewIdResName: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_SELECT - null, AccessibilityAction: ACTION_CLEAR_SELECTION - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SHOW_ON_SCREEN - null]
+10-28 11:05:50.780 24606 24628 W ByMatcher: Skipping null child (0 of 2)
+10-28 11:05:50.792 24606 24628 W ByMatcher: Skipping null child (1 of 2)
+10-28 11:05:50.822 24606 24628 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@80006eac; boundsInParent: Rect(0, 0 - 1080, 1920); boundsInScreen: Rect(0, 0 - 1080, 1920); packageName: com.ni.launcher.dev; className: android.widget.FrameLayout; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; viewIdResName: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_SELECT - null, AccessibilityAction: ACTION_CLEAR_SELECTION - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SHOW_ON_SCREEN - null]
+10-28 11:05:50.823 24606 24628 W ByMatcher: Skipping null child (0 of 2)
+10-28 11:05:50.832 24606 24628 W ByMatcher: Skipping null child (1 of 2)
+10-28 11:05:50.931 24660 24682 I OpenGLRenderer: Davey! duration=3100ms; Flags=0, IntendedVsync=9995258867902, Vsync=9995508867892, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=9995513650071, AnimationStart=9995513686121, PerformTraversalsStart=9996797267311, DrawStart=9997584709121, SyncQueued=9997694806051, SyncStart=9997709562621, IssueDrawCommandsStart=9997774072551, SwapBuffers=9998340299281, FrameCompleted=9998374551931, DequeueBufferDuration=15628370, QueueBufferDuration=11749790, GpuCompleted=0,
+10-28 11:05:51.010 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:51.022 24606 24628 D UiDevice: Retrieving node with selector: BySelector [DESC='\QConfirm\E'].
+10-28 11:05:53.196 24660 24660 I Choreographer: Skipped 265 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:54.358 24606 24628 D UiObject2: Clicking on (540, 1762).
+10-28 11:05:54.360 24606 24628 W UiObject2: Clicking on non-clickable object: android.view.accessibility.AccessibilityNodeInfo@9815; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(509, 1731 - 572, 1794); packageName: com.ni.launcher.dev; className: android.view.View; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: Confirm; tooltipText: null; viewIdResName: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_NEXT_AT_MOVEMENT_GRANULARITY - null, AccessibilityAction: ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SET_SELECTION - null]
+10-28 11:05:54.498 24606 24628 W GestureController: Gestures took longer than expected (133ms >> 16ms), device might be in a busy state.
+10-28 11:05:54.507 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:55.215 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:55.223 24606 24628 D UiDevice: Searching for node with selector: BySelector [DESC='\QConfirm\E'].
+10-28 11:05:55.899 24660 24682 I OpenGLRenderer: Davey! duration=913ms; Flags=0, IntendedVsync=10002425307260, Vsync=10002541973922, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10002553663421, AnimationStart=10002553697631, PerformTraversalsStart=10003288886431, DrawStart=10003289535831, SyncQueued=10003291262251, SyncStart=10003294441861, IssueDrawCommandsStart=10003294712851, SwapBuffers=10003301855511, FrameCompleted=10003342014101, DequeueBufferDuration=35767410, QueueBufferDuration=2254240, GpuCompleted=0,
+10-28 11:05:56.078 24606 24628 D UiDevice: Retrieving nodes with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:05:56.495 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:56.595 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:05:56.596 24606 24628 D UiDevice: Retrieving node with selector: BySelector [TEXT='\QSettings\E'].
+10-28 11:05:56.770 24606 24628 D UiDevice: Executing shell command: am force-stop com.ni.launcher.dev
+10-28 11:05:56.786 24660 24674 I ni.launcher.de: Background young concurrent copying GC freed 23893(1054KB) AllocSpace objects, 6(120KB) LOS objects, 20% free, 4975KB/6236KB, paused 3.898ms total 169.527ms
+10-28 11:05:57.877  1978  1978 I Zygote  : Process 24660 exited due to signal 9 (Killed)
+10-28 11:05:57.890  2092  2135 I libprocessgroup: Successfully killed process cgroup uid 10177 pid 24660 in 360ms
+10-28 11:05:57.909  2092  5095 W system_server: Long monitor contention with owner Binder:2092_20 (5591) at android.os.BinderProxy android.os.BinderProxy.getInstance(long, long)(BinderProxy.java:411) waiters=0 in android.os.BinderProxy android.os.BinderProxy.getInstance(long, long) for 116ms
+10-28 11:05:57.919  2092  5922 W system_server: Long monitor contention with owner Binder:2092_20 (5591) at android.os.BinderProxy android.os.BinderProxy.getInstance(long, long)(BinderProxy.java:411) waiters=1 in android.os.BinderProxy android.os.BinderProxy.getInstance(long, long) for 123ms
+10-28 11:05:57.924  2092  3850 W system_server: Long monitor contention with owner Binder:2092_20 (5591) at android.os.BinderProxy android.os.BinderProxy.getInstance(long, long)(BinderProxy.java:411) waiters=2 in android.os.BinderProxy android.os.BinderProxy.getInstance(long, long) for 126ms
+10-28 11:05:57.956  2092  2333 W system_server: Long monitor contention with owner Binder:2092_19 (4530) at void com.android.server.wm.ActivityTaskManagerService$LocalService.handleAppDied(com.android.server.wm.WindowProcessController, boolean, java.lang.Runnable)(ActivityTaskManagerService.java:6801) waiters=1 in boolean com.android.server.wm.InputManagerCallback.notifyFocusChanged(android.os.IBinder, android.os.IBinder) for 338ms
+10-28 11:05:58.120  2092  2112 W system_server: Long monitor contention with owner Binder:2092_19 (4530) at void com.android.server.am.ActivityManagerService.forceStopPackage(java.lang.String, int)(ActivityManagerService.java:4508) waiters=0 in void com.android.server.am.ActivityManagerService.dispatchUidsChanged() for 594ms
+10-28 11:05:58.147  2092  2115 W system_server: Long monitor contention with owner Binder:2092_19 (4530) at void com.android.server.am.ActivityManagerService.forceStopPackage(java.lang.String, int)(ActivityManagerService.java:4508) waiters=1 in void com.android.server.am.ActivityManagerService$LocalService.updateActivityUsageStats(android.content.ComponentName, int, int, android.os.IBinder, android.content.ComponentName) for 595ms
+10-28 11:05:58.181 24771 24773 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+10-28 11:05:58.242 24606 24628 D UiDevice: Pressing home button.
+10-28 11:05:58.714  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():180 call()
+10-28 11:05:58.716  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():184 No submit PeriodicStats since input started.
+10-28 11:05:58.990 16125 16125 I Choreographer: Skipped 58 frames!  The application may be doing too much work on its main thread.
+10-28 11:05:59.202 15070 15070 D CarrierSvcBindHelper: No carrier app for: 0
+10-28 11:05:59.335  2092  2115 W system_server: Long monitor contention with owner Binder:2092_1A (4612) at android.content.res.Configuration com.android.server.wm.ActivityTaskManagerService.getGlobalConfigurationForPid(int)(ActivityTaskManagerService.java:976) waiters=1 in boolean com.android.server.wm.WindowProcessController.hasActivitiesOrRecentTasks() for 202ms
+10-28 11:05:59.396  2092  2116 W system_server: Long monitor contention with owner Binder:2092_1A (4612) at android.content.res.Configuration com.android.server.wm.ActivityTaskManagerService.getGlobalConfigurationForPid(int)(ActivityTaskManagerService.java:976) waiters=2 in void com.android.server.wm.InputMonitor$UpdateInputWindows.run() for 172ms
+10-28 11:05:59.653  2092  5095 W system_server: Long monitor contention with owner android.anim (2116) at void com.android.server.wm.WindowAnimator.lambda$new$1$WindowAnimator(long)(WindowAnimator.java:111) waiters=2 in boolean com.android.server.wm.WindowProcessController.hasActivitiesOrRecentTasks() for 155ms
+10-28 11:05:59.813  2092  2132 W system_server: Long monitor contention with owner android.display (2115) at void com.android.server.am.ActivityManagerService$LocalService.setHasOverlayUi(int, boolean)(ActivityManagerService.java:19087) waiters=2 in void com.android.server.am.ActivityManagerService$5.handleMessage(android.os.Message) for 668ms
+10-28 11:05:59.823 16125 16125 I Choreographer: Skipped 47 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:00.148  2646  3878 I OpenGLRenderer: Davey! duration=1985ms; Flags=1, IntendedVsync=10005575231101, Vsync=10005641897765, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10005645806751, AnimationStart=10005645839571, PerformTraversalsStart=10005645885371, DrawStart=10007114819461, SyncQueued=10007233469661, SyncStart=10007262750211, IssueDrawCommandsStart=10007311766331, SwapBuffers=10007496281211, FrameCompleted=10007589816861, DequeueBufferDuration=991420, QueueBufferDuration=25711960, GpuCompleted=4051049678932293688,
+10-28 11:06:00.491  2646  2646 I Choreographer: Skipped 66 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:00.566 16125 18745 I OpenGLRenderer: Davey! duration=1512ms; Flags=1, IntendedVsync=10006475212851, Vsync=10007258546153, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10007267088751, AnimationStart=10007267128781, PerformTraversalsStart=10007267191721, DrawStart=10007788635391, SyncQueued=10007844689101, SyncStart=10007866663761, IssueDrawCommandsStart=10007878695461, SwapBuffers=10007901503371, FrameCompleted=10008009705821, DequeueBufferDuration=48955990, QueueBufferDuration=11269440, GpuCompleted=0,
+10-28 11:06:00.706  2646  2673 D LoaderTask: loadWorkspace: loading default favorites
+10-28 11:06:00.904  2092  2332 W system_server: Long monitor contention with owner android.display (2115) at void com.android.server.am.ActivityManagerService.trimApplications(java.lang.String)(ActivityManagerService.java:18372) waiters=0 in boolean com.android.server.am.ActivityManagerService.isAppStartModeDisabled(int, java.lang.String) for 840ms
+10-28 11:06:00.927  2092  2132 W system_server: Long monitor contention with owner android.display (2115) at void com.android.server.am.ActivityManagerService.trimApplications(java.lang.String)(ActivityManagerService.java:18372) waiters=1 in void com.android.server.am.ActivityManagerService$5.handleMessage(android.os.Message) for 463ms
+10-28 11:06:01.118 16125 16125 I Choreographer: Skipped 57 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:01.491  2092  2115 D EventSequenceValidator: inc AccIntentStartedEvents to 19
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: Failed to query for shortcuts
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: java.lang.SecurityException: Caller can't access shortcut information
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Parcel.createExceptionOrNull(Parcel.java:2373)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Parcel.createException(Parcel.java:2357)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Parcel.readException(Parcel.java:2340)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Parcel.readException(Parcel.java:2282)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.content.pm.ILauncherApps$Stub$Proxy.getShortcuts(ILauncherApps.java:1394)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.content.pm.LauncherApps.getShortcuts(LauncherApps.java:1070)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at com.android.launcher3.model.LoaderTask.loadWorkspace(SourceFile:41)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at com.android.launcher3.model.LoaderTask.run(SourceFile:12)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Handler.handleCallback(Handler.java:938)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Handler.dispatchMessage(Handler.java:99)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Looper.loop(Looper.java:223)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.HandlerThread.run(HandlerThread.java:67)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: Caused by: android.os.RemoteException: Remote stack trace:
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at com.android.server.pm.LauncherAppsService$LauncherAppsImpl.ensureShortcutPermission(LauncherAppsService.java:678)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at com.android.server.pm.LauncherAppsService$LauncherAppsImpl.getShortcuts(LauncherAppsService.java:711)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.content.pm.ILauncherApps$Stub.onTransact(ILauncherApps.java:622)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Binder.execTransactInternal(Binder.java:1154)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest: 	at android.os.Binder.execTransact(Binder.java:1123)
+10-28 11:06:01.535  2646  2673 E ShortcutRequest:
+10-28 11:06:01.761  2092  2115 W system_server: Long monitor contention with owner android.ui (2112) at void com.android.server.wm.TaskChangeNotificationController.forAllLocalListeners(com.android.server.wm.TaskChangeNotificationController$TaskStackConsumer, android.os.Message)(TaskChangeNotificationController.java:351) waiters=0 in void com.android.server.wm.TaskChangeNotificationController.forAllRemoteListeners(com.android.server.wm.TaskChangeNotificationController$TaskStackConsumer, android.os.Message) for 212ms
+10-28 11:06:01.895   440   670 E IPCThreadState: binder thread pool (1 threads) starved for 392 ms
+10-28 11:06:02.012  2418  2734 I OpenGLRenderer: Davey! duration=906ms; Flags=0, IntendedVsync=10008516876358, Vsync=10008666876352, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10008677791261, AnimationStart=10008677824721, PerformTraversalsStart=10008689939161, DrawStart=10008690266761, SyncQueued=10009118074551, SyncStart=10009150105621, IssueDrawCommandsStart=10009151604031, SwapBuffers=10009391537311, FrameCompleted=10009455327411, DequeueBufferDuration=21078860, QueueBufferDuration=28390560, GpuCompleted=7067244005181,
+10-28 11:06:02.125  2092  3850 W system_server: Long monitor contention with owner android.display (2115) at void com.android.server.am.ActivityManagerService$LocalService.startProcess(java.lang.String, android.content.pm.ApplicationInfo, boolean, boolean, java.lang.String, android.content.ComponentName)(ActivityManagerService.java:19644) waiters=0 in void com.android.server.am.ActivityManagerService.unregisterReceiver(android.content.IIntentReceiver) for 114ms
+10-28 11:06:02.213  2418  2734 I OpenGLRenderer: Davey! duration=818ms; Flags=0, IntendedVsync=10008516876358, Vsync=10008666876352, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10008677791261, AnimationStart=10008677824721, PerformTraversalsStart=10008689939161, DrawStart=10009155960201, SyncQueued=10009193362151, SyncStart=10009514607421, IssueDrawCommandsStart=10009520921171, SwapBuffers=10009544599991, FrameCompleted=10009656522041, DequeueBufferDuration=3309430, QueueBufferDuration=107324510, GpuCompleted=3255307721929404469,
+10-28 11:06:02.315 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:02.362  2418  2418 V ShadeControllerImpl: NotificationShadeWindow: com.android.systemui.statusbar.phone.NotificationShadeWindowView{b235fdc I.E...... ......ID 0,0-1080,1920} canPanelBeCollapsed(): false
+10-28 11:06:02.386 16125 16200 W ThreadPoolDumper: Queue length for executor EventBus is now 11. Perhaps some tasks are too long, or the pool is too small.
+10-28 11:06:02.343   440   670 E IPCThreadState: binder thread pool (1 threads) starved for 200 ms
+10-28 11:06:02.419  2418  2418 D KeyguardClockSwitch: Updating clock: 1106
+10-28 11:06:02.435 16125 21759 E sb.v.u.LiteSuggestSourc: On-device lite suggest model loading error.
+10-28 11:06:02.722  2646  2646 I Choreographer: Skipped 42 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:02.741 16125 16202 W LocationOracle: No location history returned by ContextManager
+10-28 11:06:02.817   422   422 I perfetto: ing_service_impl.cc:758 Configured tracing session 23, #sources:1, duration:5000 ms, #buffers:1, total buffer size:4096 KB, total sessions:1, uid:1071 session name: ""
+10-28 11:06:02.868   420   420 I perfetto: probes_producer.cc:230  Ftrace setup (target_buf=23)
+10-28 11:06:02.903  1978  1978 D Zygote  : Forked child process 24780
+10-28 11:06:02.947  2646  2646 E libprocessgroup: set_timerslack_ns write failed: Operation not permitted
+10-28 11:06:02.988  2646  3878 I OpenGLRenderer: Davey! duration=971ms; Flags=0, IntendedVsync=10009458526992, Vsync=10010158526964, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10010166103411, AnimationStart=10010166139991, PerformTraversalsStart=10010166233941, DrawStart=10010230411861, SyncQueued=10010314103081, SyncStart=10010315473791, IssueDrawCommandsStart=10010328997801, SwapBuffers=10010379922181, FrameCompleted=10010431127681, DequeueBufferDuration=5679280, QueueBufferDuration=9967510, GpuCompleted=3977296616506144306,
+10-28 11:06:03.328   420   420 I perfetto: ftrace_procfs.cc:176    enabled ftrace
+10-28 11:06:03.478 16125 16256 W ThreadPoolDumper: Task n[ServiceTransaction[SessionController#handleGenericClientEvent]] was queued for 2010ms before starting on executor EventBus
+10-28 11:06:03.559 16537 16679 W GCoreFlp: No location to return for getLastLocation()
+10-28 11:06:03.607 24780 24780 I ni.launcher.de: Late-enabling -Xcheck:jni
+10-28 11:06:03.980 24780 24780 I ni.launcher.de: Unquickening 12 vdex files!
+10-28 11:06:04.135 24780 24780 W ni.launcher.de: Unexpected CPU variant for X86 using defaults: x86
+10-28 11:06:04.356 10190 10197 I adbd    : jdwp connection from 24780
+10-28 11:06:04.974 16125 16125 I BgTaskExecutorImpl: Starting EXCLUSIVE background task TNG_MINUS_ONE_SYNC.
+10-28 11:06:04.976 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:04.984 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:05.052 16125 16194 E MDD     : DownloadProgressMonitor: Can't find file group for uri: android://com.google.android.googlequicksearchbox/files/sharedminusonemodule/shared/SharedMinusOneData.pb.tmp
+10-28 11:06:05.152  2092  2115 W system_server: Long monitor contention with owner Binder:2092_9 (2787) at void com.android.server.wm.TaskChangeNotificationController.forAllLocalListeners(com.android.server.wm.TaskChangeNotificationController$TaskStackConsumer, android.os.Message)(TaskChangeNotificationController.java:351) waiters=0 in void com.android.server.wm.ActivityMetricsLogger.checkVisibility(com.android.server.wm.Task, com.android.server.wm.ActivityRecord) for 156ms
+10-28 11:06:05.155  2092  4612 W system_server: Long monitor contention with owner Binder:2092_9 (2787) at void com.android.server.am.ActivityManagerService.attachApplication(android.app.IApplicationThread, long)(ActivityManagerService.java:5460) waiters=0 in android.content.ComponentName com.android.server.am.ActivityManagerService.startService(android.app.IApplicationThread, android.content.Intent, java.lang.String, boolean, java.lang.String, java.lang.String, int) for 407ms
+10-28 11:06:05.471  2646  2662 I s.nexuslaunche: Background young concurrent copying GC freed 28540(1445KB) AllocSpace objects, 30(2504KB) LOS objects, 40% free, 5097KB/8609KB, paused 1.496ms total 1.434s
+10-28 11:06:05.647 16125 16256 I TngMinusOneSync: Syncing TNG:-1
+10-28 11:06:05.690 24780 24780 I ni.launcher.de: The ClassLoaderContext is a special shared library.
+10-28 11:06:06.350 16537 16537 W .gms.persisten: Long monitor contention with owner GoogleLocationService (16670) at void bggi.run()(:27) waiters=0 in void com.google.android.location.internal.server.GoogleLocationChimeraService.a(android.content.Intent, boolean) for 362ms
+10-28 11:06:06.380  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():180 call()
+10-28 11:06:06.431  7845  7896 I PeriodicStatsRunner: PeriodicStatsRunner.call():184 No submit PeriodicStats since input started.
+10-28 11:06:06.531 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:06.896 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:06.906 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:07.246  2092  4530 W system_server: Long monitor contention with owner android.display (2115) at void com.android.server.wm.AppTransition.handleAppTransitionTimeout()(AppTransition.java:2311) waiters=0 in com.android.server.wm.WindowProcessController com.android.server.wm.ActivityTaskManagerService$LocalService.getTopApp() for 277ms
+10-28 11:06:07.482  2092  3850 W system_server: Long monitor contention with owner Binder:2092_19 (4530) at void com.android.server.am.ActivityManagerService.serviceDoneExecuting(android.os.IBinder, int, int, int)(ActivityManagerService.java:15232) waiters=0 in android.content.ComponentName com.android.server.am.ActivityManagerService$LocalService.startServiceInPackage(int, android.content.Intent, java.lang.String, boolean, java.lang.String, java.lang.String, int, boolean) for 524ms
+10-28 11:06:07.521  2092  4612 W system_server: Long monitor contention with owner Binder:2092_19 (4530) at void com.android.server.am.ActivityManagerService.serviceDoneExecuting(android.os.IBinder, int, int, int)(ActivityManagerService.java:15232) waiters=1 in boolean com.android.server.am.ActivityManagerService.refContentProvider(android.os.IBinder, int, int) for 539ms
+10-28 11:06:07.523  2092  2787 W system_server: Long monitor contention with owner Binder:2092_19 (4530) at void com.android.server.am.ActivityManagerService.serviceDoneExecuting(android.os.IBinder, int, int, int)(ActivityManagerService.java:15232) waiters=2 in void com.android.server.am.ActivityManagerService.unregisterReceiver(android.content.IIntentReceiver) for 173ms
+10-28 11:06:07.818 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:07.935   420   420 I perfetto: probes_producer.cc:329  Producer stop (id=23)
+10-28 11:06:07.989  2092  3850 W system_server: Long monitor contention with owner PackageManager (2162) at void com.android.server.pm.PackageManagerService$PackageHandler.doHandleMessage(android.os.Message)(PackageManagerService.java:1808) waiters=0 in int com.android.server.pm.permission.PermissionManagerService.checkUidPermission(java.lang.String, int) for 337ms
+10-28 11:06:07.991  2092  4530 W system_server: Long monitor contention with owner PackageManager (2162) at void com.android.server.pm.PackageManagerService$PackageHandler.doHandleMessage(android.os.Message)(PackageManagerService.java:1808) waiters=1 in int com.android.server.pm.permission.PermissionManagerService.checkUidPermission(java.lang.String, int) for 314ms
+10-28 11:06:08.071   422   422 I perfetto: ng_service_impl.cc:1948 Tracing session 23 ended, total sessions:0
+10-28 11:06:08.073   420   420 I perfetto: ftrace_procfs.cc:183    disabled ftrace
+10-28 11:06:08.382 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:08.433 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:08.562 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:08.623 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:08.624 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:08.685 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:08.784 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:09.331 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:09.382 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:09.444 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:09.471 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:09.472 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:09.497 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:09.542 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:09.640 24780 24780 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-28 11:06:09.648 24780 24780 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-28 11:06:10.059 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:10.098 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:10.162 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:10.206 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:10.207 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:10.228 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:10.288 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:10.299 24780 24806 D libEGL  : loaded /vendor/lib/egl/libEGL_emulation.so
+10-28 11:06:10.361 24780 24806 D libEGL  : loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
+10-28 11:06:10.433 24780 24806 D libEGL  : loaded /vendor/lib/egl/libGLESv2_emulation.so
+10-28 11:06:10.818 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:10.849 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:10.907 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:10.963 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:10.964 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:10.980 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:11.020 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:11.530 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:11.561 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:11.616 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:11.655 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:11.656 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:11.681 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:11.730 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:11.992  2092  5922 D WifiNl80211Manager: Scan result ready event
+10-28 11:06:11.993  2092  5922 D WifiNative: Scan result ready event
+10-28 11:06:12.014 24780 24795 W ni.launcher.de: Suspending all threads took: 8.461ms
+10-28 11:06:12.242 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:12.269 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:12.315 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:12.350 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:12.351 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:12.389 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:12.429 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:12.896 24780 24780 I Choreographer: Skipped 174 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:12.942 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:12.998 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:13.060 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:13.100 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:13.104 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:13.129 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:13.181 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:13.685 24780 24795 I ni.launcher.de: Background young concurrent copying GC freed 2575(309KB) AllocSpace objects, 0(0B) LOS objects, 43% free, 2126KB/3789KB, paused 2.422ms total 108.162ms
+10-28 11:06:13.702 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:13.730 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:13.784 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:13.824 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:13.828 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:13.881 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:13.936 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:14.458 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:14.491 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:14.577 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:14.621 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:14.623 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:14.642 24780 24795 I ni.launcher.de: WaitForGcToComplete blocked RunEmptyCheckpoint on ProfileSaver for 32.646ms
+10-28 11:06:14.653 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:14.696 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:15.213 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:15.306 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:15.470 16125 21759 I PBSessionCacheImpl: Deleted sessionId[70920293162246543] from persistence.
+10-28 11:06:15.608 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:15.736 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:15.778 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:15.821 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:15.886 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:15.915 16125 16256 W SearchServiceCore: Abort, client detached.
+10-28 11:06:16.137 16537 24807 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:06:16.405 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:16.425 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:16.488 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:16.529 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:16.530 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:16.546 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:16.618 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:16.701 16537 24807 E WakeLock: GCM_HB_ALARM release without a matched acquire!
+10-28 11:06:16.702 16537 24807 W WakeLock: GCM_HB_ALARM counter does not exist
+10-28 11:06:16.789 16537 24809 I NetworkManagementSocketTagger: tagSocketFd(-1, 805307399, -1) failed with errno-9
+10-28 11:06:17.155 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:17.182 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:17.250 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:17.281 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:17.285 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:17.342 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:17.446 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:17.970 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:18.021 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:18.085 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:18.126 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:18.127 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:18.149 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:18.200 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:18.725 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:18.745 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:18.794 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:18.827 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:18.828 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:18.853 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:18.900 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:19.118 24780 24780 W ni.launcher.de: Accessing hidden method Landroid/os/SystemProperties;->addChangeCallback(Ljava/lang/Runnable;)V (greylist, reflection, allowed)
+10-28 11:06:19.415 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:19.451 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:19.514 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:19.544 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:19.550 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:19.582 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:19.649 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:19.663 19620 19636 W e.process.gapp: Suspending all threads took: 6.329ms
+10-28 11:06:20.163 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:20.209 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:20.267 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:20.306 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:20.308 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:20.332 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:20.384 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:20.892 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:20.918  2092  2787 D WifiNl80211Manager: Scan result ready event
+10-28 11:06:20.919  2092  2787 D WifiNative: Scan result ready event
+10-28 11:06:20.926 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:21.056 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:21.112 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:21.121 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:21.205 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:21.389 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:21.621 24780 24814 W ni.launcher.de: Verification of java.lang.Object kotlinx.coroutines.flow.internal.CombineKt$combineInternal$2.invokeSuspend(java.lang.Object) took 155.409ms (2329.33 bytecodes/s) (6632B approximate peak alloc)
+10-28 11:06:21.719 24780 24816 W ni.launcher.de: Long monitor contention with owner DefaultDispatcher-worker-5 (24815) at java.lang.Object androidx.room.util.DBUtil__DBUtil_androidKt.getCoroutineContext(androidx.room.RoomDatabase, boolean, kotlin.coroutines.Continuation)(DBUtil.android.kt:129) waiters=0 in java.lang.Object androidx.room.util.DBUtil__DBUtil_androidKt.getCoroutineContext(androidx.room.RoomDatabase, boolean, kotlin.coroutines.Continuation) for 143ms
+10-28 11:06:21.783 24780 24813 W ni.launcher.de: Long monitor contention with owner DefaultDispatcher-worker-5 (24815) at java.lang.Object androidx.room.util.DBUtil__DBUtil_androidKt.getCoroutineContext(androidx.room.RoomDatabase, boolean, kotlin.coroutines.Continuation)(DBUtil.android.kt:129) waiters=1 in java.lang.Object androidx.room.util.DBUtil__DBUtil_androidKt.getCoroutineContext(androidx.room.RoomDatabase, boolean, kotlin.coroutines.Continuation) for 185ms
+10-28 11:06:21.930 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:21.956 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:22.054 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:22.102 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:22.106 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:22.127  1978  1978 D Zygote  : Forked child process 24822
+10-28 11:06:22.138 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:22.171 16537 16537 W .gms.persisten: Long monitor contention with owner GoogleLocationService (16670) at void bggi.run()(:27) waiters=0 in void com.google.android.location.internal.server.GoogleLocationChimeraService.a(android.content.Intent, boolean) for 268ms
+10-28 11:06:22.209 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:22.340 24822 24822 W .android.video: Unexpected CPU variant for X86 using defaults: x86
+10-28 11:06:22.427 24780 24780 W ni.launcher.de: Verification of void androidx.compose.foundation.lazy.layout.LazyLayoutScrollDeltaBetweenPasses.updateScrollDeltaForApproach$foundation(float, androidx.compose.ui.unit.Density, kotlinx.coroutines.CoroutineScope) took 374.813ms (418.88 bytecodes/s) (4024B approximate peak alloc)
+10-28 11:06:22.510 10190 10197 I adbd    : jdwp connection from 24822
+10-28 11:06:22.612 24780 24820 W ni.launcher.de: Verification of java.lang.Object androidx.room.coroutines.PassthroughConnection.transaction(androidx.room.Transactor$SQLiteTransactionType, kotlin.jvm.functions.Function2, kotlin.coroutines.Continuation) took 526.182ms (505.53 bytecodes/s) (5032B approximate peak alloc)
+10-28 11:06:22.738 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:22.781 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:22.840 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:22.880 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:22.921 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:22.941 24780 24828 W ni.launcher.de: Verification of android.database.sqlite.SQLiteDatabase androidx.sqlite.db.framework.FrameworkSQLiteOpenHelper$OpenHelper.innerGetDatabase(boolean) took 138.092ms (1202.09 bytecodes/s) (3408B approximate peak alloc)
+10-28 11:06:22.991 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:23.116 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:23.140 24822 24822 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+10-28 11:06:23.211 24822 24822 I .android.video: The ClassLoaderContext is a special shared library.
+10-28 11:06:23.312 24822 24822 I .android.video: The ClassLoaderContext is a special shared library.
+10-28 11:06:23.327 24822 24822 D nativeloader: classloader namespace configured for unbundled product apk. library_path=/product/app/Videos/lib/x86:/product/app/Videos/Videos.apk!/lib/x86:/product/lib:/system/product/lib
+10-28 11:06:23.410 24780 24828 W ni.launcher.de: JNI critical lock held for 36.069ms on Thread[25,tid=24828,Runnable,Thread*=0x92198810,peer=0x97540370,"arch_disk_io_1"]
+10-28 11:06:23.486 24822 24822 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-28 11:06:23.497 24822 24822 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-28 11:06:23.514 24780 24795 I ni.launcher.de: Background young concurrent copying GC freed 6483(792KB) AllocSpace objects, 0(0B) LOS objects, 18% free, 3074KB/3789KB, paused 15.570ms total 1.677s
+10-28 11:06:23.674 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:23.718 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:23.776 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:23.824 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:23.834 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:23.856 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:23.916 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:24.220 24780 24828 W ni.launcher.de: JNI critical lock held for 21.585ms on Thread[25,tid=24828,Runnable,Thread*=0x92198810,peer=0x97540370,"arch_disk_io_1"]
+10-28 11:06:24.253 24780 24821 W ni.launcher.de: Long monitor contention with owner arch_disk_io_1 (24828) at java.lang.Object kotlin.SynchronizedLazyImpl.getValue()(LazyJVM.kt:81) waiters=0 in java.lang.Object kotlin.SynchronizedLazyImpl.getValue() for 1.571s
+10-28 11:06:24.255 24780 24820 W ni.launcher.de: Long monitor contention with owner arch_disk_io_1 (24828) at java.lang.Object kotlin.SynchronizedLazyImpl.getValue()(LazyJVM.kt:81) waiters=1 in java.lang.Object kotlin.SynchronizedLazyImpl.getValue() for 1.572s
+10-28 11:06:24.446 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:24.491 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:24.562 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:24.608 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:24.611 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:24.662 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:24.756 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:25.245 24822 24822 I TetheringManager: registerTetheringEventCallback:com.google.android.videos
+10-28 11:06:25.300 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:25.389 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:25.457 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:25.485 24822 24822 W .android.video: Verification of void nuo.<init>(android.content.Context) took 127.950ms (85.97 bytecodes/s) (960B approximate peak alloc)
+10-28 11:06:25.504 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:25.518 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:25.573 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:25.646 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:26.172 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:26.221 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:26.261 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Pixel Launcher, displayId=0, id=490, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:26.384 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:26.394 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:27.211 24780 24804 D HostConnection: HostConnection::get() New Host Connection established 0xe82e4580, tid 24804
+10-28 11:06:27.430 24780 24804 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0
+10-28 11:06:27.526   180   180 I hwservicemanager: getTransport: Cannot find entry android.hardware.configstore@1.0::ISurfaceFlingerConfigs/default in either framework or device manifest.
+10-28 11:06:27.556 24780 24804 D EGL_emulation: eglCreateContext: 0xe82c2d20: maj 3 min 0 rcv 3
+10-28 11:06:27.573 24780 24804 D EGL_emulation: eglMakeCurrent: 0xe82c2d20: ver 3 0 (tinfo 0xe8656b90) (first time)
+10-28 11:06:27.683 24780 24795 I ni.launcher.de: Background concurrent copying GC freed 4652(489KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 3273KB/6547KB, paused 764us total 2.070s
+10-28 11:06:27.755   180   180 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device manifest.
+10-28 11:06:27.756 24780 24804 I Gralloc4: mapper 4.x is not supported
+10-28 11:06:27.877 24780 24804 D HostConnection: createUnique: call
+10-28 11:06:27.878 24780 24804 D HostConnection: HostConnection::get() New Host Connection established 0xe82e40b0, tid 24804
+10-28 11:06:27.922 24822 24863 W PlayMovies: esk.run:3 User config found
+10-28 11:06:27.922 24822 24863 W PlayMovies:
+10-28 11:06:27.996 24780 24804 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0
+10-28 11:06:28.404 24822 24866 W .android.video: Accessing hidden field Ljava/util/Collections$SynchronizedCollection;->mutex:Ljava/lang/Object; (greylist-max-o, reflection, denied)
+10-28 11:06:28.413 24822 24866 W .android.video: Accessing hidden method Ljava/util/Collections$SynchronizedSet;-><init>(Ljava/util/Set;Ljava/lang/Object;)V (greylist-max-o, reflection, denied)
+10-28 11:06:28.415 24822 24866 W .android.video: Accessing hidden method Ljava/util/Collections$SynchronizedCollection;-><init>(Ljava/util/Collection;Ljava/lang/Object;)V (greylist-max-o, reflection, denied)
+10-28 11:06:28.546 24780 24804 I OpenGLRenderer: Davey! duration=18552ms; Flags=1, IntendedVsync=10017425213690, Vsync=10020325213574, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10020347999721, AnimationStart=10020352225521, PerformTraversalsStart=10020353784521, DrawStart=10035496299551, SyncQueued=10035579961621, SyncStart=10035591209661, IssueDrawCommandsStart=10035594927501, SwapBuffers=10035907819421, FrameCompleted=10035989133581, DequeueBufferDuration=5598430, QueueBufferDuration=14326720, GpuCompleted=72904454231491230,
+10-28 11:06:29.271 24822 24822 W PlayMovies: bjc.onCreate:76 Installer Package: null
+10-28 11:06:29.271 24822 24822 W PlayMovies:
+10-28 11:06:29.525 24822 24822 V MediaRouter: Selecting route: RouteInfo{ name=Phone, description=null, status=null, category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO  groupable=false }, supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , presentationDisplay=null }
+10-28 11:06:29.698 24822 24822 W MediaSessionCompat: Couldn't find a unique registered media button receiver in the given context.
+10-28 11:06:31.085 24822 24837 I .android.video: WaitForGcToComplete blocked Background on None for 6.806ms
+10-28 11:06:31.314 15070 15070 D PhoneSwitcherNetworkRequstListener: got request NetworkRequest [ TRACK_DEFAULT id=131, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10147 AdministratorUids: [] RequestorUid: 10147 RequestorPackageName: com.google.android.videos] ] with score 60 and providerId 3
+10-28 11:06:31.345  2092  2351 D WifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=131, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10147 AdministratorUids: [] RequestorUid: 10147 RequestorPackageName: com.google.android.videos] ] with score 60 and providerId 3
+10-28 11:06:31.346  2092  2351 D UntrustedWifiNetworkFactory: got request NetworkRequest [ TRACK_DEFAULT id=131, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED Uid: 10147 AdministratorUids: [] RequestorUid: 10147 RequestorPackageName: com.google.android.videos] ] with score 60 and providerId 3
+10-28 11:06:31.460  2418  2418 V KeyguardUpdateMonitor: onSubscriptionInfoChanged()
+10-28 11:06:31.477 15070 15070 D Telephony: isEmergencyPreferredAccount: subId=1, activeData=1
+10-28 11:06:31.478 15070 15070 D Telephony: isEmergencyPreferredAccount: Device does not require preference.
+10-28 11:06:31.518  2418  2418 V KeyguardUpdateMonitor: SubInfo:{id=1 iccId=89014103211118510720 simSlotIndex=0 carrierId=1 displayName=T-Mobile carrierName=Android nameSource=3 iconTint=-16746133 number=+15555215554 dataRoaming=0 iconBitmap=android.graphics.Bitmap@1bf6fc4 mcc=310 mnc=260 countryIso=us isEmbedded=false nativeAccessRules=null cardString=89014103211118510720 cardId=-1 isOpportunistic=false groupUUID=null isGroupDisabled=false profileClass=-1 ehplmns=null hplmns=null subscriptionType=0 groupOwner=null carrierConfigAccessRules=null areUiccApplicationsEnabled=true}
+10-28 11:06:31.546 24606 24628 W UiDevice: Active window root not found.
+10-28 11:06:31.671  2092  2787 I WifiService: acquireWifiLock uid=10147 lockMode=3
+10-28 11:06:31.806  2092  2787 I WifiService: releaseWifiLock uid=10147
+10-28 11:06:32.271 24822 24822 V MediaRouter: Selecting route: RouteInfo{ name=Phone, description=null, status=null, category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO  groupable=false }, supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , presentationDisplay=null }
+10-28 11:06:33.066  2418  2418 V KeyguardUpdateMonitor: onSubscriptionInfoChanged()
+10-28 11:06:33.112 15070 15070 D Telephony: isEmergencyPreferredAccount: subId=1, activeData=1
+10-28 11:06:33.136  2418  2418 V KeyguardUpdateMonitor: SubInfo:{id=1 iccId=89014103211118510720 simSlotIndex=0 carrierId=1 displayName=T-Mobile carrierName=Android nameSource=3 iconTint=-16746133 number=+15555215554 dataRoaming=0 iconBitmap=android.graphics.Bitmap@8287ead mcc=310 mnc=260 countryIso=us isEmbedded=false nativeAccessRules=null cardString=89014103211118510720 cardId=-1 isOpportunistic=false groupUUID=null isGroupDisabled=false profileClass=-1 ehplmns=null hplmns=null subscriptionType=0 groupOwner=null carrierConfigAccessRules=null areUiccApplicationsEnabled=true}
+10-28 11:06:33.175 15070 15070 D Telephony: isEmergencyPreferredAccount: Device does not require preference.
+10-28 11:06:33.552  2092  4612 W system_server: Long monitor contention with owner Binder:2092_9 (2787) at void com.android.server.job.controllers.QuotaController$Timer.stopTrackingJob(com.android.server.job.controllers.JobStatus)(QuotaController.java:1519) waiters=0 in java.util.List com.android.server.job.JobSchedulerService.getPendingJobs(int) for 527ms
+10-28 11:06:33.607 15070 15079 I m.android.phon: Background concurrent copying GC freed 23205(2018KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 2536KB/5072KB, paused 651us total 626.615ms
+10-28 11:06:34.803 24780 24780 I Choreographer: Skipped 1233 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:35.053  2092  4612 W system_server: Long monitor contention with owner InputDispatcher (2333) at long com.android.server.wm.InputManagerCallback.notifyANRInner(android.view.InputApplicationHandle, android.os.IBinder, java.lang.String)(InputManagerCallback.java:249) waiters=0 in com.android.server.wm.WindowProcessController com.android.server.wm.ActivityTaskManagerService$LocalService.getTopApp() for 764ms
+10-28 11:06:35.188 24780 24804 I OpenGLRenderer: Davey! duration=20933ms; Flags=0, IntendedVsync=10021675252500, Vsync=10042225251678, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10042247858491, AnimationStart=10042247932131, PerformTraversalsStart=10042481129101, DrawStart=10042517591181, SyncQueued=10042541404651, SyncStart=10042564491331, IssueDrawCommandsStart=10042564850741, SwapBuffers=10042590567771, FrameCompleted=10042631598191, DequeueBufferDuration=14552600, QueueBufferDuration=14347880, GpuCompleted=43984843964424,
+10-28 11:06:35.476 24780 24893 D ProfileInstaller: Installing profile for com.ni.launcher.dev
+10-28 11:06:35.880  2092  4612 W system_server: Long monitor contention with owner InputDispatcher (2333) at void com.android.server.wm.ActivityTaskManagerService$LocalService.saveANRState(java.lang.String)(ActivityTaskManagerService.java:6971) waiters=0 in int com.android.server.wm.ActivityTaskManagerService$LocalService.getTopProcessState() for 808ms
+10-28 11:06:35.974  2092  2333 W InputDispatcher: Canceling events for ef8875a com.ni.launcher.dev/com.ni.launcher.MainActivity (server) because it is unresponsive
+10-28 11:06:35.975  2092  2333 I InputDispatcher: ef8875a com.ni.launcher.dev/com.ni.launcher.MainActivity (server) spent 7205ms processing FocusEvent(hasFocus=true)
+10-28 11:06:36.606 24606 24628 W UiDevice: Skipping null root node for window: AccessibilityWindowInfo[title=Ni-Launcher, displayId=0, id=495, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1080,1920)), bounds=Rect(0, 0 - 1080, 1920), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]
+10-28 11:06:36.692 24822 24837 W .android.video: Suspending all threads took: 18.088ms
+10-28 11:06:37.159  2092  2102 I system_server: Background young concurrent copying GC freed 322906(13MB) AllocSpace objects, 94(4600KB) LOS objects, 45% free, 19MB/35MB, paused 6.581ms total 2.191s
+10-28 11:06:37.238 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:37.441  2092  2103 W JavaBinder: BinderProxy is being destroyed but the application did not call unlinkToDeath to unlink all of its death recipients beforehand.  Releasing leaked death recipient: com.android.server.AlarmManagerService$2
+10-28 11:06:37.441  2092  2103 I BpBinder: onLastStrongRef automatically unlinking death recipients: <uncached descriptor>
+10-28 11:06:38.842 24780 24780 I Choreographer: Skipped 233 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:41.326 24780 24804 I OpenGLRenderer: Davey! duration=6353ms; Flags=1, IntendedVsync=10042391880100, Vsync=10046275213278, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=10046309033071, AnimationStart=10046309115011, PerformTraversalsStart=10047383056231, DrawStart=10048310214491, SyncQueued=10048444600061, SyncStart=10048468897471, IssueDrawCommandsStart=10048471590791, SwapBuffers=10048720263251, FrameCompleted=10048769298531, DequeueBufferDuration=16101990, QueueBufferDuration=4877130, GpuCompleted=144115222452437075,
+10-28 11:06:41.579 24780 24780 I Choreographer: Skipped 97 frames!  The application may be doing too much work on its main thread.
+10-28 11:06:41.606 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:41.608 24606 24628 D UiDevice: Searching for node with selector: BySelector [PKG='\Qcom.ni.launcher.dev\E'].
+10-28 11:06:41.832 24606 24628 D UiDevice: Retrieving node with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:42.141 24606 24628 D UiDevice: Node not found with selector: BySelector [PKG='\Qandroid\E', TEXT='\QWait\E'].
+10-28 11:06:42.142 24606 24628 D UiDevice: Retrieving node with selector: BySelector [TEXT='\QSettings\E'].
+10-28 11:06:42.448 24606 24628 I TestRunner: finished: addAppToFavoritesShowsOnHomeAndSurvivesForceStop(com.ni.launcher.e2e.LauncherE2ETest)

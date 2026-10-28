@@ -1,0 +1,3 @@
+com.ni.launcher.e2e
+style WhiteBackgroundDialogTheme
+style WhiteBackgroundTheme

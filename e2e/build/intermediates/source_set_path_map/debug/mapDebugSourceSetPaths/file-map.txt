@@ -1,0 +1,11 @@
+com.ni.launcher.e2e-uiautomator-2.3.0-0 /home/box/.gradle/caches/8.13/transforms/e7c0a4db286c2fae172f0a9d98fc5efc/transformed/uiautomator-2.3.0/res
+com.ni.launcher.e2e-core-1.7.0-1 /home/box/.gradle/caches/8.13/transforms/ed5e57d03d9072034040a65210db75af/transformed/core-1.7.0/res
+com.ni.launcher.e2e-tracing-1.1.0-2 /home/box/.gradle/caches/8.13/transforms/f10e4d112bd80a99243cb21f5275bfed/transformed/tracing-1.1.0/res
+com.ni.launcher.e2e-pngs-3 /home/box/android-launcher-e2e/e2e/build/generated/res/pngs/debug
+com.ni.launcher.e2e-resValues-4 /home/box/android-launcher-e2e/e2e/build/generated/res/resValues/debug
+com.ni.launcher.e2e-updated_navigation_xml-5 /home/box/android-launcher-e2e/e2e/build/generated/updated_navigation_xml/debug
+com.ni.launcher.e2e-mergeDebugResources-6 /home/box/android-launcher-e2e/e2e/build/intermediates/incremental/debug/mergeDebugResources/merged.dir
+com.ni.launcher.e2e-mergeDebugResources-7 /home/box/android-launcher-e2e/e2e/build/intermediates/incremental/debug/mergeDebugResources/stripped.dir
+com.ni.launcher.e2e-debug-8 /home/box/android-launcher-e2e/e2e/build/intermediates/merged_res/debug/mergeDebugResources
+com.ni.launcher.e2e-debug-9 /home/box/android-launcher-e2e/e2e/src/debug/res
+com.ni.launcher.e2e-main-10 /home/box/android-launcher-e2e/e2e/src/main/res
