@@ -145,12 +145,6 @@ class MainActivity : ComponentActivity() {
                         state, appsVM, viewVM
                     ) { viewVM.setMenu(MenuState.None) }
 
-                    is MenuState.RemoveShortcut -> ShortcutRemovalFlow(
-                        state.item, state.parentId, appsVM,
-                        onRemoved = { viewVM.setMenu(MenuState.None) },
-                        onDismiss = { viewVM.setMenu(MenuState.None) }
-                    )
-
                     is MenuState.None -> Unit
                 }
                 val currentView by viewVM.view.collectAsState()
@@ -658,11 +652,7 @@ fun ContextSheet(state: MenuState.Sheet, appsVM: AppsVM, viewVM: ViewVM, reset: 
     val haptic = LocalHapticFeedback.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val entries by produceState(initialValue = emptyList<SheetAction>(), state.item, state.parent) {
-        value = appsVM.sheetActionsSnapshot(
-            state.item, state.parent,
-            onShortcutRemoval = { shortcut, parentId -> viewVM.setMenu(MenuState.RemoveShortcut(shortcut, parentId)) },
-            onNavigate = { viewVM.setView(it) }
-        )
+        value = appsVM.sheetActionsSnapshot(state.item, state.parent) { viewVM.setView(it) }
     }
     val badges by appsVM.getTagsForItem(state.item).collectAsState(initial = emptyList())
     LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }

@@ -54,9 +54,6 @@ interface TagItemDao {
     @Query("SELECT * FROM tag_items ORDER BY tagId, itemOrder ASC")
     fun getAllItemsFlow(): Flow<List<TagItemEntity>>
 
-    @Query("SELECT * FROM tag_items ORDER BY tagId, itemOrder ASC")
-    suspend fun getAllItems(): List<TagItemEntity>
-
     @Query("SELECT DISTINCT packageName FROM tag_items WHERE type = 'APP' OR type = 'SHORTCUT'")
     fun getDistinctPackages(): Flow<List<String>>
 

@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.sync.withLock
 
 class PinShortcutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,22 +34,20 @@ class PinShortcutActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO + NonCancellable) {
-                    shortcutPinMutex.withLock {
-                        if (!request.accept()) return@withLock
-                        // Serialize order allocation with the insert, even for concurrent pin requests.
-                        db.withTransaction {
-                            db.tagDao().insert(TagEntity(PINNED, "Pinned"))
-                            tagItemDao.insert(
-                                TagItemEntity(
-                                    tagId = PINNED,
-                                    itemOrder = tagItemDao.nextOrderForTag(PINNED),
-                                    type = TagItemType.SHORTCUT,
-                                    packageName = shortcut.`package`,
-                                    shortcutId = shortcut.id,
-                                    labelOverride = shortcut.shortLabel?.toString()
-                                )
+                    if (!request.accept()) return@withContext
+                    // Allocate the order and insert atomically, even for concurrent pin requests.
+                    db.withTransaction {
+                        db.tagDao().insert(TagEntity(PINNED, "Pinned"))
+                        tagItemDao.insert(
+                            TagItemEntity(
+                                tagId = PINNED,
+                                itemOrder = tagItemDao.nextOrderForTag(PINNED),
+                                type = TagItemType.SHORTCUT,
+                                packageName = shortcut.`package`,
+                                shortcutId = shortcut.id,
+                                labelOverride = shortcut.shortLabel?.toString()
                             )
-                        }
+                        )
                     }
                 }
             } finally {

@@ -14,17 +14,16 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.withTransaction
 import com.ni.launcher.data.TagDao
 import com.ni.launcher.data.TagEntity
 import com.ni.launcher.data.TagItemDao
 import com.ni.launcher.data.TagItemEntity
 import com.ni.launcher.data.TagItemType
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,17 +31,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.sync.withLock
 
 sealed interface LauncherItem {
     val label: String
@@ -83,19 +79,9 @@ enum class PlaceholderKind { EMPTY_TAG, RECURSION, MISSING_REFERENCE }
 
 data class SheetAction(val label: String, val onTap: () -> Unit)
 
-private data class LauncherGraph(
-    val tags: Map<Long, LauncherItem.Tag> = emptyMap(),
-    val apps: List<LauncherItem.App> = emptyList(),
-    val appShortcuts: Map<String, List<LauncherItem.Shortcut>> = emptyMap()
-)
-
 object TAG {
     const val FAV: Long = 1
     const val PINNED: Long = 2
-    // User tags already occupy positive auto-generated IDs in existing databases.
-    const val HIDDEN: Long = -1
-
-    fun isSystem(id: Long): Boolean = id == FAV || id == PINNED || id == HIDDEN
 }
 
 private const val PERSIST_DEBOUNCE_MS = 150L
@@ -103,7 +89,7 @@ private const val PERSIST_DEBOUNCE_MS = 150L
 suspend fun ensureSystemTags(tagDao: TagDao) {
     val existing = tagDao.getAllFlow().first()
     listOf(
-        TagEntity(TAG.FAV, "Favorites"), TagEntity(TAG.PINNED, "Pinned"), TagEntity(TAG.HIDDEN, "Hidden")
+        TagEntity(TAG.FAV, "Favorites"), TagEntity(TAG.PINNED, "Pinned")
     ).filterNot { tag -> existing.any { it.id == tag.id && it.name == tag.name } }
         .forEach { tagDao.insert(it) }
 }
@@ -145,9 +131,9 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val user: UserHandle = android.os.Process.myUserHandle()
     private val apps = MutableStateFlow<List<LauncherActivityInfo>>(emptyList())
     private val shortcutsRefreshTick = MutableStateFlow(0)
+    private val popupShortcutMemo = mutableMapOf<String, List<ShortcutInfo>>()
     private val tagState = MutableStateFlow<List<TagEntity>>(emptyList())
     private val tagItemState = MutableStateFlow<List<TagItemEntity>>(emptyList())
-    private val tagDataReady = CompletableDeferred<Unit>()
     private val pendingTagItems = mutableSetOf<Long>()
     private val pendingTags = mutableSetOf<Long>()
     private val persistJobs = mutableMapOf<Long, Job>()
@@ -292,85 +278,92 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Query all visible packages, including pins that have no local row yet.
-    // null means the initial platform query has not completed.
+    // Reactive cache for packages referenced by launcher data.
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val cachedShortcuts: StateFlow<Map<String, List<ShortcutInfo>>?> =
-        shortcutsRefreshTick.mapLatest {
-            withContext(Dispatchers.IO) {
-                launcherApps.getShortcuts(
-                    ShortcutQuery().apply {
-                        setQueryFlags(
-                            ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
-                        )
-                    },
-                    user
-                ).orEmpty().groupBy { it.`package` }
+    private val cachedShortcuts = combine(
+        tagItemState.map { items ->
+            items.asSequence()
+                .filter { it.type == TagItemType.APP || it.type == TagItemType.SHORTCUT }
+                .mapNotNull { it.packageName }
+                .distinct()
+                .toList()
+        }.distinctUntilChanged(),
+        shortcutsRefreshTick
+    ) { pkgs, _ -> pkgs }
+        .mapLatest { pkgs ->
+            coroutineScope {
+                pkgs.associateWith { pkg ->
+                    async { loadShortcutsForPackage(pkg) }
+                }.mapValues { it.value.await() }
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    private fun loadShortcutsForPackage(pkg: String): List<ShortcutInfo> =
+        launcherApps.getShortcuts(
+            ShortcutQuery().apply {
+                setPackage(pkg)
+                setQueryFlags(
+                    ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST
+                )
+            },
+            user
+        ).orEmpty()
+
+    private fun resolveShortcutsForPackage(pkg: String): List<ShortcutInfo> {
+        val fromReactiveCache = cachedShortcuts.value[pkg]
+        if (!fromReactiveCache.isNullOrEmpty()) return fromReactiveCache
+
+        val fromPopupMemo = synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] }
+        if (!fromPopupMemo.isNullOrEmpty()) return fromPopupMemo
+
+        val fetched = loadShortcutsForPackage(pkg)
+        synchronized(popupShortcutMemo) { popupShortcutMemo[pkg] = fetched }
+        return fetched
+    }
 
     private fun refreshApps() {
         val latest = launcherApps.getActivityList(null, user)
         apps.update { latest }
+        synchronized(popupShortcutMemo) {
+            val knownPackages = latest.mapTo(mutableSetOf()) { it.componentName.packageName }
+            popupShortcutMemo.keys.retainAll(knownPackages)
+        }
         // Keep shortcut cache in sync on package add/remove/change callbacks.
         shortcutsRefreshTick.update { it + 1 }
     }
-    private fun refreshShortcuts() {
-        // Shortcut changes do not necessarily change the installed app list.
+    private fun cleanup(pkg: String) {
+        synchronized(popupShortcutMemo) { popupShortcutMemo.remove(pkg) }
+        // Shortcut changes do not alter distinct package set, so trigger cache rebuild.
         shortcutsRefreshTick.update { it + 1 }
     }
 
     init {
         viewModelScope.launch(Dispatchers.IO) { ensureSystemTags(tagDao) }
         viewModelScope.launch(Dispatchers.IO) {
-            combine(tagDao.getAllFlow(), tagItemDao.getAllItemsFlow()) { tags, items -> tags to items }
-                .collect { (tags, items) ->
-                    mergeTagsFromDb(tags)
-                    mergeTagItemsFromDb(items)
-                    tagDataReady.complete(Unit)
-                }
+            tagDao.getAllFlow().collect { mergeTagsFromDb(it) }
         }
-        launcherApps.registerCallback(createCallback(::refreshApps) { refreshShortcuts() })
+        viewModelScope.launch(Dispatchers.IO) {
+            tagItemDao.getAllItemsFlow().collect { mergeTagItemsFromDb(it) }
+        }
+        launcherApps.registerCallback(createCallback(::refreshApps, ::cleanup))
         refreshApps()
     }
 
     // Reactive graph that drives app/tag UI and badges.
     private val graph = combine(
-        apps, cachedShortcuts.filterNotNull(), tagState, tagItemState
+        apps, cachedShortcuts, tagState, tagItemState
     ) { apps, shortcuts, tagEntities, itemEntities ->
-        val shortcutInfos = shortcuts.values.flatten().associateBy { ShortcutKey(it.`package`, it.id) }
-        val descriptors = shortcutInfos.values.map {
-            ShortcutDescriptor(ShortcutKey(it.`package`, it.id), it.isDeclaredInManifest, it.isDynamic, it.isPinned, it.rank)
-        }
-        val itemsByTag = itemEntities.groupBy { it.tagId }.toMutableMap()
-        // These transient rows are visible to Manage. Its normal save path persists their itemOrder.
-        itemsByTag[TAG.PINNED] = appendUnmanagedShortcuts(
-            TAG.PINNED,
-            itemsByTag[TAG.PINNED].orEmpty(),
-            descriptors.filter { it.isPinned }
-        )
-        val appRows = appsToRows(apps)
-        val appsByPackage = appRows.distinctBy { it.info.componentName.packageName }
-            .associateBy { it.info.componentName.packageName }
-        val resolvedShortcuts = mutableMapOf<Pair<ShortcutKey, String?>, LauncherItem.Shortcut>()
+        val itemsByTag = itemEntities.groupBy { it.tagId }
 
         // --- Layer 1: Universal Resolver ---
         // One place to turn a DB entity into a UI object
         fun resolveEntity(entity: TagItemEntity): LauncherItem? = when (entity.type) {
-            TagItemType.APP -> appsByPackage[entity.packageName]?.let {
-                if (entity.labelOverride == null) it else it.copy(label = entity.labelOverride)
+            TagItemType.APP -> apps.find { it.componentName.packageName == entity.packageName }?.let {
+                LauncherItem.App(it, entity.labelOverride ?: it.label.toString(), it.getIcon(0).toBitmap().asImageBitmap())
             }
-            TagItemType.SHORTCUT -> {
-                val key = ShortcutKey(entity.packageName.orEmpty(), entity.shortcutId.orEmpty())
-                shortcutInfos[key]?.let { info ->
-                    resolvedShortcuts.getOrPut(key to entity.labelOverride) {
-                        LauncherItem.Shortcut(
-                            info,
-                            entity.labelOverride ?: info.shortLabel.toString(),
-                            launcherApps.getShortcutIconDrawable(info, 0)?.toBitmap()?.asImageBitmap()
-                        )
-                    }
-                }
+            TagItemType.SHORTCUT -> shortcuts[entity.packageName]?.find { it.id == entity.shortcutId }?.let {
+                LauncherItem.Shortcut(it, entity.labelOverride ?: it.shortLabel.toString(), launcherApps.getShortcutIconDrawable(it, 0)?.toBitmap()?.asImageBitmap())
             }
             TagItemType.TAG -> null // Tags are handled separately to avoid infinite recursion here
         }
@@ -430,38 +423,46 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             )
         }
         
+        finalGraph
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    // Per-package app popup entries, built off the main thread from the same sources as graph.
+    val appPopupEntries: StateFlow<Map<String, List<LauncherItem>>> = combine(
+        cachedShortcuts, tagItemState
+    ) { shortcuts, itemEntities ->
         val managedRowsByPkg = managedShortcutRowsByPackage(itemEntities)
-        val descriptorsByPkg = descriptors.groupBy { it.key.packageName }
-        val appShortcuts = (appsByPackage.keys + shortcuts.keys).associateWith { pkg ->
-            appendUnmanagedShortcuts(
-                TAG.PINNED,
-                managedRowsByPkg[pkg].orEmpty().distinctBy { it.shortcutId },
-                descriptorsByPkg[pkg].orEmpty()
-            ).mapNotNull { resolveEntity(it) as? LauncherItem.Shortcut }
+        shortcuts.mapValues { (pkg, pkgShortcuts) ->
+            buildAppPopupEntries(pkgShortcuts, managedRowsByPkg[pkg].orEmpty())
         }
-        // Resolve tag rows on the graph dispatcher too, before sharing this snapshot with the UI.
-        finalGraph.values.forEach { it.items }
-        LauncherGraph(finalGraph, appRows, appShortcuts)
-    }.onStart { tagDataReady.await() }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, LauncherGraph())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     // Reactive all-apps list for main screen rendering.
-    val uiAllGrouped = graph.map { snapshot ->
-        val pinned = snapshot.tags[TAG.PINNED]?.items.orEmpty().filterIsInstance<LauncherItem.Shortcut>()
-        (snapshot.apps + pinned).sortedBy { it.label.lowercase() }
+    val uiAllGrouped = combine(
+        apps,
+        cachedShortcuts,
+        tagItemState.map { items -> items.filter { it.tagId == TAG.PINNED } }.distinctUntilChanged()
+    ) { apps, shortcuts, pinned ->
+        val uiApps = appsToRows(apps)
+        val uiPinned = pinned.mapNotNull { pin ->
+            shortcuts[pin.packageName]?.find { it.id == pin.shortcutId }?.let {
+                LauncherItem.Shortcut(it, pin.labelOverride ?: it.shortLabel.toString(), launcherApps.getShortcutIconDrawable(it, 0)?.toBitmap()?.asImageBitmap())
+            }
+        }
+        (uiApps + uiPinned).sortedBy { it.label.lowercase() }
             .groupBy { it.label.first().uppercaseChar() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(500), emptyMap())
 
     // Reactive favorites list for home screen rendering.
-    val favorites = graph.map { it.tags[TAG.FAV]?.items ?: emptyList() }
+    val favorites = graph.map { it[TAG.FAV]?.items ?: emptyList() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allTags = graph.map { graphMap ->
-        graphMap.tags.values.sortedBy { it.id }
+        graphMap.values.sortedBy { it.id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun getTag(id: Long): Flow<LauncherItem.Tag?> = graph.map { it.tags[id] }
+    fun getTag(id: Long): Flow<LauncherItem.Tag?> = graph.map { it[id] }
 
     fun getTagsForItem(item: LauncherItem): Flow<List<String>> = combine(
         tagState, tagItemState
@@ -511,20 +512,58 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         is LauncherItem.Placeholder -> emptyList()
         is LauncherItem.App -> {
             val pkg = item.info.componentName.packageName
-            graph.first { pkg in it.appShortcuts }.appShortcuts[pkg].orEmpty()
+            appPopupEntries.value[pkg] ?: buildAppPopupEntries(
+                resolveShortcutsForPackage(pkg),
+                managedShortcutRowsByPackage(tagItemState.value)[pkg].orEmpty()
+            )
         }
     }
 
     // Managed-list SHORTCUT rows grouped by package: PINNED tag first, then other tags by id, each by itemOrder.
     private fun managedShortcutRowsByPackage(itemEntities: List<TagItemEntity>): Map<String, List<TagItemEntity>> =
         itemEntities.asSequence()
-            .filter { it.tagId != TAG.HIDDEN && it.type == TagItemType.SHORTCUT && it.packageName != null && it.shortcutId != null }
+            .filter { it.type == TagItemType.SHORTCUT && it.packageName != null && it.shortcutId != null }
             .sortedWith(
                 compareBy<TagItemEntity> { if (it.tagId == TAG.PINNED) 0 else 1 }
                     .thenBy { it.tagId }
                     .thenBy { it.itemOrder }
             )
             .groupBy { it.packageName!! }
+
+    // App popup order: manifest shortcuts, then dynamic ones (each by rank), then managed-list entries,
+    // then shortcuts pinned in Android (in query order); de-duplicated by shortcut id, first occurrence wins.
+    // A user-saved label (first managed row wins) applies wherever the shortcut appears.
+    private fun buildAppPopupEntries(
+        shortcuts: List<ShortcutInfo>,
+        managedRows: List<TagItemEntity>
+    ): List<LauncherItem> {
+        val savedLabels = mutableMapOf<String, String>()
+        managedRows.forEach { row ->
+            val label = row.labelOverride ?: return@forEach
+            savedLabels.putIfAbsent(row.shortcutId ?: return@forEach, label)
+        }
+        val seenIds = mutableSetOf<String>()
+        val system = shortcuts
+            .filter { it.isDeclaredInManifest || it.isDynamic }
+            .sortedWith(compareBy<ShortcutInfo> { if (it.isDeclaredInManifest) 0 else 1 }.thenBy { it.rank })
+            .filter { seenIds.add(it.id) }
+            .map { shortcutItem(it, savedLabels[it.id]) }
+        val managed = managedRows.mapNotNull { row ->
+            val info = shortcuts.find { it.id == row.shortcutId } ?: return@mapNotNull null
+            if (!seenIds.add(info.id)) return@mapNotNull null
+            shortcutItem(info, savedLabels[info.id])
+        }
+        val pinned = shortcuts
+            .filter { it.isPinned && seenIds.add(it.id) }
+            .map { shortcutItem(it, savedLabels[it.id]) }
+        return system + managed + pinned
+    }
+
+    private fun shortcutItem(info: ShortcutInfo, labelOverride: String?) = LauncherItem.Shortcut(
+        info,
+        labelOverride ?: info.shortLabel.toString(),
+        launcherApps.getShortcutIconDrawable(info, 0)?.toBitmap()?.asImageBitmap()
+    )
 
     fun openAppSettings(item: LauncherActivityInfo) {
         launcherApps.startAppDetailsActivity(item.componentName, user, null, null)
@@ -549,7 +588,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     suspend fun sheetActionsSnapshot(
         item: LauncherItem,
         parent: LauncherItem.Tag? = null,
-        onShortcutRemoval: (LauncherItem.Shortcut, Long) -> Unit,
         onNavigate: (View) -> Unit = {}
     ): List<SheetAction> = buildList {
         if (parent == null) {
@@ -558,8 +596,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             add(SheetAction(favoriteLabel) {
                 viewModelScope.launch {
                     if (inFavorites) {
-                        if (item is LauncherItem.Shortcut) onShortcutRemoval(item, TAG.FAV)
-                        else removeItemFromParent(item, TAG.FAV)
+                        removeItemFromParent(item, TAG.FAV)
                     } else {
                         val key = itemKey(item)
                         val favTag = getTag(TAG.FAV).first { it != null } ?: return@launch
@@ -571,11 +608,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             })
         } else {
             add(SheetAction("Remove from ${parent.name}") {
-                if (item is LauncherItem.Shortcut && parent.id != TAG.HIDDEN) {
-                    onShortcutRemoval(item, parent.id)
-                } else {
-                    viewModelScope.launch { removeItemFromParent(item, parent.id) }
-                }
+                viewModelScope.launch { removeItemFromParent(item, parent.id) }
             })
             add(SheetAction("Manage ${parent.name}") {
                 viewModelScope.launch {
@@ -611,76 +644,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             .mapIndexed { index, entity -> entity.copy(itemOrder = index) }
         setTagItems(parentId, nextItems)
         schedulePersist(parentId)
-    }
-
-    // Hide annotates one shortcut and removes the current membership. Unpin is global.
-    // Rendering intentionally does not filter Hidden yet.
-    internal suspend fun removeShortcutFromTag(
-        item: LauncherItem.Shortcut,
-        parentId: Long,
-        action: ShortcutRemovalAction
-    ) {
-        tagDataReady.await()
-        val pkg = item.info.`package`
-        val id = item.info.id
-        val ramByTag = tagItemState.value.groupBy { it.tagId }
-        val dirtyTags = synchronized(pendingTagItems) { pendingTagItems.toSet() }
-        fun matches(row: TagItemEntity): Boolean =
-            row.type == TagItemType.SHORTCUT && row.packageName == pkg && row.shortcutId == id
-
-        // Once Android has unpinned an item, finish database cleanup even if its screen closes.
-        withContext(Dispatchers.IO + NonCancellable) {
-            val updates = shortcutPinMutex.withLock {
-                if (action == ShortcutRemovalAction.UNPIN) {
-                    // Refresh immediately before replacing the package's complete pin set.
-                    val current = launcherApps.getShortcuts(
-                        ShortcutQuery().apply {
-                            setPackage(pkg)
-                            setQueryFlags(ShortcutQuery.FLAG_MATCH_DYNAMIC or ShortcutQuery.FLAG_MATCH_PINNED or ShortcutQuery.FLAG_MATCH_MANIFEST)
-                        }, user
-                    ).orEmpty()
-                    val target = current.find { it.id == id }
-                    check(target == null || requiresUnpinChoice(target.isPinned, target.isDeclaredInManifest, target.isDynamic)) {
-                        "This shortcut is published by the app. Hide it instead."
-                    }
-                    launcherApps.pinShortcuts(pkg, current.filter { it.isPinned && it.id != id }.map { it.id }, user)
-                }
-                db.withTransaction {
-                    val storedByTag = tagItemDao.getAllItems().groupBy { it.tagId }
-                    fun rows(tagId: Long): List<TagItemEntity> =
-                        if (tagId in dirtyTags) ramByTag[tagId].orEmpty() else storedByTag[tagId].orEmpty()
-
-                    val changed = mutableMapOf<Long, List<TagItemEntity>>()
-                    if (action == ShortcutRemovalAction.UNPIN) {
-                        for (tagId in storedByTag.keys + ramByTag.keys) {
-                            val before = rows(tagId)
-                            if (before.any(::matches)) changed[tagId] = before.filterNot(::matches)
-                        }
-                    } else {
-                        tagDao.insert(TagEntity(TAG.HIDDEN, "Hidden"))
-                        val hidden = rows(TAG.HIDDEN)
-                        changed[TAG.HIDDEN] = if (hidden.any(::matches)) hidden else hidden + TagItemEntity(
-                            TAG.HIDDEN,
-                            (hidden.maxOfOrNull { it.itemOrder } ?: -1) + 1,
-                            TagItemType.SHORTCUT,
-                            pkg,
-                            id,
-                            labelOverride = item.label
-                        )
-                        if (parentId != TAG.HIDDEN) changed[parentId] = rows(parentId).filterNot(::matches)
-                    }
-                    val ordered = changed.mapValues { (_, rows) -> rows.mapIndexed { index, row -> row.copy(itemOrder = index) } }
-                    ordered.forEach { (tagId, rows) ->
-                        cancelPersist(tagId)
-                        tagItemDao.updateOrder(tagId, rows)
-                    }
-                    ordered
-                }
-            }
-            updates.forEach { (tagId, rows) -> setTagItems(tagId, rows) }
-            synchronized(pendingTagItems) { pendingTagItems.removeAll(updates.keys) }
-            refreshShortcuts()
-        }
     }
 
     private suspend fun isInFavorites(item: LauncherItem): Boolean {
@@ -968,7 +931,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun renameTag(tagId: Long, name: String) {
-        if (TAG.isSystem(tagId)) return
+        if (tagId == TAG.FAV || tagId == TAG.PINNED) return
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         val current = tagState.value
@@ -982,7 +945,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun deleteTag(tagId: Long) {
-        if (TAG.isSystem(tagId)) return
+        if (tagId == TAG.FAV || tagId == TAG.PINNED) return
         val current = tagState.value
         val existing = current.firstOrNull { it.id == tagId } ?: return
         setTags(current.filterNot { it.id == tagId })
