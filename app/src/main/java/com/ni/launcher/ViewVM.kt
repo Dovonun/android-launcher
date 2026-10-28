@@ -22,6 +22,7 @@ sealed interface View {
 sealed interface MenuState {
     data object None : MenuState
     data class Sheet(val item: LauncherItem, val parent: LauncherItem.Tag? = null) : MenuState
+    data class RemoveShortcut(val item: LauncherItem.Shortcut, val parentId: Long) : MenuState
     data class Popup(
         val entries: List<LauncherItem>,
         val yPos: Float,

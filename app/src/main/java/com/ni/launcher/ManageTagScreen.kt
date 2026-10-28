@@ -136,6 +136,7 @@ fun ManageTagScreen(
             )
         })
     }
+    var removalCandidate by remember(tag.id) { mutableStateOf<ManageRow?>(null) }
     var draggedRowId by remember { mutableStateOf<Long?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     var settleTargetId by remember { mutableStateOf<Long?>(null) }
@@ -144,11 +145,13 @@ fun ManageTagScreen(
     var dragMoved by remember { mutableStateOf(false) }
 
     val finishManage: () -> Unit = {
-        val snapshot = localRows.toList()
-        scope.launch {
-            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
-            appsVM.flushTagItems(tag.id)
-            viewVM.setView(View.Favorites)
+        if (removalCandidate == null) {
+            val snapshot = localRows.toList()
+            scope.launch {
+                appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+                appsVM.flushTagItems(tag.id)
+                viewVM.setView(View.Favorites)
+            }
         }
     }
 
@@ -224,11 +227,15 @@ fun ManageTagScreen(
                                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
                                 return@LaunchedEffect
                             }
-                            val updated = localRows.filterNot { it.rowId == rowId }
-                            localRows = updated
-                            val snapshot = updated.toList()
-                            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
                             dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                            if (row.item is LauncherItem.Shortcut && tag.id != TAG.HIDDEN) {
+                                removalCandidate = row
+                            } else {
+                                // Removing from Hidden only clears the annotation.
+                                val updated = localRows.filterNot { it.rowId == rowId }
+                                localRows = updated
+                                appsVM.syncTagItemsToList(tag.id, updated.map { it.item })
+                            }
                         }
 
                         SwipeToDismissBoxValue.Settled -> Unit
@@ -412,6 +419,19 @@ fun ManageTagScreen(
         ) {
             Icon(Icons.Default.Check, contentDescription = "Confirm")
         }
+    }
+    removalCandidate?.let { row ->
+        val shortcut = row.item as LauncherItem.Shortcut
+        ShortcutRemovalFlow(
+            shortcut, tag.id, appsVM,
+            onRemoved = {
+                val removedKey = selectionKey(shortcut)
+                // Unpin is global; hide also removes duplicate memberships in this tag.
+                localRows = localRows.filterNot { selectionKey(it.item) == removedKey }
+                removalCandidate = null
+            },
+            onDismiss = { removalCandidate = null }
+        )
     }
 }
 

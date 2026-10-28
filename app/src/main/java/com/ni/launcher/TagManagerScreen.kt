@@ -205,7 +205,7 @@ fun TagManagerScreen(
                 items = tags.asReversed(),
                 key = { it.id }
             ) { tag ->
-                val isSystem = tag.id == TAG.FAV || tag.id == TAG.PINNED
+                val isSystem = TAG.isSystem(tag.id)
                 val isEditing = editingTagId == tag.id
                 var layoutCoordinates: LayoutCoordinates? = null
                 var fired by remember { mutableStateOf(false) }
