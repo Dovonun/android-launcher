@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="com.ni.launcher.e2e.LauncherE2ETest" tests="4" failures="0" errors="0" skipped="0" time="319.587" timestamp="2026-10-28T10:10:01" hostname="localhost">
+  <properties>
+    <property name="device" value="pixel_gapis(AVD) - 11" />
+    <property name="flavor" value="" />
+    <property name="project" value=":e2e" />
+  </properties>
+  <testcase name="addAppToFavoritesShowsOnHomeAndSurvivesForceStop" classname="com.ni.launcher.e2e.LauncherE2ETest" time="121.778" />
+  <testcase name="openAllAppsFromRightEdgeAndFindApp" classname="com.ni.launcher.e2e.LauncherE2ETest" time="46.327" />
+  <testcase name="swipeOnAppOpensItsShortcutPopup" classname="com.ni.launcher.e2e.LauncherE2ETest" time="80.963" />
+  <testcase name="launcherStartsAsHome" classname="com.ni.launcher.e2e.LauncherE2ETest" time="40.819" />
+</testsuite>

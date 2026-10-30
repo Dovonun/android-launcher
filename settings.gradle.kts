@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ni-Launcher"
 include(":app")
+include(":e2e")
  
