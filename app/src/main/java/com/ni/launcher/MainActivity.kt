@@ -187,7 +187,7 @@ class MainActivity : ComponentActivity() {
                                 is View.Favorites -> {
                                     val favorites by appsVM.favorites.collectAsState()
                                     val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
-                                    // Favorites are a short, capped list: plain Column, index 0 at the bottom.
+                                    // Favorites: plain Column, index 0 at the bottom. The count is not capped and the list does not scroll.
                                     Column(
                                         verticalArrangement = Arrangement.Bottom,
                                         modifier = Modifier
@@ -603,7 +603,7 @@ fun ShortcutPopup(
             val contentHeight = if (isScrollable) maxHeight else rowHeight * entries.size
             val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
             val popupOffsetY = (anchorDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
-            // Popups are short, capped lists: plain Column. Entries are laid out reversed so
+            // Popups are usually short: plain Column, height-limited to maxHeight. Entries are laid out reversed so
             // index 0 sits at the bottom next to the anchor, and reverseScrolling starts the
             // scroll at the bottom when the list exceeds maxHeight.
             val scrollState = rememberScrollState()
