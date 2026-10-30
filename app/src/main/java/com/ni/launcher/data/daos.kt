@@ -57,6 +57,9 @@ interface TagItemDao {
     @Query("SELECT DISTINCT packageName FROM tag_items WHERE type = 'APP' OR type = 'SHORTCUT'")
     fun getDistinctPackages(): Flow<List<String>>
 
+    @Query("SELECT COUNT(*) FROM tag_items WHERE tagId = :tagId AND type = 'SHORTCUT' AND packageName = :packageName AND shortcutId = :shortcutId")
+    suspend fun countShortcutInTag(tagId: Long, packageName: String, shortcutId: String): Int
+
     @Query("SELECT MAX(itemOrder) FROM tag_items WHERE tagId = :tagId")
     suspend fun getMaxOrderForTag(tagId: Long): Int?
 
