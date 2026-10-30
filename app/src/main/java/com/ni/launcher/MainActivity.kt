@@ -21,6 +21,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -185,6 +187,7 @@ class MainActivity : ComponentActivity() {
                                 is View.Favorites -> {
                                     val favorites by appsVM.favorites.collectAsState()
                                     val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
+                                    // Favorites: plain Column, index 0 at the bottom. The count is not capped and the list does not scroll.
                                     Column(
                                         verticalArrangement = Arrangement.Bottom,
                                         modifier = Modifier
@@ -600,11 +603,12 @@ fun ShortcutPopup(
             val contentHeight = if (isScrollable) maxHeight else rowHeight * entries.size
             val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
             val popupOffsetY = (anchorDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
-            val listState = rememberLazyListState()
+            // Popups are usually short: plain Column, height-limited to maxHeight. Entries are laid out reversed so
+            // index 0 sits at the bottom next to the anchor, and reverseScrolling starts the
+            // scroll at the bottom when the list exceeds maxHeight.
+            val scrollState = rememberScrollState()
             if (entries.isNotEmpty()) {
-                LazyColumn(
-                    state = listState,
-                    reverseLayout = true,
+                Column(
                     modifier = Modifier
                         .heightIn(max = maxHeight)
                         .offset(
@@ -617,8 +621,9 @@ fun ShortcutPopup(
                         .widthIn(max = maxWidth)
                         .padding(horizontal = H_PAD.dp, vertical = pad)
                         .fadingEdges()
+                        .verticalScroll(scrollState, reverseScrolling = true)
                 ) {
-                    items(entries) { item ->
+                    entries.asReversed().forEach { item ->
                         IconRow(
                             item,
                             appsVM,
