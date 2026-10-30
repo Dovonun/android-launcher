@@ -2,6 +2,8 @@ package com.ni.launcher
 
 import android.content.pm.LauncherApps
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.withTransaction
@@ -9,6 +11,7 @@ import com.ni.launcher.TAG.PINNED
 import com.ni.launcher.data.TagEntity
 import com.ni.launcher.data.TagItemEntity
 import com.ni.launcher.data.TagItemType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -50,10 +53,20 @@ class PinShortcutActivity : ComponentActivity() {
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Don't crash the launcher process when accepting or saving the pin fails.
+                Log.e(LOG_TAG, "Failed to save pinned shortcut ${shortcut.`package`}/${shortcut.id}", e)
+                Toast.makeText(applicationContext, "Couldn't save pinned shortcut", Toast.LENGTH_SHORT).show()
             } finally {
                 // Finishing earlier cancels lifecycleScope and can lose the managed row.
                 finish()
             }
         }
+    }
+
+    private companion object {
+        const val LOG_TAG = "PinShortcutActivity"
     }
 }
