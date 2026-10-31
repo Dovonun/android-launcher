@@ -1,2 +1,0 @@
-com.ni.launcher.e2e:style/WhiteBackgroundTheme = 0x7f010001
-com.ni.launcher.e2e:style/WhiteBackgroundDialogTheme = 0x7f010000
