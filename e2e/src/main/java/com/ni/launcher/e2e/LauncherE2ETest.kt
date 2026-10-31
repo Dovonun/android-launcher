@@ -4,6 +4,7 @@ import android.graphics.Rect
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
@@ -40,6 +41,7 @@ class LauncherE2ETest {
 
     @Before
     fun startFromCleanHome() {
+        shell("setprop $HOLD_PROP ''")
         shell("pm clear $PKG")
         shell("cmd package set-home-activity $PKG/$ACTIVITY")
         goHome()
@@ -89,7 +91,88 @@ class LauncherE2ETest {
         )
     }
 
+    /**
+     * Staged startup publishes apps (stage 1) long before shortcuts (stage 4). Opening and
+     * confirming Manage Tag in that window must not delete the tag's saved shortcut children.
+     */
+    @Test
+    fun manageTagBeforeShortcutsLoadKeepsSavedShortcuts() {
+        waitForShortcutsLoaded()
+        openAllApps()
+        val app = findInAllApps(APP) ?: error("$APP not found in All Apps")
+        longPress(app)
+        (waitFor(By.text("Create Tag")) ?: error("context sheet did not open")).click()
+        assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
+        val saved = manageRows()
+        assertTrue("$TAG_NAME should hold $APP plus shortcuts, got $saved", saved.size >= 2)
+        confirmManage()
+
+        // Cold start with shortcut discovery held (debug-only hook in SystemSource), then open
+        // Manage while only apps are known, and confirm it.
+        shell("setprop $HOLD_PROP DEBUG")
+        shell("am force-stop $PKG")
+        goHome()
+        // Home shows a tag by its representative (first child).
+        longPress(waitFor(By.text(APP)) ?: error("$TAG_NAME ($APP) missing on home"))
+        (waitFor(By.text("Manage $TAG_NAME")) ?: error("tag sheet did not open")).click()
+        assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
+        val early = manageRows()
+        confirmManage()
+        val held = shell("logcat -d --pid=${shell("pidof $PKG").trim()} -s NiE2EHoldShortcuts:W")
+        assertTrue("Shortcut discovery should have been held, log: $held", held.contains("holding shortcut discovery"))
+        assertTrue("Manage should open with only $APP resolved, got $early", early.size < saved.size)
+        shell("setprop $HOLD_PROP ''")
+        waitForShortcutsLoaded()
+
+        // Restart again and check membership/order after everything is resolved.
+        shell("am force-stop $PKG")
+        goHome()
+        waitForShortcutsLoaded()
+        // Home shows a tag by its representative (first child).
+        longPress(waitFor(By.text(APP)) ?: error("$TAG_NAME ($APP) missing on home"))
+        (waitFor(By.text("Manage $TAG_NAME")) ?: error("tag sheet did not open")).click()
+        assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
+        assertEquals("Saved children after early Manage (early view was $early)", saved, manageRows())
+    }
+
     // --- helpers ---
+
+    private fun longPress(o: UiObject2) {
+        val b = o.visibleBounds
+        device.swipe(b.centerX(), b.centerY(), b.centerX(), b.centerY(), 300)
+    }
+
+    /** Manage Tag row labels, top to bottom (the add row and buttons have no text). */
+    private fun manageRows(): List<String> {
+        repeat(5) {
+            device.waitForIdle(5_000)
+            try {
+                return device.findObjects(By.pkg(PKG))
+                    .mapNotNull { o -> o.text?.takeIf { it.isNotBlank() }?.let { o.visibleBounds.top to it } }
+                    .sortedBy { it.first }
+                    .map { it.second }
+            } catch (_: StaleObjectException) {
+                // The list recomposed while it was read; read it again.
+            }
+        }
+        error("Manage Tag rows kept changing")
+    }
+
+    private fun confirmManage() {
+        (waitFor(By.desc("Confirm")) ?: error("Confirm missing")).click()
+        assertTrue("Should leave Manage Tag", waitUntil { !device.hasObject(By.desc("Confirm")) } == true)
+    }
+
+    /** The running launcher process logs "stage 4 shortcuts" (tag NiGraph) once they are published. */
+    private fun waitForShortcutsLoaded() {
+        assertTrue(
+            "shortcuts never loaded",
+            waitUntil(LONG * 2) {
+                val pid = shell("pidof $PKG").trim()
+                pid.isNotEmpty() && shell("logcat -d --pid=$pid -s NiGraph:D").contains("stage 4 shortcuts")
+            } == true
+        )
+    }
 
     private fun shell(cmd: String): String = device.executeShellCommand(cmd)
 
@@ -168,6 +251,8 @@ class LauncherE2ETest {
         const val PKG = "com.ni.launcher.dev"
         const val ACTIVITY = "com.ni.launcher.MainActivity"
         const val APP = "Settings"
+        const val TAG_NAME = "$APP Tag"
+        const val HOLD_PROP = "log.tag.NiE2EHoldShortcuts"
         const val LONG = 60_000L
         const val SHOT_DIR = "/data/local/tmp/ni-e2e"
         val SINGLE_LETTER: Pattern = Pattern.compile("[A-Z#]")

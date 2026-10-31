@@ -16,7 +16,6 @@ class LaunchResolverTest {
         val tag = LauncherItem.Tag(
             id = 1L,
             name = "Tag A",
-            getItems = { emptyList() },
             representative = placeholder
         )
 
@@ -29,13 +28,11 @@ class LaunchResolverTest {
         val nested = LauncherItem.Tag(
             id = 2L,
             name = "Nested",
-            getItems = { emptyList() },
             representative = placeholder
         )
         val root = LauncherItem.Tag(
             id = 1L,
             name = "Root",
-            getItems = { listOf(nested) },
             representative = nested
         )
 
