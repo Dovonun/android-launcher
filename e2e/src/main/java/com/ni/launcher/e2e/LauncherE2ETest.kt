@@ -4,6 +4,7 @@ import android.graphics.Rect
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
@@ -143,11 +144,18 @@ class LauncherE2ETest {
 
     /** Manage Tag row labels, top to bottom (the add row and buttons have no text). */
     private fun manageRows(): List<String> {
-        device.waitForIdle(5_000)
-        return device.findObjects(By.pkg(PKG))
-            .filter { !it.text.isNullOrBlank() }
-            .sortedBy { it.visibleBounds.top }
-            .map { it.text }
+        repeat(5) {
+            device.waitForIdle(5_000)
+            try {
+                return device.findObjects(By.pkg(PKG))
+                    .mapNotNull { o -> o.text?.takeIf { it.isNotBlank() }?.let { o.visibleBounds.top to it } }
+                    .sortedBy { it.first }
+                    .map { it.second }
+            } catch (_: StaleObjectException) {
+                // The list recomposed while it was read; read it again.
+            }
+        }
+        error("Manage Tag rows kept changing")
     }
 
     private fun confirmManage() {
