@@ -8,7 +8,8 @@ package com.ni.launcher.model
  * - [load] is called once from the store's model thread; implementations switch to IO themselves.
  * - [markDirty] is called on the model thread right after a snapshot is published; it must be
  *   cheap and non-blocking (record dirty ids + latest UserData, wake the writer).
- * - [flush] suspends until everything up to [version] is durable.
+ * - [flush] suspends until everything up to [version] is durable, or throws if that write failed
+ *   (the changes then stay dirty in memory; they are never reported durable without a commit).
  */
 interface GraphPersister {
     suspend fun load(): UserData

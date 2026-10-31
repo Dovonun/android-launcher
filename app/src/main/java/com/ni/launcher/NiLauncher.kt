@@ -8,6 +8,7 @@ import com.ni.launcher.data.RoomGraphPersister
 import com.ni.launcher.model.LauncherGraphStore
 import com.ni.launcher.model.LauncherProjections
 import com.ni.launcher.system.SystemSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -64,7 +65,14 @@ class NiLauncher : Application() {
      * ProcessLifecycleOwner is not a dependency). Runs in [appScope], NonCancellable.
      */
     fun flushGraphAsync(): Job = appScope.launch {
-        withContext(NonCancellable) { graphStore.flush() }
+        try {
+            withContext(NonCancellable) { graphStore.flush() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Changes stay dirty in memory and are retried on the next write; don't crash.
+            Log.e(LOG_TAG, "graph flush failed", e)
+        }
     }
 
     private companion object {

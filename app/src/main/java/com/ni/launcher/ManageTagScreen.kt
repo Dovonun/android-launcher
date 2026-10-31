@@ -125,7 +125,7 @@ fun ManageTagScreen(
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     LaunchedEffect(tag.id, items) {
-        appsVM.syncTagItemsInMemory(tag.id, items)
+        appsVM.syncTagItemsToList(tag.id, items, shown = items)
     }
 
     var localRows by remember(items) {
@@ -145,7 +145,7 @@ fun ManageTagScreen(
 
     val finishManage: () -> Unit = {
         val snapshot = localRows.toList()
-        appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+        appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item }, shown = items)
         viewVM.setView(View.Favorites)
     }
 
@@ -158,7 +158,7 @@ fun ManageTagScreen(
                 val finalOrder = localRows.map { it.rowId }
                 if (startOrder != null && finalOrder != startOrder) {
                     val snapshot = localRows.toList()
-                    appsVM.updateOrder(tag.id, snapshot.map { it.item })
+                    appsVM.updateOrder(tag.id, snapshot.map { it.item }, shown = items)
                 }
             }
 
@@ -222,7 +222,7 @@ fun ManageTagScreen(
                             val updated = localRows.filterNot { it.rowId == rowId }
                             localRows = updated
                             val snapshot = updated.toList()
-                            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item })
+                            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item }, shown = items)
                             dismissState.snapTo(SwipeToDismissBoxValue.Settled)
                         }
 
@@ -512,7 +512,10 @@ fun ManageTagAddScreen(
             }
         }
 
-        viewVM.setView(View.ManageTag(tag, retained + orderedAdditions))
+        val next = retained + orderedAdditions
+        // Apply deselections here: the next ManageTag only knows `next`, so it keeps anything else.
+        appsVM.syncTagItemsToList(tag.id, next, shown = items)
+        viewVM.setView(View.ManageTag(tag, next))
     }
 
     BackHandler { confirm() }

@@ -9,8 +9,7 @@ import com.ni.launcher.TAG
  * Mapping to the AppsVM intents (pre-graph names in parentheses where they differ):
  * - (ensureItemsInTag / addItemToFavorites) -> [Add] (appends missing keys, keeps existing edges)
  * - removeItemFromParent                  -> [Remove]
- * - updateOrder                           -> [Reorder] (keeps only keys present in both, like buildEntitiesForOrder)
- * - syncTagItemsToList / syncTagItemsInMemory -> [SetItems] (ensure + reorder in one step)
+ * - updateOrder / syncTagItemsToList       -> [SetItems] with `shown` (keeps children the UI didn't list)
  * - renameTag / deleteTag                 -> [Rename] / [Delete]
  * - createTagFromItem                     -> [Create] (id from LauncherGraphStore.newTagId())
  * - label override                        -> [SetLabel] (no UI yet)
@@ -42,8 +41,16 @@ sealed interface Command {
     /**
      * Makes [tagId]'s children exactly [edges] (by key, in order). Existing edges keep their
      * labelOverride; new keys use the edge as given.
+     *
+     * If [shown] is set (UI edits), only keys in [shown] (the list the user was editing) or in
+     * [edges] are managed: any other existing child, e.g. a shortcut that was not resolved yet
+     * when the list was taken, is kept with its label, after the child it followed before.
      */
-    data class SetItems(val tagId: Long, val edges: List<Edge>) : Command
+    data class SetItems(
+        val tagId: Long,
+        val edges: List<Edge>,
+        val shown: Set<ItemKey>? = null,
+    ) : Command
 
     /** Ignored for system tags and blank names; name is trimmed. */
     data class Rename(val tagId: Long, val name: String) : Command

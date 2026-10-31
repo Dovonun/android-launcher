@@ -24,7 +24,8 @@ fun reduce(g: LauncherGraph, c: Command): LauncherGraph {
         }
         is Command.SetItems -> g.editTag(c.tagId) { u, t ->
             val byKey = t.children.associateBy { it.key }
-            t.copy(children = u.sanitizeEdges(c.edges).map { byKey[it.key] ?: it })
+            val next = u.sanitizeEdges(c.edges).map { byKey[it.key] ?: it }
+            t.copy(children = if (c.shown == null) next else keepUnlisted(t.children, next, c.shown))
         }
         is Command.Rename -> {
             val name = c.name.trim()
@@ -49,6 +50,29 @@ private inline fun LauncherGraph.editTag(
     val nt = f(user, t)
     if (nt == t) return this
     return copy(user = user.copy(tags = user.tags + (id to nt)))
+}
+
+/**
+ * [next] plus every child of [old] whose key is neither in [next] nor in [shown] (the UI never
+ * listed it, e.g. unresolved during staged startup). A kept child goes right after the nearest
+ * preceding [old] child that is still in [next] (or first if none), so saved order survives.
+ */
+private fun keepUnlisted(old: List<Edge>, next: List<Edge>, shown: Set<ItemKey>): List<Edge> {
+    val nextKeys = next.mapTo(HashSet()) { it.key }
+    val keptAfter = HashMap<ItemKey?, MutableList<Edge>>()
+    var anchor: ItemKey? = null
+    for (e in old) {
+        if (e.key in nextKeys) anchor = e.key
+        else if (e.key !in shown) keptAfter.getOrPut(anchor) { ArrayList() } += e
+    }
+    if (keptAfter.isEmpty()) return next
+    return buildList {
+        keptAfter[null]?.let(::addAll)
+        for (e in next) {
+            add(e)
+            keptAfter[e.key]?.let(::addAll)
+        }
+    }
 }
 
 /** Appends edges whose keys are new; tag edges must point to existing tags. */

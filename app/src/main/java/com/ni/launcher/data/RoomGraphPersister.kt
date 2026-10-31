@@ -14,9 +14,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 private const val LOG_TAG = "RoomGraphPersister"
 const val GRAPH_PERSIST_DEBOUNCE_MS = 150L
@@ -34,7 +36,9 @@ private const val MAX_BACKOFF_MS = 30_000L
  *   replace each changed tag's tag_items. Idempotent, so retries and merging are safe.
  * - Transient failures keep the batch dirty and retry with exponential backoff (0.5 s .. 30 s).
  *   A constraint failure (graph/DB invariant broken) triggers one full resync of the whole
- *   UserData; if that also fails it is logged with Log.wtf and dropped.
+ *   UserData; if that also fails it is logged with Log.wtf, the batch stays dirty (retried on the
+ *   next markDirty/flush, no automatic loop) and waiting [flush] callers get a
+ *   [GraphPersistException]. The durable watermark only moves after a committed transaction.
  */
 class RoomGraphPersister(
     private val db: AppDatabase,
@@ -61,6 +65,10 @@ class RoomGraphPersister(
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private val persisted = MutableStateFlow(0L)
 
+    /** Last terminal write failure; a new instance per failure. [version] = failed batch's version. */
+    private class Failure(val version: Long, val cause: Throwable)
+    private val failure = MutableStateFlow<Failure?>(null)
+
     init {
         scope.launch(io) { writerLoop() }
     }
@@ -84,13 +92,19 @@ class RoomGraphPersister(
     /**
      * Suspends until every change marked with a version <= [version] is in Room. Skips the
      * debounce. Versions that were never marked (non-persisted commands) don't block.
+     * Throws [GraphPersistException] if the write attempt it triggers fails terminally (batch and
+     * full resync both failed); that data is still dirty in memory, not durable.
      */
     override suspend fun flush(version: Long) {
         val target = synchronized(lock) { minOf(version, lastMarkedVersion) }
         if (persisted.value >= target) return
+        val seen = failure.value
         urgent = true
         wake.trySend(Unit)
-        persisted.first { it >= target }
+        val f = combine(persisted, failure) { p, f -> if (p >= target) null else f }
+            .first { it == null || (it !== seen && it.version >= target) }
+            ?: return
+        throw GraphPersistException("graph changes up to v$target were not saved", f.cause)
     }
 
     /** [newer]'s user wins; removals are sticky (tag ids are never reused). */
@@ -121,13 +135,17 @@ class RoomGraphPersister(
                 Log.e(LOG_TAG, "constraint failure writing graph batch v${b.version}; full resync", e)
                 try {
                     db.withTransaction { writeFull(b.user) }
+                    markPersisted(b.version)
+                    backoff = MIN_BACKOFF_MS
                 } catch (e2: CancellationException) {
                     throw e2
                 } catch (e2: Exception) {
-                    Log.wtf(LOG_TAG, "graph/DB invariant broken; dropping batch v${b.version}", e2)
+                    // Not durable: keep the batch dirty (retried on the next markDirty/flush) and
+                    // fail waiting flush() callers instead of advancing the watermark.
+                    Log.wtf(LOG_TAG, "graph/DB invariant broken; batch v${b.version} kept dirty, not persisted", e2)
+                    synchronized(lock) { pending = merge(b, pending ?: b) }
+                    failure.value = Failure(b.version, e2)
                 }
-                // Either way, don't block flush() forever on a batch we can't write.
-                markPersisted(b.version)
             } catch (e: Exception) {
                 Log.w(LOG_TAG, "graph write failed (v${b.version}), retrying in ${backoff}ms", e)
                 synchronized(lock) { pending = merge(b, pending ?: b) }
@@ -172,3 +190,6 @@ class RoomGraphPersister(
         }
     }
 }
+
+/** A graph write failed terminally; the changes are still in memory but not in Room. */
+class GraphPersistException(message: String, cause: Throwable) : IOException(message, cause)

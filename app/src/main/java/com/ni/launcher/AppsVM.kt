@@ -229,19 +229,28 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     private fun keysOf(items: List<LauncherItem>): List<ItemKey> = items.mapNotNull { it.itemKey() }
 
-    /** New order for [tagId]; keys not in [items] are dropped (as before). */
-    fun updateOrder(tagId: Long, items: List<LauncherItem>) {
-        store.dispatch(Command.Reorder(tagId, keysOf(items)))
+    /**
+     * New order for [tagId] from a UI list. Only keys in [shown] (the list the screen was opened
+     * with) are managed; saved children the screen never listed (e.g. shortcuts not yet resolved
+     * during staged startup) are kept in place, see [Command.SetItems].
+     */
+    fun updateOrder(tagId: Long, items: List<LauncherItem>, shown: List<LauncherItem>) =
+        syncTagItemsToList(tagId, items, shown)
+
+    /**
+     * Makes the [shown] part of [tagId]'s children exactly [items], in order (ensure + reorder).
+     * Children whose keys are not in [shown] are kept, so a partially resolved list can't delete
+     * saved edges.
+     */
+    fun syncTagItemsToList(tagId: Long, items: List<LauncherItem>, shown: List<LauncherItem>) {
+        store.dispatch(
+            Command.SetItems(
+                tagId,
+                items.mapNotNull { it.toEdge() },
+                shown = (keysOf(shown) + keysOf(items)).toSet(),
+            )
+        )
     }
-
-
-    /** Makes [tagId]'s children exactly [items], in order (ensure + reorder). */
-    fun syncTagItemsToList(tagId: Long, items: List<LauncherItem>) {
-        store.dispatch(Command.SetItems(tagId, items.mapNotNull { it.toEdge() }))
-    }
-
-    /** Same as [syncTagItemsToList]; kept for the ManageTag entry call site. */
-    fun syncTagItemsInMemory(tagId: Long, items: List<LauncherItem>) = syncTagItemsToList(tagId, items)
 
     fun renameTag(tagId: Long, name: String) {
         store.dispatch(Command.Rename(tagId, name))

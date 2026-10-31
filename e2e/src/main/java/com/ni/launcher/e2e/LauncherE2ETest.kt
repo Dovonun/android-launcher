@@ -10,6 +10,7 @@ import androidx.test.uiautomator.UiObject2
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -89,7 +90,77 @@ class LauncherE2ETest {
         )
     }
 
+    /**
+     * Staged startup publishes apps (stage 1) long before shortcuts (stage 4). Opening and
+     * confirming Manage Tag in that window must not delete the tag's saved shortcut children.
+     */
+    @Test
+    fun manageTagBeforeShortcutsLoadKeepsSavedShortcuts() {
+        waitForShortcutsLoaded()
+        openAllApps()
+        val app = findInAllApps(APP) ?: error("$APP not found in All Apps")
+        longPress(app)
+        (waitFor(By.text("Create Tag")) ?: error("context sheet did not open")).click()
+        assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
+        val saved = manageRows()
+        assertTrue("$TAG_NAME should hold $APP plus shortcuts, got $saved", saved.size >= 2)
+        confirmManage()
+
+        // Cold start, then open Manage while only apps are known, and confirm it.
+        shell("am force-stop $PKG")
+        goHome()
+        // Home shows a tag by its representative (first child).
+        longPress(waitFor(By.text(APP)) ?: error("$TAG_NAME ($APP) missing on home"))
+        (waitFor(By.text("Manage $TAG_NAME")) ?: error("tag sheet did not open")).click()
+        assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
+        // Opened with only the app resolved = inside the window (else the test can't check it).
+        val early = manageRows()
+        confirmManage()
+        Assume.assumeTrue("Manage opened after shortcuts loaded; window missed (early=$early)", early.size < saved.size)
+        waitForShortcutsLoaded()
+
+        // Restart again and check membership/order after everything is resolved.
+        shell("am force-stop $PKG")
+        goHome()
+        waitForShortcutsLoaded()
+        // Home shows a tag by its representative (first child).
+        longPress(waitFor(By.text(APP)) ?: error("$TAG_NAME ($APP) missing on home"))
+        (waitFor(By.text("Manage $TAG_NAME")) ?: error("tag sheet did not open")).click()
+        assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
+        assertEquals("Saved children after early Manage (early view was $early)", saved, manageRows())
+    }
+
     // --- helpers ---
+
+    private fun longPress(o: UiObject2) {
+        val b = o.visibleBounds
+        device.swipe(b.centerX(), b.centerY(), b.centerX(), b.centerY(), 300)
+    }
+
+    /** Manage Tag row labels, top to bottom (the add row and buttons have no text). */
+    private fun manageRows(): List<String> {
+        device.waitForIdle(5_000)
+        return device.findObjects(By.pkg(PKG))
+            .filter { !it.text.isNullOrBlank() }
+            .sortedBy { it.visibleBounds.top }
+            .map { it.text }
+    }
+
+    private fun confirmManage() {
+        (waitFor(By.desc("Confirm")) ?: error("Confirm missing")).click()
+        assertTrue("Should leave Manage Tag", waitUntil { !device.hasObject(By.desc("Confirm")) } == true)
+    }
+
+    /** The running launcher process logs "stage 4 shortcuts" (tag NiGraph) once they are published. */
+    private fun waitForShortcutsLoaded() {
+        assertTrue(
+            "shortcuts never loaded",
+            waitUntil(LONG * 2) {
+                val pid = shell("pidof $PKG").trim()
+                pid.isNotEmpty() && shell("logcat -d --pid=$pid -s NiGraph:D").contains("stage 4 shortcuts")
+            } == true
+        )
+    }
 
     private fun shell(cmd: String): String = device.executeShellCommand(cmd)
 
@@ -168,6 +239,7 @@ class LauncherE2ETest {
         const val PKG = "com.ni.launcher.dev"
         const val ACTIVITY = "com.ni.launcher.MainActivity"
         const val APP = "Settings"
+        const val TAG_NAME = "$APP Tag"
         const val LONG = 60_000L
         const val SHOT_DIR = "/data/local/tmp/ni-e2e"
         val SINGLE_LETTER: Pattern = Pattern.compile("[A-Z#]")
