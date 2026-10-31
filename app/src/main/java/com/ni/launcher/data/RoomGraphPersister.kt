@@ -101,10 +101,12 @@ class RoomGraphPersister(
         val seen = failure.value
         urgent = true
         wake.trySend(Unit)
-        val f = combine(persisted, failure) { p, f -> if (p >= target) null else f }
-            .first { it == null || (it !== seen && it.version >= target) }
-            ?: return
-        throw GraphPersistException("graph changes up to v$target were not saved", f.cause)
+        // Done only when committed (p >= target) or a new failure covering target arrives;
+        // "pending, no failure yet" keeps waiting.
+        val (p, f) = combine(persisted, failure) { p, f -> p to f }
+            .first { (p, f) -> p >= target || (f != null && f !== seen && f.version >= target) }
+        if (p >= target) return
+        throw GraphPersistException("graph changes up to v$target were not saved", f!!.cause)
     }
 
     /** [newer]'s user wins; removals are sticky (tag ids are never reused). */

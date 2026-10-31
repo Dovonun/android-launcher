@@ -10,7 +10,6 @@ import androidx.test.uiautomator.UiObject2
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Assume
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -41,6 +40,7 @@ class LauncherE2ETest {
 
     @Before
     fun startFromCleanHome() {
+        shell("setprop $HOLD_PROP ''")
         shell("pm clear $PKG")
         shell("cmd package set-home-activity $PKG/$ACTIVITY")
         goHome()
@@ -106,17 +106,21 @@ class LauncherE2ETest {
         assertTrue("$TAG_NAME should hold $APP plus shortcuts, got $saved", saved.size >= 2)
         confirmManage()
 
-        // Cold start, then open Manage while only apps are known, and confirm it.
+        // Cold start with shortcut discovery held (debug-only hook in SystemSource), then open
+        // Manage while only apps are known, and confirm it.
+        shell("setprop $HOLD_PROP DEBUG")
         shell("am force-stop $PKG")
         goHome()
         // Home shows a tag by its representative (first child).
         longPress(waitFor(By.text(APP)) ?: error("$TAG_NAME ($APP) missing on home"))
         (waitFor(By.text("Manage $TAG_NAME")) ?: error("tag sheet did not open")).click()
         assertNotNull("Manage Tag did not open", waitFor(By.desc("Confirm")))
-        // Opened with only the app resolved = inside the window (else the test can't check it).
         val early = manageRows()
         confirmManage()
-        Assume.assumeTrue("Manage opened after shortcuts loaded; window missed (early=$early)", early.size < saved.size)
+        val held = shell("logcat -d --pid=${shell("pidof $PKG").trim()} -s NiE2EHoldShortcuts:W")
+        assertTrue("Shortcut discovery should have been held, log: $held", held.contains("holding shortcut discovery"))
+        assertTrue("Manage should open with only $APP resolved, got $early", early.size < saved.size)
+        shell("setprop $HOLD_PROP ''")
         waitForShortcutsLoaded()
 
         // Restart again and check membership/order after everything is resolved.
@@ -240,6 +244,7 @@ class LauncherE2ETest {
         const val ACTIVITY = "com.ni.launcher.MainActivity"
         const val APP = "Settings"
         const val TAG_NAME = "$APP Tag"
+        const val HOLD_PROP = "log.tag.NiE2EHoldShortcuts"
         const val LONG = 60_000L
         const val SHOT_DIR = "/data/local/tmp/ni-e2e"
         val SINGLE_LETTER: Pattern = Pattern.compile("[A-Z#]")

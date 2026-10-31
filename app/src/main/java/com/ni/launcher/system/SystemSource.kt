@@ -46,6 +46,8 @@ private const val TIMING_TAG = "NiGraph"
 const val SYSTEM_REFRESH_COALESCE_MS = 150L
 private const val ICON_BATCH = 32
 private const val LOADED_WAIT_MS = 500L
+private const val E2E_HOLD_TAG = "NiE2EHoldShortcuts"
+private const val E2E_HOLD_SHORTCUTS_MS = 30_000L
 
 /**
  * Adapter from LauncherApps to the graph store (design doc §3, §8). All IPC, label loading and
@@ -209,6 +211,7 @@ class SystemSource(
             }
 
             // 4. shortcuts without decoding
+            e2eHoldShortcuts()
             var infos: List<ShortcutInfo> = emptyList()
             stage(4, "shortcuts", t0) { cur ->
                 infos = queryShortcuts(null) ?: return@stage cur
@@ -428,6 +431,19 @@ class SystemSource(
 
     private fun <K, V> reuseMap(prev: Map<K, V>, next: Map<K, V>): Map<K, V> =
         if (prev == next) prev else next
+
+    /**
+     * Debuggable builds only: `adb shell setprop log.tag.NiE2EHoldShortcuts DEBUG` delays stage 4
+     * by [E2E_HOLD_SHORTCUTS_MS], so the e2e test can reliably act while apps are known but
+     * shortcuts are not (the window is often too short on a warm start).
+     */
+    private suspend fun e2eHoldShortcuts() {
+        val debuggable = appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        if (debuggable && Log.isLoggable(E2E_HOLD_TAG, Log.DEBUG)) {
+            Log.w(E2E_HOLD_TAG, "holding shortcut discovery for ${E2E_HOLD_SHORTCUTS_MS} ms")
+            delay(E2E_HOLD_SHORTCUTS_MS)
+        }
+    }
 
     private fun timing(what: String, t0: Long) {
         if (!debugTiming) return
