@@ -11,12 +11,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ni.launcher.model.AppNode
 import com.ni.launcher.model.ItemKey
+import com.ni.launcher.model.appPopupOf
+import com.ni.launcher.model.tagNamesOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -48,8 +51,8 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     fun tagItems(id: Long): List<LauncherItem> = store.tagView.value.rowsByTag[id].orEmpty()
 
     fun getTagsForItem(item: LauncherItem): Flow<List<String>> {
-        val key = item.itemKey() ?: return store.tagsByKey.map { emptyList() }
-        return store.tagsByKey.map { it[key].orEmpty() }.distinctUntilChanged()
+        val key = item.itemKey() ?: return flowOf(emptyList())
+        return store.graph.map { tagNamesOf(it, key) }.distinctUntilChanged()
     }
 
     private val _toast = MutableSharedFlow<String>()
@@ -92,12 +95,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Swipe popup content, read synchronously from the precomputed store. */
+    /** Swipe popup content, computed synchronously from the current graph (a few microseconds). */
     fun popupEntriesSnapshot(item: LauncherItem): List<LauncherItem> = when (item) {
         is LauncherItem.Tag -> tagItems(item.id).drop(1)
         is LauncherItem.Shortcut -> emptyList()
         is LauncherItem.Placeholder -> emptyList()
-        is LauncherItem.App -> store.appPopups.value[item.node.pkg].orEmpty()
+        is LauncherItem.App -> appPopupOf(store.graph.value, item.node.pkg)
     }
 
     fun openAppSettings(node: AppNode) {
