@@ -58,6 +58,8 @@ data class ShortcutNode(
     val icon: ImageBitmap? = null,
 )
 
+@Volatile private var pkgIndex: Pair<Map<String, AppNode>, Map<String, AppNode>> = emptyMap<String, AppNode>() to emptyMap()
+
 const val FIRST_USER_TAG_ID = 3L // 1 and 2 are TAG.FAV and TAG.PINNED
 
 /**
@@ -76,12 +78,10 @@ data class Graph(
     /** SystemSource reads `graph.user.tags`. */
     val user: Graph get() = this
 
-    /** First launcher activity per package; ItemKey.App edges resolve through this. */
-    val appByPkg: Map<String, AppNode> by lazy {
-        val out = LinkedHashMap<String, AppNode>()
-        for (a in apps.values) out.putIfAbsent(a.pkg, a)
-        out
-    }
+    /** First launcher activity per package (ItemKey.App resolves through it). Cached on [apps] identity:
+     *  user edits reuse it, a new apps map rebuilds and swaps once. Nodes and icons are shared. */
+    val appByPkg: Map<String, AppNode> get() = pkgIndex.takeIf { it.first === apps }?.second
+        ?: LinkedHashMap<String, AppNode>().also { m -> apps.values.forEach { m.putIfAbsent(it.pkg, it) }; pkgIndex = apps to m }
 
     companion object {
         val EMPTY = Graph()
