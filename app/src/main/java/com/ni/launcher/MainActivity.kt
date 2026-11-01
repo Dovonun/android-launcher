@@ -432,7 +432,7 @@ fun RowIcon(icon: ImageBitmap?, size: androidx.compose.ui.unit.Dp = 40.dp) =
     else Image(bitmap = icon, modifier = Modifier.size(size), contentDescription = null)
 
 @Composable
-fun RowLabel(text: String) = Text(
+fun RowLabel(text: String, overflow: TextOverflow = TextOverflow.Ellipsis) = Text(
     text = text,
     color = MaterialTheme.colorScheme.onSurface,
     style = MaterialTheme.typography.labelLarge.copy(
@@ -441,11 +441,11 @@ fun RowLabel(text: String) = Text(
         )
     ),
     maxLines = 1,
-    overflow = TextOverflow.Ellipsis,
+    overflow = overflow,
 )
 
 @Composable
-fun LauncherRowLayout(item: LauncherItem, modifier: Modifier = Modifier) {
+fun LauncherRowLayout(item: LauncherItem, modifier: Modifier = Modifier, label: String = item.label, overflow: TextOverflow = TextOverflow.Ellipsis) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
@@ -454,7 +454,7 @@ fun LauncherRowLayout(item: LauncherItem, modifier: Modifier = Modifier) {
             .padding(vertical = 8.dp)
     ) {
         RowIcon(item.icon)
-        RowLabel(item.label)
+        RowLabel(label, overflow)
     }
 }
 
