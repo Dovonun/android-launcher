@@ -178,8 +178,6 @@ fun TagManagerScreen(
             ) { tag ->
                 val isSystem = tag.id == TAG.FAV || tag.id == TAG.PINNED
                 val isEditing = editingTagId == tag.id
-                var layoutCoordinates: LayoutCoordinates? = null
-                var fired by remember { mutableStateOf(false) }
                 val focusRequester = remember(tag.id) { FocusRequester() }
 
                 val rowAlpha = if (isSystem) 0.55f else 1f
@@ -190,7 +188,6 @@ fun TagManagerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .alpha(rowAlpha)
-                        .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
                         .pointerInput(tag) {
                             detectTapGestures(
                                 onLongPress = {
@@ -198,22 +195,10 @@ fun TagManagerScreen(
                                 }
                             )
                         }
-                        .pointerInput(tag) {
-                            detectHorizontalDragGestures(onDragStart = { fired = false }) { change, drag ->
-                                if (isEditing) return@detectHorizontalDragGestures
-                                if (fired) return@detectHorizontalDragGestures
-                                if (drag > 50f) {
-                                    layoutCoordinates?.boundsInWindow()?.bottom?.let { y ->
-                                        fired = true
-                                        change.consume()
-                                        val entries = appsVM.tagItems(tag.id)
-                                        if (entries.isEmpty()) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        }
-                                        popupState = TagPreviewPopupState(tag, entries, y)
-                                    }
-                                }
-                            }
+                        .onSwipeRight(tag, enabled = !isEditing) { y ->
+                            val entries = appsVM.tagItems(tag.id)
+                            if (entries.isEmpty()) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            popupState = TagPreviewPopupState(tag, entries, y)
                         }
                         .padding(vertical = 6.dp)
                 ) {

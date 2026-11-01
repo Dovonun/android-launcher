@@ -611,29 +611,13 @@ private fun AppSelectorRow(
     onToggle: () -> Unit,
     onOpenPopup: (Float) -> Unit
 ) {
-    var layoutCoordinates: LayoutCoordinates? = null
-    var fired by remember { mutableStateOf(false) }
     SelectorRowLayout(
         leading = { RowIcon(appItem.icon) },
         label = appItem.label,
         selected = selected,
         modifier = Modifier
-            .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
-            .pointerInput(appItem) {
-                detectTapGestures { onToggle() }
-            }
-            .pointerInput(appItem) {
-                detectHorizontalDragGestures(onDragStart = { fired = false }) { change, drag ->
-                    if (fired) return@detectHorizontalDragGestures
-                    if (drag > 50f) {
-                        layoutCoordinates?.boundsInWindow()?.bottom?.let { y ->
-                            fired = true
-                            change.consume()
-                            onOpenPopup(y)
-                        }
-                    }
-                }
-            }
+            .pointerInput(appItem) { detectTapGestures { onToggle() } }
+            .onSwipeRight(appItem, onSwipe = onOpenPopup)
     )
 }
 
