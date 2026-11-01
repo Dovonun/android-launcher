@@ -68,6 +68,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
@@ -349,7 +350,7 @@ fun ManageTagScreen(
                         ) {
                             // Why box?
                             Box(modifier = Modifier.weight(1f)) {
-                                ReorderRow(item = row.item)
+                                LauncherRowLayout(row.item, label = (row.item as? LauncherItem.Tag)?.name ?: row.item.label, overflow = TextOverflow.Clip)
                             }
                             Icon(
                                 painter = painterResource(id = R.drawable.drag_indicator_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
@@ -457,41 +458,15 @@ fun ManageTagAddScreen(
 
     val toggle: (LauncherItem) -> Unit = toggle@{ item ->
         val key = item.itemKey() ?: return@toggle
-        selectedMap = if (selectedMap.containsKey(key)) {
-            selectedMap - key
-        } else {
-            selectedMap + (key to item)
-        }
+        selectedMap = if (key in selectedMap) selectedMap - key else selectedMap + (key to item)
     }
 
     val confirm: () -> Unit = {
-        val retained = items.filter { item ->
-            val key = item.itemKey() ?: return@filter false
-            selectedMap.containsKey(key)
-        }
-
-        val orderedAdditions = buildList {
-            tags.forEach { tagItem ->
-                val key = ItemKey.Tag(tagItem.id)
-                if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(tagItem)
-            }
-            allApps.toSortedMap().forEach { (_, list) ->
-                list.forEach { appItem ->
-                    val key = ItemKey.App(appItem.node.pkg)
-                    if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(appItem)
-                }
-            }
-            allApps.toSortedMap().forEach { (_, list) ->
-                list.forEach { appItem ->
-                    val shortcuts = shortcutCache[appItem.node.pkg].orEmpty()
-                    shortcuts.forEach { shortcut ->
-                        val key = ItemKey.Shortcut(shortcut.node.pkg, shortcut.node.id)
-                        if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(shortcut)
-                    }
-                }
-            }
-        }
-
+        val retained = items.filter { it.itemKey()?.let(selectedMap::containsKey) == true }
+        // New picks in screen order: tags, apps, then the shortcuts of opened popups.
+        val apps = allApps.toSortedMap().values.flatten()
+        val orderedAdditions = (tags + apps + apps.flatMap { shortcutCache[it.node.pkg].orEmpty() })
+            .filter { item -> item.itemKey().let { it != null && it !in initialKeys && it in selectedMap } }
         val next = retained + orderedAdditions
         // Apply deselections here: the next ManageTag only knows `next`, so it keeps anything else.
         appsVM.syncTagItemsToList(tag.id, next, shown = items)
@@ -586,32 +561,6 @@ fun ManageTagAddScreen(
                 onDismiss = { popupState = null }
             )
         }
-    }
-}
-
-@Composable
-private fun ReorderRow(item: LauncherItem) {
-    val label = if (item is LauncherItem.Tag) item.name else item.label
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(H_PAD.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        RowIcon(item.icon)
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelLarge.copy(
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = MaterialTheme.colorScheme.surface,
-                    offset = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    blurRadius = 8f
-                )
-            ),
-            maxLines = 1
-        )
     }
 }
 
