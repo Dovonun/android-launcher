@@ -33,10 +33,8 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private val launcherApps: LauncherApps = application.getSystemService(LauncherApps::class.java)
     private val user: UserHandle = android.os.Process.myUserHandle()
 
-    // Reactive all-apps list for main screen rendering.
     val uiAllGrouped: StateFlow<Map<Char, List<LauncherItem>>> = store.allApps
 
-    // Reactive favorites list for home screen rendering.
     val favorites: StateFlow<List<LauncherItem>> = store.favorites
 
     val allTags: StateFlow<List<LauncherItem.Tag>> = store.allTags
@@ -163,7 +161,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             })
         }
 
-        val terminal = resolveTerminalItem(item)
+        val terminal = resolveLaunchTarget(item)
         if (terminal is LauncherItem.App) {
             add(SheetAction("App Settings") { openAppSettings(terminal.node) })
             add(SheetAction("Uninstall") { uninstallApp(terminal.node) })
@@ -208,18 +206,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         onNavigate(View.ManageTag(uiTag, tagItems))
     }
 
-    private fun resolveTerminalItem(item: LauncherItem): LauncherItem {
-        var current = item
-        val visited = mutableSetOf<Long>()
-        while (current is LauncherItem.Tag) {
-            if (!visited.add(current.id)) {
-                return LauncherItem.Placeholder(PlaceholderKind.RECURSION, "Recursion")
-            }
-            current = current.representative
-        }
-        return current
-    }
-
     private fun keysOf(items: List<LauncherItem>): List<ItemKey> = items.mapNotNull { it.itemKey() }
 
     /**
@@ -231,11 +217,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         store.setItems(tagId, items.mapNotNull { it.toEdge() }, shown = (keysOf(shown) + keysOf(items)).toSet())
     }
 
-    fun renameTag(tagId: Long, name: String) {
-        store.rename(tagId, name)
-    }
+    fun renameTag(tagId: Long, name: String) = store.rename(tagId, name)
 
-    fun deleteTag(tagId: Long) {
-        store.delete(tagId)
-    }
+    fun deleteTag(tagId: Long) = store.delete(tagId)
 }

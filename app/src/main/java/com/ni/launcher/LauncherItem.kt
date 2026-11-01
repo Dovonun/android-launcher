@@ -73,13 +73,12 @@ fun LauncherItem.toEdge(): Edge? = when (this) {
     is LauncherItem.Placeholder -> null
 }
 
+/** What tapping [item] opens: tags follow their representative chain; a cycle (never built by tagViewOf) yields RECURSION. */
 internal fun resolveLaunchTarget(item: LauncherItem): LauncherItem {
     var current = item
-    val visitedTagIds = mutableSetOf<Long>()
+    val visited = HashSet<Long>()
     while (current is LauncherItem.Tag) {
-        if (!visitedTagIds.add(current.id)) {
-            error("Tag representative cycle detected while launching tagId=${current.id}")
-        }
+        if (!visited.add(current.id)) return LauncherItem.Placeholder(PlaceholderKind.RECURSION, "Recursion")
         current = current.representative
     }
     return current
