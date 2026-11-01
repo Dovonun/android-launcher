@@ -10,9 +10,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ni.launcher.model.AppNode
-import com.ni.launcher.model.Command
 import com.ni.launcher.model.ItemKey
-import com.ni.launcher.model.LauncherProjections
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,36 +21,35 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
- * Thin UI facade over the app-scoped graph layer: exposes [LauncherProjections] and turns user
- * intents into [Command]s. No DAO, no IPC for reads, nothing suspends on the DB.
+ * Thin UI facade over the app-scoped graph store: exposes its projections and turns user intents
+ * into store edits. No DAO, no IPC for reads, nothing suspends on the DB.
  */
 class AppsVM(application: Application) : AndroidViewModel(application) {
     private val app = application as NiLauncher
     private val store = app.graphStore
-    private val projections: LauncherProjections = app.projections
     private val launcherApps: LauncherApps = application.getSystemService(LauncherApps::class.java)
     private val user: UserHandle = android.os.Process.myUserHandle()
 
     // Reactive all-apps list for main screen rendering.
-    val uiAllGrouped: StateFlow<Map<Char, List<LauncherItem>>> = projections.allApps
+    val uiAllGrouped: StateFlow<Map<Char, List<LauncherItem>>> = store.allApps
 
     // Reactive favorites list for home screen rendering.
-    val favorites: StateFlow<List<LauncherItem>> = projections.favorites
+    val favorites: StateFlow<List<LauncherItem>> = store.favorites
 
-    val allTags: StateFlow<List<LauncherItem.Tag>> = projections.allTags
+    val allTags: StateFlow<List<LauncherItem.Tag>> = store.allTags
 
     fun getTag(id: Long): Flow<LauncherItem.Tag?> =
-        projections.tagView.map { it.tags[id] }.distinctUntilChanged()
+        store.tagView.map { it.tags[id] }.distinctUntilChanged()
 
     /** Current tag row (synchronous read). */
-    fun tagSnapshot(id: Long): LauncherItem.Tag? = projections.tagView.value.tags[id]
+    fun tagSnapshot(id: Long): LauncherItem.Tag? = store.tagView.value.tags[id]
 
     /** Current resolved children of a tag (synchronous read). */
-    fun tagItems(id: Long): List<LauncherItem> = projections.tagView.value.rowsByTag[id].orEmpty()
+    fun tagItems(id: Long): List<LauncherItem> = store.tagView.value.rowsByTag[id].orEmpty()
 
     fun getTagsForItem(item: LauncherItem): Flow<List<String>> {
-        val key = item.itemKey() ?: return projections.tagsByKey.map { emptyList() }
-        return projections.tagsByKey.map { it[key].orEmpty() }.distinctUntilChanged()
+        val key = item.itemKey() ?: return store.tagsByKey.map { emptyList() }
+        return store.tagsByKey.map { it[key].orEmpty() }.distinctUntilChanged()
     }
 
     private val _toast = MutableSharedFlow<String>()
@@ -95,12 +92,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Swipe popup content, read synchronously from the precomputed projections. */
+    /** Swipe popup content, read synchronously from the precomputed store. */
     fun popupEntriesSnapshot(item: LauncherItem): List<LauncherItem> = when (item) {
         is LauncherItem.Tag -> tagItems(item.id).drop(1)
         is LauncherItem.Shortcut -> emptyList()
         is LauncherItem.Placeholder -> emptyList()
-        is LauncherItem.App -> projections.appPopups.value[item.node.pkg].orEmpty()
+        is LauncherItem.App -> store.appPopups.value[item.node.pkg].orEmpty()
     }
 
     fun openAppSettings(node: AppNode) {
@@ -172,12 +169,12 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
 
     private fun removeItemFromParent(item: LauncherItem, parentId: Long) {
         val key = item.itemKey() ?: return
-        store.dispatch(Command.Remove(parentId, key))
+        store.remove(parentId, key)
     }
 
     private fun isInFavorites(item: LauncherItem): Boolean {
         val key = item.itemKey() ?: return false
-        return store.graph.value.user.tags[TAG.FAV]?.contains(key) == true
+        return store.graph.value.tags[TAG.FAV]?.children.orEmpty().any { it.key == key }
     }
 
     private fun createTagFromItem(item: LauncherItem, onNavigate: (View) -> Unit) {
@@ -194,14 +191,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
             return
         }
         val newTagName = "${item.label} Tag"
-        store.dispatch(
-            Command.Create(
-                id = newTagId,
-                name = newTagName,
-                seed = tagItems.mapNotNull { it.toEdge() },
-                addToFav = true,
-            )
-        )
+        store.create(newTagId, newTagName, tagItems.mapNotNull { it.toEdge() }, addToFav = true)
         viewModelScope.launch { _toast.emit("Tag created and added to Favorites") }
 
         val representative = tagItems.firstOrNull()
@@ -232,7 +222,7 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     /**
      * New order for [tagId] from a UI list. Only keys in [shown] (the list the screen was opened
      * with) are managed; saved children the screen never listed (e.g. shortcuts not yet resolved
-     * during staged startup) are kept in place, see [Command.SetItems].
+     * during staged startup) are kept in place, see [com.ni.launcher.model.LauncherGraphStore.setItems].
      */
     fun updateOrder(tagId: Long, items: List<LauncherItem>, shown: List<LauncherItem>) =
         syncTagItemsToList(tagId, items, shown)
@@ -243,20 +233,14 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
      * saved edges.
      */
     fun syncTagItemsToList(tagId: Long, items: List<LauncherItem>, shown: List<LauncherItem>) {
-        store.dispatch(
-            Command.SetItems(
-                tagId,
-                items.mapNotNull { it.toEdge() },
-                shown = (keysOf(shown) + keysOf(items)).toSet(),
-            )
-        )
+        store.setItems(tagId, items.mapNotNull { it.toEdge() }, shown = (keysOf(shown) + keysOf(items)).toSet())
     }
 
     fun renameTag(tagId: Long, name: String) {
-        store.dispatch(Command.Rename(tagId, name))
+        store.rename(tagId, name)
     }
 
     fun deleteTag(tagId: Long) {
-        store.dispatch(Command.Delete(tagId))
+        store.delete(tagId)
     }
 }

@@ -3,12 +3,11 @@ package com.ni.launcher.data
 import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import androidx.room.withTransaction
-import com.ni.launcher.model.GraphPersister
+import com.ni.launcher.model.Edge
+import com.ni.launcher.model.Graph
 import com.ni.launcher.model.ItemKey
-import com.ni.launcher.model.UserData
-import com.ni.launcher.model.UserDataDiff
+import com.ni.launcher.model.TagNode
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -21,38 +20,29 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 
 private const val LOG_TAG = "RoomGraphPersister"
-const val GRAPH_PERSIST_DEBOUNCE_MS = 150L
+private const val DEBOUNCE_MS = 150L
 private const val MIN_BACKOFF_MS = 500L
 private const val MAX_BACKOFF_MS = 30_000L
 
-/**
- * Write-behind mirror of the in-memory graph into Room (design doc §5). The only graph class
- * that knows Room.
- *
- * - [markDirty] is non-blocking: it merges changed/removed tag ids plus the latest UserData
- *   reference into one pending batch and wakes the writer.
- * - The writer (on [io], in the app scope) waits [GRAPH_PERSIST_DEBOUNCE_MS] to coalesce, then
- *   writes the batch's *state* (not ops) in one transaction: delete removed tags, upsert tag rows,
- *   replace each changed tag's tag_items. Idempotent, so retries and merging are safe.
- * - Transient failures keep the batch dirty and retry with exponential backoff (0.5 s .. 30 s).
- *   A constraint failure (graph/DB invariant broken) triggers one full resync of the whole
- *   UserData; if that also fails it is logged with Log.wtf, the batch stays dirty (retried on the
- *   next markDirty/flush, no automatic loop) and waiting [flush] callers get a
- *   [GraphPersistException]. The durable watermark only moves after a committed transaction.
- */
-class RoomGraphPersister(
-    private val db: AppDatabase,
-    scope: CoroutineScope,
-    private val io: CoroutineDispatcher = Dispatchers.IO,
-    private val debounceMs: Long = GRAPH_PERSIST_DEBOUNCE_MS,
-) : GraphPersister {
+/** A graph write failed terminally; the changes are still in memory but not in Room. */
+class GraphPersistException(message: String, cause: Throwable) : IOException(message, cause)
 
-    private class Batch(
-        val user: UserData,
-        val changed: Set<Long>,
-        val removed: Set<Long>,
-        val version: Long,
-    )
+/**
+ * Write-behind mirror of the graph's tags into Room; the only graph code that knows Room.
+ *
+ * - [markDirty] is non-blocking: it merges the changed/removed tag ids and the latest Graph into
+ *   one pending batch and wakes the writer.
+ * - The writer waits [DEBOUNCE_MS] to coalesce, then writes the batch's *state* in one
+ *   transaction: delete removed tags, upsert tag rows, replace each changed tag's tag_items.
+ *   Idempotent, so retries and merging are safe.
+ * - Transient failures keep the batch dirty and retry with backoff (0.5 s .. 30 s). A constraint
+ *   failure triggers one full resync; if that fails too it is logged with Log.wtf, the batch stays
+ *   dirty (retried on the next markDirty/flush) and waiting [flush] callers get a
+ *   [GraphPersistException]. The persisted watermark only moves after a committed transaction.
+ */
+class RoomGraphPersister(private val db: AppDatabase, scope: CoroutineScope) {
+    private class Batch(val graph: Graph, val changed: Set<Long>, val removed: Set<Long>, val version: Long)
+    private class Failure(val version: Long, val cause: Throwable) // a new instance per failure
 
     private val tagDao = db.tagDao()
     private val itemDao = db.tagItemDao()
@@ -64,67 +54,73 @@ class RoomGraphPersister(
 
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private val persisted = MutableStateFlow(0L)
-
-    /** Last terminal write failure; a new instance per failure. [version] = failed batch's version. */
-    private class Failure(val version: Long, val cause: Throwable)
     private val failure = MutableStateFlow<Failure?>(null)
 
     init {
-        scope.launch(io) { writerLoop() }
+        scope.launch(Dispatchers.IO) { writerLoop() }
     }
 
-    override suspend fun load(): UserData = withContext(io) {
+    /** Room rows -> tags, children in itemOrder. Malformed rows (missing pkg/id/target) are dropped. */
+    suspend fun load(): Map<Long, TagNode> = withContext(Dispatchers.IO) {
         db.withTransaction {
-            userDataFromEntities(tagDao.getAll(), itemDao.getAll())
+            val itemsByTag = itemDao.getAll().groupBy { it.tagId }
+            tagDao.getAll().associate { t ->
+                val children = itemsByTag[t.id].orEmpty().sortedBy { it.itemOrder }.mapNotNull { i ->
+                    val key = when (i.type) {
+                        TagItemType.APP -> ItemKey.App(i.packageName ?: return@mapNotNull null)
+                        TagItemType.SHORTCUT -> ItemKey.Shortcut(
+                            i.packageName ?: return@mapNotNull null, i.shortcutId ?: return@mapNotNull null
+                        )
+                        TagItemType.TAG -> ItemKey.Tag(i.targetTagId ?: return@mapNotNull null)
+                    }
+                    Edge(key, i.labelOverride)
+                }
+                t.id to TagNode(t.id, t.name, children)
+            }
         }
     }
 
-    override fun markDirty(old: UserData, new: UserData, version: Long) {
-        val diff = UserDataDiff.of(old, new)
-        if (diff.changed.isEmpty() && diff.removed.isEmpty()) return
+    /** Called on the model thread after [new] is published. Tags are diffed by reference. */
+    fun markDirty(old: Graph, new: Graph) {
+        val changed = new.tags.filter { (id, t) -> old.tags[id] !== t }.keys
+        val removed = old.tags.keys - new.tags.keys
+        if (changed.isEmpty() && removed.isEmpty()) return
         synchronized(lock) {
-            pending = merge(pending, Batch(new, diff.changed, diff.removed, version))
-            if (version > lastMarkedVersion) lastMarkedVersion = version
+            pending = merge(pending, Batch(new, changed, removed, new.version))
+            if (new.version > lastMarkedVersion) lastMarkedVersion = new.version
         }
         wake.trySend(Unit)
     }
 
     /**
-     * Suspends until every change marked with a version <= [version] is in Room. Skips the
-     * debounce. Versions that were never marked (non-persisted commands) don't block.
-     * Throws [GraphPersistException] if the write attempt it triggers fails terminally (batch and
-     * full resync both failed); that data is still dirty in memory, not durable.
+     * Suspends until every change marked with a version <= [version] is in Room, skipping the
+     * debounce. Versions never marked (system changes) don't block. Throws [GraphPersistException]
+     * if a write covering [version] fails terminally after this call; "pending, no new failure"
+     * keeps waiting.
      */
-    override suspend fun flush(version: Long) {
+    suspend fun flush(version: Long) {
         val target = synchronized(lock) { minOf(version, lastMarkedVersion) }
         if (persisted.value >= target) return
         val seen = failure.value
         urgent = true
         wake.trySend(Unit)
-        // Done only when committed (p >= target) or a new failure covering target arrives;
-        // "pending, no failure yet" keeps waiting.
         val (p, f) = combine(persisted, failure) { p, f -> p to f }
             .first { (p, f) -> p >= target || (f != null && f !== seen && f.version >= target) }
         if (p >= target) return
         throw GraphPersistException("graph changes up to v$target were not saved", f!!.cause)
     }
 
-    /** [newer]'s user wins; removals are sticky (tag ids are never reused). */
+    /** [newer]'s graph wins; removals are sticky (tag ids are never reused). */
     private fun merge(older: Batch?, newer: Batch): Batch {
         if (older == null) return newer
         val removed = older.removed + newer.removed
-        return Batch(
-            user = newer.user,
-            changed = (older.changed + newer.changed) - removed,
-            removed = removed,
-            version = maxOf(older.version, newer.version),
-        )
+        return Batch(newer.graph, (older.changed + newer.changed) - removed, removed, maxOf(older.version, newer.version))
     }
 
     private suspend fun writerLoop() {
         var backoff = MIN_BACKOFF_MS
         for (u in wake) {
-            if (!urgent) delay(debounceMs)
+            if (!urgent) delay(DEBOUNCE_MS)
             urgent = false
             val b = synchronized(lock) { pending.also { pending = null } } ?: continue
             try {
@@ -136,7 +132,7 @@ class RoomGraphPersister(
             } catch (e: SQLiteConstraintException) {
                 Log.e(LOG_TAG, "constraint failure writing graph batch v${b.version}; full resync", e)
                 try {
-                    db.withTransaction { writeFull(b.user) }
+                    db.withTransaction { writeFull(b.graph) }
                     markPersisted(b.version)
                     backoff = MIN_BACKOFF_MS
                 } catch (e2: CancellationException) {
@@ -162,10 +158,10 @@ class RoomGraphPersister(
         if (version > persisted.value) persisted.value = version
     }
 
-    /** Order: delete removed tags (DB cascade = reducer's Delete), upsert tag rows, replace items. */
+    /** Delete removed tags (DB cascade = the store's delete), upsert tag rows, replace items. */
     private suspend fun writeBatch(b: Batch) {
         if (b.removed.isNotEmpty()) tagDao.deleteByIds(b.removed.toList())
-        val changed = b.changed.mapNotNull { b.user.tags[it] }
+        val changed = b.changed.mapNotNull { b.graph.tags[it] }
         if (changed.isEmpty()) return
         // Upsert changed tags plus every tag they reference, so FK targets (incl. ids allocated in
         // memory whose own batch may have been dropped) exist before the tag_items rows.
@@ -173,25 +169,29 @@ class RoomGraphPersister(
             .flatMap { it.children.asSequence() }
             .mapNotNull { (it.key as? ItemKey.Tag)?.id }
             .filter { it !in b.changed }
-            .mapNotNull { b.user.tags[it] }
-        tagDao.upsertAll((changed + referenced).map { it.toEntity() }.distinctBy { it.id })
-        for (tag in changed) {
-            itemDao.deleteByTagId(tag.id)
-            itemDao.insertAll(tag.itemEntities())
-        }
+            .mapNotNull { b.graph.tags[it] }
+        tagDao.upsertAll((changed + referenced).map { TagEntity(it.id, it.name) }.distinctBy { it.id })
+        for (tag in changed) writeItems(tag)
     }
 
-    /** Make Room equal to [user]: drop unknown tags, upsert all, rewrite all items. */
-    private suspend fun writeFull(user: UserData) {
-        val stale = tagDao.getAllIds().filter { it !in user.tags }
+    /** Make Room equal to [g]'s tags: drop unknown tags, upsert all, rewrite all items. */
+    private suspend fun writeFull(g: Graph) {
+        val stale = tagDao.getAllIds().filter { it !in g.tags }
         if (stale.isNotEmpty()) tagDao.deleteByIds(stale)
-        tagDao.upsertAll(user.tags.values.map { it.toEntity() })
-        for (tag in user.tags.values) {
-            itemDao.deleteByTagId(tag.id)
-            itemDao.insertAll(tag.itemEntities())
-        }
+        tagDao.upsertAll(g.tags.values.map { TagEntity(it.id, it.name) })
+        for (tag in g.tags.values) writeItems(tag)
+    }
+
+    private suspend fun writeItems(tag: TagNode) {
+        itemDao.deleteByTagId(tag.id)
+        itemDao.insertAll(tag.children.mapIndexed { i, e ->
+            when (val k = e.key) {
+                is ItemKey.App -> TagItemEntity(tag.id, i, TagItemType.APP, packageName = k.pkg, labelOverride = e.labelOverride)
+                is ItemKey.Shortcut -> TagItemEntity(
+                    tag.id, i, TagItemType.SHORTCUT, packageName = k.pkg, shortcutId = k.id, labelOverride = e.labelOverride
+                )
+                is ItemKey.Tag -> TagItemEntity(tag.id, i, TagItemType.TAG, targetTagId = k.id, labelOverride = e.labelOverride)
+            }
+        })
     }
 }
-
-/** A graph write failed terminally; the changes are still in memory but not in Room. */
-class GraphPersistException(message: String, cause: Throwable) : IOException(message, cause)
