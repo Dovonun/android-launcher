@@ -18,7 +18,7 @@ schema is unchanged).
 ## Consequences
 - 5 files → 1, −~40 lines, no change to the on-disk format, no migration.
 - The bigger cut (single-file snapshot) stays open: it needs a one-time Room → file migration
-  for existing installs, and e2e tests (bench-e2e) seed and read the DB directly.
+  for existing installs, and the manual test plan (docs/testing/manual-emulator-test-plan.md) inspects and edits `launcher.db` with sqlite3.
 - Unmeasured: startup cost of Room vs a file read on device. Room's open + first query is
   usually milliseconds; a file of tens of KB parses in about the same time. Measure before deciding.
 
