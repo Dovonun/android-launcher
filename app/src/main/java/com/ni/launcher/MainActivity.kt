@@ -2,6 +2,8 @@ package com.ni.launcher
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.util.Log
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
@@ -112,6 +114,14 @@ const val H_PAD2 = 2 * H_PAD
 const val ROW_HEIGHT = 56
 const val POPUP_V_PAD = 12
 
+/** Pulls down the notification shade (hidden StatusBarManager API, so reflection). */
+fun expandNotificationShade(context: Context) {
+    runCatching {
+        val service = context.getSystemService("statusbar")
+        Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(service)
+    }.onFailure { Log.w("MainActivity", "Could not expand notification shade", it) }
+}
+
 class MainActivity : ComponentActivity() {
     private val viewVM: ViewVM by viewModels()
 
@@ -128,7 +138,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             LauncherTheme {
                 val appsVM: AppsVM = viewModel()
-                val systemVM: SystemVM = viewModel()
                 val listState = rememberLazyListState()
                 val snackbarHostState = remember { SnackbarHostState() }
 
@@ -184,7 +193,7 @@ class MainActivity : ComponentActivity() {
                                                     detectVerticalDragGestures(
                                                         onVerticalDrag = { change, dragAmount ->
                                                             if (change.isConsumed) return@detectVerticalDragGestures
-                                                            if (dragAmount > 60f) systemVM.expandNotificationShade()
+                                                            if (dragAmount > 60f) expandNotificationShade(this@MainActivity)
                                                         })
                                                 }) {
                                             favorites.asReversed().forEach { fav ->
