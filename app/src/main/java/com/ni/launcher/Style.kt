@@ -11,8 +11,6 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -20,9 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 val Typography = Typography(
-//    bodyLarge = TextStyle(fontSize = 25.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium, shadow = ),
     labelLarge = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Medium ),
-//    headlineSmall = TextStyle(fontWeight = FontWeight.Medium),
     headlineSmall = Typography().headlineSmall.copy(fontWeight = FontWeight.Medium)
 )
 val Shapes = Shapes(

@@ -22,6 +22,9 @@ and then a second `when` with dead `-> Unit` arms.
   on a right swipe (IconRow, the picker's app row, the tag manager row); same 50 px threshold,
   once per drag, same captured-state behavior as the copies.
 - One `when (val v = currentView)` for all screens.
+- `SystemVM` (a ViewModel holding one stateless function) is now the top-level
+  `expandNotificationShade(context)` in MainActivity.kt; its log tag is now "MainActivity".
+- Style.kt: unused imports and commented-out styles removed.
 - ReorderRow (ManageTag) is `LauncherRowLayout(item, label = tag name, overflow = Clip)`.
 - One launch-target resolver (`resolveLaunchTarget`) for launching and for the sheet's app actions;
   on a representative cycle (never built by tagViewOf) it now returns the RECURSION placeholder
