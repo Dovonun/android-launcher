@@ -82,6 +82,7 @@ class RoomGraphPersister(private val db: AppDatabase, scope: CoroutineScope) {
 
     /** Called on the model thread after [new] is published. Tags are diffed by reference. */
     fun markDirty(old: Graph, new: Graph) {
+        if (old.tags === new.tags) return // system change
         val changed = new.tags.filter { (id, t) -> old.tags[id] !== t }.keys
         val removed = old.tags.keys - new.tags.keys
         if (changed.isEmpty() && removed.isEmpty()) return
