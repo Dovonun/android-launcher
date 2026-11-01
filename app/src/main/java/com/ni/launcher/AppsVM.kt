@@ -223,14 +223,6 @@ class AppsVM(application: Application) : AndroidViewModel(application) {
     private fun keysOf(items: List<LauncherItem>): List<ItemKey> = items.mapNotNull { it.itemKey() }
 
     /**
-     * New order for [tagId] from a UI list. Only keys in [shown] (the list the screen was opened
-     * with) are managed; saved children the screen never listed (e.g. shortcuts not yet resolved
-     * during staged startup) are kept in place, see [com.ni.launcher.model.LauncherGraphStore.setItems].
-     */
-    fun updateOrder(tagId: Long, items: List<LauncherItem>, shown: List<LauncherItem>) =
-        syncTagItemsToList(tagId, items, shown)
-
-    /**
      * Makes the [shown] part of [tagId]'s children exactly [items], in order (ensure + reorder).
      * Children whose keys are not in [shown] are kept, so a partially resolved list can't delete
      * saved edges.

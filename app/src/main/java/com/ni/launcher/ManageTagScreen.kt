@@ -86,6 +86,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
+import com.ni.launcher.model.ItemKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -97,19 +98,6 @@ private data class ManageRow(
     // If a LauncherItem has an id you could remove this id.
     val item: LauncherItem
 )
-
-private sealed interface SelectionKey {
-    data class App(val pkg: String) : SelectionKey
-    data class Shortcut(val pkg: String, val id: String) : SelectionKey
-    data class Tag(val id: Long) : SelectionKey
-}
-
-private fun selectionKey(item: LauncherItem): SelectionKey? = when (item) {
-    is LauncherItem.App -> SelectionKey.App(item.node.pkg)
-    is LauncherItem.Shortcut -> SelectionKey.Shortcut(item.node.pkg, item.node.id)
-    is LauncherItem.Tag -> SelectionKey.Tag(item.id)
-    is LauncherItem.Placeholder -> null
-}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -129,12 +117,7 @@ fun ManageTagScreen(
     }
 
     var localRows by remember(items) {
-        mutableStateOf<List<ManageRow>>(items.mapIndexed { index, item ->
-            ManageRow(
-                index.toLong(),
-                item
-            )
-        })
+            mutableStateOf(items.mapIndexed { index, item -> ManageRow(index.toLong(), item) })
     }
     var draggedRowId by remember { mutableStateOf<Long?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
@@ -144,8 +127,7 @@ fun ManageTagScreen(
     var dragMoved by remember { mutableStateOf(false) }
 
     val finishManage: () -> Unit = {
-        val snapshot = localRows.toList()
-        appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item }, shown = items)
+        appsVM.syncTagItemsToList(tag.id, localRows.map { it.item }, shown = items)
         viewVM.setView(View.Favorites)
     }
 
@@ -157,8 +139,7 @@ fun ManageTagScreen(
                 val startOrder = dragStartOrder
                 val finalOrder = localRows.map { it.rowId }
                 if (startOrder != null && finalOrder != startOrder) {
-                    val snapshot = localRows.toList()
-                    appsVM.updateOrder(tag.id, snapshot.map { it.item }, shown = items)
+                    appsVM.syncTagItemsToList(tag.id, localRows.map { it.item }, shown = items)
                 }
             }
 
@@ -221,8 +202,7 @@ fun ManageTagScreen(
                             }
                             val updated = localRows.filterNot { it.rowId == rowId }
                             localRows = updated
-                            val snapshot = updated.toList()
-                            appsVM.syncTagItemsToList(tag.id, snapshot.map { it.item }, shown = items)
+                            appsVM.syncTagItemsToList(tag.id, updated.map { it.item }, shown = items)
                             dismissState.snapTo(SwipeToDismissBoxValue.Settled)
                         }
 
@@ -463,11 +443,11 @@ fun ManageTagAddScreen(
     }
 
     val initialKeys = remember(items) {
-        items.mapNotNull { selectionKey(it) }.toSet()
+        items.mapNotNull { it.itemKey() }.toSet()
     }
     var selectedMap by remember(items) {
         mutableStateOf(items.mapNotNull { item ->
-            val key = selectionKey(item) ?: return@mapNotNull null
+            val key = item.itemKey() ?: return@mapNotNull null
             key to item
         }.toMap())
     }
@@ -476,7 +456,7 @@ fun ManageTagAddScreen(
     var shortcutCache by remember { mutableStateOf<Map<String, List<LauncherItem.Shortcut>>>(emptyMap()) }
 
     val toggle: (LauncherItem) -> Unit = toggle@{ item ->
-        val key = selectionKey(item) ?: return@toggle
+        val key = item.itemKey() ?: return@toggle
         selectedMap = if (selectedMap.containsKey(key)) {
             selectedMap - key
         } else {
@@ -486,18 +466,18 @@ fun ManageTagAddScreen(
 
     val confirm: () -> Unit = {
         val retained = items.filter { item ->
-            val key = selectionKey(item) ?: return@filter false
+            val key = item.itemKey() ?: return@filter false
             selectedMap.containsKey(key)
         }
 
         val orderedAdditions = buildList {
             tags.forEach { tagItem ->
-                val key = SelectionKey.Tag(tagItem.id)
+                val key = ItemKey.Tag(tagItem.id)
                 if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(tagItem)
             }
             allApps.toSortedMap().forEach { (_, list) ->
                 list.forEach { appItem ->
-                    val key = SelectionKey.App(appItem.node.pkg)
+                    val key = ItemKey.App(appItem.node.pkg)
                     if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(appItem)
                 }
             }
@@ -505,7 +485,7 @@ fun ManageTagAddScreen(
                 list.forEach { appItem ->
                     val shortcuts = shortcutCache[appItem.node.pkg].orEmpty()
                     shortcuts.forEach { shortcut ->
-                        val key = SelectionKey.Shortcut(shortcut.node.pkg, shortcut.node.id)
+                        val key = ItemKey.Shortcut(shortcut.node.pkg, shortcut.node.id)
                         if (!initialKeys.contains(key) && selectedMap.containsKey(key)) add(shortcut)
                     }
                 }
@@ -540,7 +520,7 @@ fun ManageTagAddScreen(
             ) { tagItem ->
                 TagSelectorRow(
                     tagItem = tagItem,
-                    selected = selectedMap.containsKey(SelectionKey.Tag(tagItem.id)),
+                    selected = selectedMap.containsKey(ItemKey.Tag(tagItem.id)),
                     onToggle = { toggle(tagItem) }
                 )
             }
@@ -558,7 +538,7 @@ fun ManageTagAddScreen(
                     AppSelectorRow(
                         appItem = appItem,
                         selected = selectedMap.containsKey(
-                            SelectionKey.App(appItem.node.pkg)
+                            ItemKey.App(appItem.node.pkg)
                         ),
                         onToggle = { toggle(appItem) },
                         onOpenPopup = { yPos ->
@@ -576,11 +556,15 @@ fun ManageTagAddScreen(
             }
         }
 
-        SelectorLetterBar(
-            tags = tags,
-            allApps = allApps,
+        LetterBar(
+            letters = remember(allApps) { listOf('#') + allApps.keys.sorted() },
+            // "#" header, tags, spacer if any tags, then per letter: header + apps + spacer
+            scrollIndexes = remember(tags, allApps) {
+                allApps.keys.sorted().runningFold(1 + tags.size + if (tags.isNotEmpty()) 1 else 0) { i, l -> i + allApps.getValue(l).size + 2 }
+                    .let { listOf(0) + it }
+            },
             listState = listState,
-            modifier = Modifier.align(Alignment.BottomEnd)
+            modifier = Modifier.align(Alignment.BottomEnd),
         )
 
         FloatingActionButton(
@@ -759,169 +743,18 @@ private fun SelectorRowLayout(
 @Composable
 private fun SelectorShortcutPopup(
     popup: SelectorPopupState,
-    selectedMap: Map<SelectionKey, LauncherItem>,
+    selectedMap: Map<ItemKey, LauncherItem>,
     onToggle: (LauncherItem) -> Unit,
     onDismiss: () -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
-    val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val yDp = with(LocalDensity.current) { popup.yPos.toDp() }
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val maxWidth = screenWidth - H_PAD2.dp
-    LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
-    Popup(properties = PopupProperties(focusable = true), onDismissRequest = onDismiss) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)
-        ) {
-            val maxVisible = 5
-            val rowHeight = ROW_HEIGHT.dp
-            val pad = POPUP_V_PAD.dp
-            val maxHeight = rowHeight * maxVisible - rowHeight / 3
-            val isScrollable = popup.entries.size >= maxVisible
-            val contentHeight = if (isScrollable) maxHeight else rowHeight * popup.entries.size
-            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
-            val listState = rememberLazyListState()
-            if (popup.entries.isNotEmpty()) {
-                LazyColumn(
-                    state = listState,
-                    reverseLayout = true,
-                    modifier = Modifier
-                        .heightIn(max = maxHeight)
-                        .offset(
-                            x = H_PAD.dp,
-                            y = (yDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
-                        )
-                        .background(
-                            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
-                        )
-                        .widthIn(max = maxWidth)
-                        .padding(horizontal = H_PAD.dp, vertical = pad)
-                        .fadingEdges()
-                ) {
-                    items(popup.entries) { item ->
-                        val key = SelectionKey.Shortcut(item.node.pkg, item.node.id)
-                        val selected = selectedMap.containsKey(key)
-                        SelectorRowLayout(
-                            leading = { RowIcon(item.icon) },
-                            label = item.label,
-                            selected = selected,
-                            modifier = Modifier.pointerInput(item) {
-                                detectTapGestures { onToggle(item) }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SelectorLetterBar(
-    tags: List<LauncherItem.Tag>,
-    allApps: Map<Char, List<LauncherItem.App>>,
-    listState: LazyListState,
-    modifier: Modifier = Modifier
-) {
-    val density = LocalDensity.current
-    val letters = remember(tags, allApps) {
-        buildList {
-            add('#')
-            addAll(allApps.keys.sorted())
-        }
-    }
-    val scrollIndexes = remember(tags, allApps) {
-        buildList {
-            var index = 0
-            add(index) // # header
-            index += 1 + tags.size
-            if (tags.isNotEmpty()) index += 1 // spacer after tags
-            allApps.keys.sorted().forEach { letter ->
-                add(index)
-                val count = allApps[letter]?.size ?: 0
-                index += 1 + count + 1 // + spacer
-            }
-        }
-    }
-
-    val haptic = LocalHapticFeedback.current
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val (height, botOffset, letterSizeDp) = remember(letters, screenHeight) {
-        val slotFillFraction = 0.85f
-        val botOffset = (1f / 8f) * screenHeight
-        val barHeight = screenHeight - (1f / 3f) * screenHeight - botOffset
-        val letterSizeInDp = (barHeight / letters.size * slotFillFraction).coerceAtMost(48.dp)
-        Triple(barHeight, botOffset, letterSizeInDp)
-    }
-    var isTouched by remember { mutableStateOf(false) }
-    var letterIndex by remember { mutableStateOf<Int?>(null) }
-    val collapsedWidth = (1.5 * H_PAD2).dp
-    val expandedWidth = (2.5 * H_PAD2).dp
-    val collapsedShift = 24.dp
-    val rightInset = 12.dp
-    val animatedWidth by animateDpAsState(
-        targetValue = if (isTouched) expandedWidth else collapsedWidth,
-        animationSpec = tween(durationMillis = 120),
-        label = "SelectorLetterBarWidth"
-    )
-    val animatedShift by animateDpAsState(
-        targetValue = if (isTouched) 0.dp else collapsedShift,
-        animationSpec = tween(durationMillis = 120),
-        label = "SelectorLetterBarShift"
-    )
-    val letterOffset = animatedShift - rightInset
-    fun selectLetter(idx: Int?) {
-        if (idx == letterIndex) return
-        letterIndex = idx
-        idx?.let {
-            scrollIndexes.getOrNull(it)?.let { target ->
-                listState.requestScrollToItem(target)
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            }
-        }
-    }
-
-    Column(
-        verticalArrangement = Arrangement.SpaceBetween,
-        modifier = modifier
-            .padding(bottom = botOffset)
-            .height(height)
-            .width(animatedWidth)
-            .pointerInput(letters, scrollIndexes) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    selectLetter(((down.position.y / size.height) * letters.size).toInt())
-                    drag(down.id) { change ->
-                        isTouched = true
-                        change.consume()
-                        val idx = ((change.position.y / size.height) * letters.size).toInt()
-                        selectLetter(if (idx in letters.indices) { idx } else { null })
-                    }
-                    isTouched = false
-                }
-            }) {
-        letters.forEachIndexed { i, letter ->
-            Box(
-                modifier = Modifier
-                    .offset(x = letterOffset)
-                    .width(letterSizeDp)
-                    .height(letterSizeDp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = letter.toString(),
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontSize = with(density) { letterSizeDp.toSp() }
-                    ),
-                    color = if (i == letterIndex) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.secondary
-                    }
-                )
-            }
+) = AnchoredPopup(popup.yPos, popup.entries.size, onDismiss) { panel ->
+    if (popup.entries.isNotEmpty()) LazyColumn(state = rememberLazyListState(), reverseLayout = true, modifier = panel) {
+        items(popup.entries) { item ->
+            SelectorRowLayout(
+                leading = { RowIcon(item.icon) },
+                label = item.label,
+                selected = selectedMap.containsKey(ItemKey.Shortcut(item.node.pkg, item.node.id)),
+                modifier = Modifier.pointerInput(item) { detectTapGestures { onToggle(item) } }
+            )
         }
     }
 }

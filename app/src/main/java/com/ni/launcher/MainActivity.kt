@@ -163,105 +163,92 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(Color.hsv(0f, 0.0f, 0f, 0.15f))
                     ) {
-                        if (currentView is View.TagManager) {
-                            TagManagerScreen(appsVM = appsVM, viewVM = viewVM)
-                        } else if (currentView is View.ManageTag) {
-                            val v = currentView as View.ManageTag
-                            ManageTagScreen(
-                                tag = v.tag,
-                                items = v.items,
-                                appsVM = appsVM,
-                                viewVM = viewVM
-                            )
-                        } else if (currentView is View.ManageTagAdd) {
-                            val v = currentView as View.ManageTagAdd
-                            ManageTagAddScreen(
-                                tag = v.tag,
-                                items = v.items,
-                                appsVM = appsVM,
-                                viewVM = viewVM
-                            )
-                        } else {
-                            val allApps by appsVM.uiAllGrouped.collectAsState()
-                            when (currentView) {
-                                is View.Favorites -> {
-                                    val favorites by appsVM.favorites.collectAsState()
-                                    val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
-                                    // Favorites: plain Column, index 0 at the bottom. The count is not capped and the list does not scroll.
-                                    Column(
-                                        verticalArrangement = Arrangement.Bottom,
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .padding(start = H_PAD2.dp)
-                                            .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
-                                            .pointerInput(Unit) {
-                                                detectVerticalDragGestures(
-                                                    onVerticalDrag = { change, dragAmount ->
-                                                        if (change.isConsumed) return@detectVerticalDragGestures
-                                                        if (dragAmount > 60f) systemVM.expandNotificationShade()
-                                                    })
-                                            }) {
-                                        favorites.asReversed().forEach { fav ->
-                                            IconRow(
-                                                fav, appsVM, viewVM, snackbarHostState, parent = favTag
-                                            )
-                                        }
-                                    }
-                                }
-
-                                is View.TagManager -> Unit
-
-                                is View.AllApps -> LazyColumn(
-                                    modifier = Modifier.padding(start = H_PAD2.dp),
-                                    state = listState,
-                                    contentPadding = PaddingValues(
-                                        top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
-                                        bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
-                                    )
-                                ) {
-                                    allApps.forEach { (letter, list) ->
-                                        item {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(40.dp)
-                                                    .height(40.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = letter.toString(),
-                                                    style = MaterialTheme.typography.headlineSmall.copy(
-                                                        shadow = Shadow(
-                                                            color = MaterialTheme.colorScheme.surface.copy(
-                                                                alpha = 0.7f
-                                                            ), offset = Offset(0f, 0f), blurRadius = 8f
-                                                        ),
-                                                        fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
-                                                    ),
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                    textAlign = TextAlign.Center
+                        when (val v = currentView) {
+                            is View.TagManager -> TagManagerScreen(appsVM = appsVM, viewVM = viewVM)
+                            is View.ManageTag -> ManageTagScreen(tag = v.tag, items = v.items, appsVM = appsVM, viewVM = viewVM)
+                            is View.ManageTagAdd -> ManageTagAddScreen(tag = v.tag, items = v.items, appsVM = appsVM, viewVM = viewVM)
+                            is View.Favorites, is View.AllApps -> {
+                                val allApps by appsVM.uiAllGrouped.collectAsState()
+                                when (v) {
+                                    is View.Favorites -> {
+                                        val favorites by appsVM.favorites.collectAsState()
+                                        val favTag by appsVM.getTag(TAG.FAV).collectAsState(null)
+                                        // Favorites: plain Column, index 0 at the bottom. The count is not capped and the list does not scroll.
+                                        Column(
+                                            verticalArrangement = Arrangement.Bottom,
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .padding(start = H_PAD2.dp)
+                                                .padding(bottom = 1f / 8f * LocalConfiguration.current.screenHeightDp.dp)
+                                                .pointerInput(Unit) {
+                                                    detectVerticalDragGestures(
+                                                        onVerticalDrag = { change, dragAmount ->
+                                                            if (change.isConsumed) return@detectVerticalDragGestures
+                                                            if (dragAmount > 60f) systemVM.expandNotificationShade()
+                                                        })
+                                                }) {
+                                            favorites.asReversed().forEach { fav ->
+                                                IconRow(
+                                                    fav, appsVM, viewVM, snackbarHostState, parent = favTag
                                                 )
-
                                             }
                                         }
-                                        itemsIndexed(
-                                            items = list,
-                                            key = { index, item -> "$letter-${item.label}-$index" }
-                                        ) { index, it ->
-                                            IconRow(it, appsVM, viewVM, snackbarHostState)
-                                        }
-                                        item { Spacer(modifier = Modifier.height(48.dp)) }
                                     }
-                                }
 
-                                is View.ManageTag -> Unit
-                                is View.ManageTagAdd -> Unit
+                                    is View.AllApps -> LazyColumn(
+                                        modifier = Modifier.padding(start = H_PAD2.dp),
+                                        state = listState,
+                                        contentPadding = PaddingValues(
+                                            top = 1f / 3f * LocalConfiguration.current.screenHeightDp.dp,
+                                            bottom = 2f / 3f * LocalConfiguration.current.screenHeightDp.dp
+                                        )
+                                    ) {
+                                        allApps.forEach { (letter, list) ->
+                                            item {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(40.dp)
+                                                        .height(40.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = letter.toString(),
+                                                        style = MaterialTheme.typography.headlineSmall.copy(
+                                                            shadow = Shadow(
+                                                                color = MaterialTheme.colorScheme.surface.copy(
+                                                                    alpha = 0.7f
+                                                                ), offset = Offset(0f, 0f), blurRadius = 8f
+                                                            ),
+                                                            fontWeight = MaterialTheme.typography.headlineSmall.fontWeight,
+                                                        ),
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        textAlign = TextAlign.Center
+                                                    )
+
+                                                }
+                                            }
+                                            itemsIndexed(
+                                                items = list,
+                                                key = { index, item -> "$letter-${item.label}-$index" }
+                                            ) { index, it ->
+                                                IconRow(it, appsVM, viewVM, snackbarHostState)
+                                            }
+                                            item { Spacer(modifier = Modifier.height(48.dp)) }
+                                        }
+                                    }
+
+                                    else -> Unit
+                                }
+                                LetterBar(
+                                    letters = remember(allApps) { allApps.keys.toList() },
+                                    // header + spacer per letter
+                                    scrollIndexes = remember(allApps) { allApps.values.runningFold(0) { acc, list -> acc + list.size + 2 } },
+                                    listState = listState,
+                                    modifier = Modifier.align(Alignment.BottomEnd),
+                                    showLetters = v is View.AllApps,
+                                    shadow = true,
+                                ) { onLetter -> viewVM.setView(if (onLetter == false) View.Favorites else View.AllApps) }
                             }
-                            LetterBar(
-                                allApps,
-                                viewVM,
-                                listState,
-                                modifier = Modifier.align(Alignment.BottomEnd)
-                            )
                         }
                     }
                 }
@@ -293,30 +280,24 @@ class MainActivity : ComponentActivity() {
 
 }
 
+/**
+ * Right-edge letter bar (All Apps and the Add-items picker): touching letter i scrolls [listState]
+ * to [scrollIndexes][i]. [onTouch] gets null on touch down, then whether the finger is on a letter.
+ */
 @Composable
 fun LetterBar(
-    content: Map<Char, List<LauncherItem>>,
-    viewVM: ViewVM,
+    letters: List<Char>,
+    scrollIndexes: List<Int>,
     listState: LazyListState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showLetters: Boolean = true,
+    shadow: Boolean = false,
+    onTouch: (onLetter: Boolean?) -> Unit = {},
 ) {
-    val view by viewVM.view.collectAsState()
-    val letters by remember(content) { derivedStateOf { content.keys.toList() } }
-    val scrollIndexes by remember(content) {
-        derivedStateOf {
-            buildList {
-                content.values.fold(0) { acc, list ->
-                    add(acc)
-                    acc + list.size + 2 // +1 for the header +1 for the space - Last index not used
-                }
-            }
-        }
-    }
-
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val (height, botOffset, letterSizeDp) = remember(density, letters, screenHeight) {
+    val (height, botOffset, letterSizeDp) = remember(letters, screenHeight) {
         val slotFillFraction = 0.85f // fraction of slot to try to fill (0.65..0.85)
         val botOffset = (1f / 8f) * screenHeight
         val barHeight = screenHeight - (1f / 3f) * screenHeight - botOffset
@@ -325,21 +306,17 @@ fun LetterBar(
     }
     var isTouched by remember { mutableStateOf(false) }
     var letterIndex by remember { mutableStateOf<Int?>(null) }
-    val collapsedWidth = (1.5 * H_PAD2).dp
-    val expandedWidth = (2.5 * H_PAD2).dp
-    val collapsedShift = 24.dp
-    val rightInset = 12.dp
     val animatedWidth by animateDpAsState(
-        targetValue = if (isTouched) expandedWidth else collapsedWidth,
+        targetValue = if (isTouched) (2.5 * H_PAD2).dp else (1.5 * H_PAD2).dp,
         animationSpec = tween(durationMillis = 120),
         label = "LetterBarWidth"
     )
     val animatedShift by animateDpAsState(
-        targetValue = if (isTouched) 0.dp else collapsedShift,
+        targetValue = if (isTouched) 0.dp else 24.dp,
         animationSpec = tween(durationMillis = 120),
         label = "LetterBarShift"
     )
-    val letterOffset = animatedShift - rightInset
+    val letterOffset = animatedShift - 12.dp // right inset
     fun selectLetter(idx: Int?) {
         if (idx == letterIndex) return
         letterIndex = idx
@@ -360,24 +337,20 @@ fun LetterBar(
             .pointerInput(letters, scrollIndexes) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    viewVM.setView(View.AllApps)
+                    onTouch(null)
                     selectLetter(((down.position.y / size.height) * letters.size).toInt())
                     drag(down.id) { change ->
                         isTouched = true
                         change.consume()
                         val idx = ((change.position.y / size.height) * letters.size).toInt()
-                        if (idx in letters.indices) {
-                            selectLetter(idx)
-                            viewVM.setView(View.AllApps)
-                        } else {
-                            selectLetter(null)
-                            viewVM.setView(View.Favorites)
-                        }
+                        val onLetter = idx in letters.indices
+                        selectLetter(if (onLetter) idx else null)
+                        onTouch(onLetter)
                     }
                     isTouched = false
                 }
             }) {
-        if (view is View.AllApps) {
+        if (showLetters) {
             letters.forEachIndexed { i, letter ->
                 Box(
                     modifier = Modifier
@@ -389,11 +362,8 @@ fun LetterBar(
                     Text(
                         text = letter.toString(),
                         style = TextStyle(
-                            fontSize = with(density) { letterSizeDp.toSp() }, shadow = Shadow(
-                                color = MaterialTheme.colorScheme.surface,
-                                offset = Offset(0f, 0f),
-                                blurRadius = 4f
-                            )
+                            fontSize = with(density) { letterSizeDp.toSp() },
+                            shadow = if (shadow) Shadow(MaterialTheme.colorScheme.surface, Offset(0f, 0f), 4f) else null,
                         ),
                         color = if (i == letterIndex) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,
                     )
@@ -582,71 +552,56 @@ fun Modifier.fadingEdges(fadeHeightPx: Float = 24f) = composed {
         }
 }
 
+/**
+ * Popup shell shared by the swipe popups: a full-screen tap-to-dismiss layer and a [panel]
+ * modifier that places up to 5 rows (more scroll) right above [anchorY] (window px).
+ */
+@Composable
+fun AnchoredPopup(anchorY: Float, rows: Int, onDismiss: () -> Unit, content: @Composable (panel: Modifier) -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+    val anchorDp = with(LocalDensity.current) { anchorY.toDp() }
+    val maxWidth = LocalConfiguration.current.screenWidthDp.dp - H_PAD2.dp
+    LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+    Popup(properties = PopupProperties(focusable = true), onDismissRequest = onDismiss) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)
+        ) {
+            val maxVisible = 5
+            val rowHeight = ROW_HEIGHT.dp // icon 40dp + 2 * 8dp padding
+            val pad = POPUP_V_PAD.dp
+            val maxHeight = rowHeight * maxVisible - rowHeight / 3
+            val isScrollable = rows >= maxVisible
+            val contentHeight = if (isScrollable) maxHeight else rowHeight * rows
+            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
+            content(
+                Modifier
+                    .heightIn(max = maxHeight)
+                    .offset(x = H_PAD.dp, y = (anchorDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large)
+                    .widthIn(max = maxWidth)
+                    .padding(horizontal = H_PAD.dp, vertical = pad)
+                    .fadingEdges()
+            )
+        }
+    }
+}
+
 @Composable
 fun ShortcutPopup(
     state: MenuState.Popup, appsVM: AppsVM, viewVM: ViewVM, snackbarHostState: SnackbarHostState
 ) {
-    val haptic = LocalHapticFeedback.current
     val entries = state.entries
-    val safeTopDp = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val anchorDp = with(LocalDensity.current) { state.anchorBottomY.toDp() }
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val maxWidth = screenWidth - H_PAD2.dp
-    val reset = { viewVM.setMenu(MenuState.None) }
-    LaunchedEffect(Unit) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
-    Popup(properties = PopupProperties(focusable = true), onDismissRequest = reset) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .clickable(remember { MutableInteractionSource() }, null, onClick = reset)
-        ) {
-            val maxVisible = 5
-            val rowHeight = ROW_HEIGHT.dp
-            val pad = POPUP_V_PAD.dp
-            val maxHeight = rowHeight * maxVisible - rowHeight / 3
-            // NOTE: icon is 40dp and padding is 2 * 8dp
-            val isScrollable = entries.size >= maxVisible
-            val contentHeight = if (isScrollable) maxHeight else rowHeight * entries.size
-            val offsetHeight = if (isScrollable) contentHeight - pad else contentHeight + pad
-            val popupOffsetY = (anchorDp - offsetHeight - safeTopDp).coerceAtLeast(0.dp)
-            // Popups are usually short: plain Column, height-limited to maxHeight. Entries are laid out reversed so
-            // index 0 sits at the bottom next to the anchor, and reverseScrolling starts the
-            // scroll at the bottom when the list exceeds maxHeight.
-            val scrollState = rememberScrollState()
-            if (entries.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = maxHeight)
-                        .offset(
-                            x = H_PAD.dp,
-                            y = popupOffsetY
-                        )
-                        .background(
-                            MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.large
-                        )
-                        .widthIn(max = maxWidth)
-                        .padding(horizontal = H_PAD.dp, vertical = pad)
-                        .fadingEdges()
-                        .verticalScroll(scrollState, reverseScrolling = true)
-                ) {
-                    entries.asReversed().forEach { item ->
-                        IconRow(
-                            item,
-                            appsVM,
-                            viewVM,
-                            snackbarHostState,
-                            parent = state.parent,
-                            anchorBottomY = state.anchorBottomY
-                        )
-                    }
-                }
-            } else {
-                val text = "No shortcuts found for this App"
-                Text(
-                    text = text, fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic
-                )
+    AnchoredPopup(state.anchorBottomY, entries.size, onDismiss = { viewVM.setMenu(MenuState.None) }) { panel ->
+        // Popups are short: a plain Column. Entries are laid out reversed so index 0 sits at the
+        // bottom next to the anchor; reverseScrolling starts the scroll at the bottom.
+        if (entries.isNotEmpty()) Column(modifier = panel.verticalScroll(rememberScrollState(), reverseScrolling = true)) {
+            entries.asReversed().forEach { item ->
+                IconRow(item, appsVM, viewVM, snackbarHostState, parent = state.parent, anchorBottomY = state.anchorBottomY)
             }
-        }
+        } else Text(text = "No shortcuts found for this App", fontSize = 17.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
     }
 }
 

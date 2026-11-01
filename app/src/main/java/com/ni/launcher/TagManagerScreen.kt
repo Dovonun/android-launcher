@@ -124,9 +124,6 @@ fun TagManagerScreen(
         appsVM.renameTag(tag.id, trimmed)
     }
 
-    val onDelete: (LauncherItem.Tag) -> Unit = { tag ->
-        deleteCandidate = tag
-    }
     val confirmDelete: (LauncherItem.Tag) -> Unit = { tag ->
         deleteCandidate = null
         editingTagId = if (editingTagId == tag.id) null else editingTagId
@@ -148,36 +145,20 @@ fun TagManagerScreen(
         lastEditingTagId = currentId
     }
 
+    // Centers the tags when they all fit, else keeps the usual 1/8 screen bottom gap.
     val listContentPadding by remember(listState, tags, density, screenHeight) {
         derivedStateOf {
             val minPadding = 1f / 8f * screenHeight
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
             val totalCount = layoutInfo.totalItemsCount
-            if (totalCount == 0) {
-                return@derivedStateOf androidx.compose.foundation.layout.PaddingValues(
-                    top = minPadding,
-                    bottom = minPadding
-                )
-            }
-            if (visibleItems.size == totalCount && layoutInfo.viewportSize.height > 0) {
+            val padding = if (totalCount > 0 && visibleItems.size == totalCount && layoutInfo.viewportSize.height > 0) {
                 val spacingPx = with(density) { 6.dp.toPx() }
-                val contentHeightPx = visibleItems.sumOf { it.size } +
-                    spacingPx * (visibleItems.size - 1).coerceAtLeast(0)
-                val centerPaddingPx =
-                    ((layoutInfo.viewportSize.height - contentHeightPx) / 2f).coerceAtLeast(0f)
-                val centerPadding = with(density) { centerPaddingPx.toDp() }
-                val finalPadding = if (centerPadding > minPadding) centerPadding else minPadding
-                androidx.compose.foundation.layout.PaddingValues(
-                    top = finalPadding,
-                    bottom = finalPadding
-                )
-            } else {
-                androidx.compose.foundation.layout.PaddingValues(
-                    top = minPadding,
-                    bottom = minPadding
-                )
-            }
+                val contentHeightPx = visibleItems.sumOf { it.size } + spacingPx * (visibleItems.size - 1).coerceAtLeast(0)
+                val centerPadding = with(density) { ((layoutInfo.viewportSize.height - contentHeightPx) / 2f).coerceAtLeast(0f).toDp() }
+                if (centerPadding > minPadding) centerPadding else minPadding
+            } else minPadding
+            androidx.compose.foundation.layout.PaddingValues(top = padding, bottom = padding)
         }
     }
 
@@ -213,7 +194,7 @@ fun TagManagerScreen(
                         .pointerInput(tag) {
                             detectTapGestures(
                                 onLongPress = {
-                                    if (!isSystem && !isEditing) onDelete(tag)
+                                    if (!isSystem && !isEditing) deleteCandidate = tag
                                 }
                             )
                         }
@@ -292,35 +273,28 @@ fun TagManagerScreen(
                     } else {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    RowLabel(tag.name)
-                                    if (isSystem) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "System tag",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            painter = painterResource(
-                                                id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
-                                            ),
-                                            contentDescription = "Rename tag",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .size(18.dp)
-                                                .clickable { startRename(tag) }
-                                        )
-                                    }
-                                }
+                            RowLabel(tag.name)
+                            if (isSystem) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "System tag",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(
+                                        id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
+                                    ),
+                                    contentDescription = "Rename tag",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { startRename(tag) }
+                                )
                             }
                         }
                         Text(
