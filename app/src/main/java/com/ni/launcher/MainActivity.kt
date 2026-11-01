@@ -384,43 +384,21 @@ fun IconRow(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
-    var fired by remember { mutableStateOf(false) }
-    var layoutCoordinates: LayoutCoordinates? = null
     LauncherRowLayout(
         item = item,
         modifier = modifier
-            .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
             .pointerInput(item, parent) {
                 detectTapGestures(onTap = {
                     appVM.launch(item)
                     viewVM.leave()
                 }, onLongPress = { viewVM.setMenu(MenuState.Sheet(item, parent)) })
             }
-            .pointerInput(item, parent) {
-                detectHorizontalDragGestures(
-                    onDragStart = { fired = false }) { change, drag ->
-                    if (fired) return@detectHorizontalDragGestures
-                    if (drag > 50f) {
-                        layoutCoordinates?.boundsInWindow()?.bottom?.let { n ->
-                            fired = true
-                            change.consume()
-                            scope.launch {
-                                val entries = appVM.popupEntriesSnapshot(item)
-                                if (entries.isEmpty()) snackbarHostState.showSnackbar(
-                                    "Nothing to show for this item",
-                                    duration = SnackbarDuration.Short
-                                ) else {
-                                    // When swiping, the 'parent' for items inside this popup is 'item' (if it's a Tag)
-                                    val anchor = anchorBottomY ?: n
-                                    viewVM.setMenu(
-                                        MenuState.Popup(
-                                            entries, n, item as? LauncherItem.Tag, anchorBottomY = anchor
-                                        )
-                                    )
-                                }
-                            }
-                        } ?: return@detectHorizontalDragGestures
-                    }
+            .onSwipeRight(item, parent) { n ->
+                scope.launch {
+                    val entries = appVM.popupEntriesSnapshot(item)
+                    if (entries.isEmpty()) snackbarHostState.showSnackbar("Nothing to show for this item", duration = SnackbarDuration.Short)
+                    // Items inside the popup get 'item' (if it's a Tag) as their parent.
+                    else viewVM.setMenu(MenuState.Popup(entries, n, item as? LauncherItem.Tag, anchorBottomY = anchorBottomY ?: n))
                 }
             }
     )
@@ -514,6 +492,22 @@ fun CustomLauncherSnackbar(snackbarData: SnackbarData) {
                         )
                     ), color = MaterialTheme.colorScheme.onSurface
                 )
+            }
+        }
+    }
+}
+
+/** Right swipe (> 50 px) on this element: [onSwipe] once per drag, with the element's bottom in window px. */
+fun Modifier.onSwipeRight(vararg keys: Any?, enabled: Boolean = true, onSwipe: (bottomY: Float) -> Unit) = composed {
+    var layoutCoordinates: LayoutCoordinates? = null
+    var fired by remember { mutableStateOf(false) }
+    onGloballyPositioned { layoutCoordinates = it }.pointerInput(*keys) {
+        detectHorizontalDragGestures(onDragStart = { fired = false }) { change, drag ->
+            if (!enabled || fired || drag <= 50f) return@detectHorizontalDragGestures
+            layoutCoordinates?.boundsInWindow()?.bottom?.let { y ->
+                fired = true
+                change.consume()
+                onSwipe(y)
             }
         }
     }

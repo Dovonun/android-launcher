@@ -18,7 +18,16 @@ and then a second `when` with dead `-> Unit` arms.
 - One `AnchoredPopup(anchorY, rows, onDismiss) { panel -> ... }`: the shell hands the content the
   positioned panel modifier; each popup keeps its own list (Column vs LazyColumn) and empty state.
   TagPreviewPopup keeps its own math (different row heights).
+- One `Modifier.onSwipeRight(keys, enabled) { bottomY -> }` for the three rows that open a popup
+  on a right swipe (IconRow, the picker's app row, the tag manager row); same 50 px threshold,
+  once per drag, same captured-state behavior as the copies.
 - One `when (val v = currentView)` for all screens.
+- ReorderRow (ManageTag) is `LauncherRowLayout(item, label = tag name, overflow = Clip)`.
+- One launch-target resolver (`resolveLaunchTarget`) for launching and for the sheet's app actions;
+  on a representative cycle (never built by tagViewOf) it now returns the RECURSION placeholder
+  instead of throwing.
+- The picker's confirm builds its additions with one filter over tags, apps, then opened shortcuts
+  (same order as the three loops it replaces).
 - Small cleanups: `AppsVM.updateOrder` (an alias of `syncTagItemsToList`) removed; defensive
   `toList()` copies of immutable lists removed; one redundant Box/Row level in TagManagerScreen.
 
