@@ -7,7 +7,7 @@ import com.ni.launcher.model.ItemKey
 import com.ni.launcher.model.ShortcutNode
 
 /**
- * UI row model, produced by [com.ni.launcher.model.Projections] from graph snapshots.
+ * UI row model, produced by the projections in model/Projections.kt from graph snapshots.
  * Plain values (no lambdas, no framework objects), so `equals` works and StateFlows dedupe.
  */
 sealed interface LauncherItem {

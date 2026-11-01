@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import com.ni.launcher.model.Command
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -31,9 +30,7 @@ class PinShortcutActivity : ComponentActivity() {
             if (!accepted) return
             app.appScope.launch {
                 try {
-                    val queued = app.graphStore.dispatch(
-                        Command.PinShortcut(shortcut.`package`, shortcut.id, shortcut.shortLabel?.toString())
-                    )
+                    val queued = app.graphStore.pinShortcut(shortcut.`package`, shortcut.id, shortcut.shortLabel?.toString())
                     check(queued) { "graph store inbox closed" }
                     withContext(NonCancellable) { app.graphStore.flush() }
                 } catch (e: CancellationException) {

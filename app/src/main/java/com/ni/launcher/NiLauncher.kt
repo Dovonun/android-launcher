@@ -6,7 +6,6 @@ import androidx.room.Room
 import com.ni.launcher.data.AppDatabase
 import com.ni.launcher.data.RoomGraphPersister
 import com.ni.launcher.model.LauncherGraphStore
-import com.ni.launcher.model.LauncherProjections
 import com.ni.launcher.system.SystemSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -35,13 +34,10 @@ class NiLauncher : Application() {
 
     /**
      * In-memory launcher graph: the single source of truth for tags and system data. Created once
-     * in [onCreate]; loads Room on IO, then writes behind (see RoomGraphPersister).
+     * in [onCreate]; loads Room on IO, then writes behind (see RoomGraphPersister). Also holds the
+     * UI projections.
      */
     lateinit var graphStore: LauncherGraphStore
-        private set
-
-    /** UI projections of [graphStore] (Eagerly shared in [appScope]). */
-    lateinit var projections: LauncherProjections
         private set
 
     /** LauncherApps -> SystemChanged adapter; started in [onCreate], work runs on IO. */
@@ -50,13 +46,7 @@ class NiLauncher : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val persister = RoomGraphPersister(database, appScope)
-        graphStore = LauncherGraphStore(
-            scope = appScope,
-            persister = persister,
-            onError = { cmd, e -> Log.wtf(LOG_TAG, "graph store error (cmd=$cmd)", e) },
-        )
-        projections = LauncherProjections(graphStore, appScope)
+        graphStore = LauncherGraphStore(appScope, RoomGraphPersister(database, appScope))
         systemSource = SystemSource(this, graphStore, appScope).also { it.start() }
     }
 
