@@ -38,12 +38,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,9 +78,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 private data class TagPreviewPopupState(
     val tag: LauncherItem.Tag,
@@ -94,17 +90,13 @@ fun TagManagerScreen(
     appsVM: AppsVM,
     viewVM: ViewVM
 ) {
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val density = LocalDensity.current
 
-    val initialTags by produceState(initialValue = emptyList<LauncherItem.Tag>()) {
-        value = appsVM.allTags.first()
-    }
-    var tags by remember(initialTags) { mutableStateOf(initialTags) }
+    val tags by appsVM.allTags.collectAsState()
     var editingTagId by remember { mutableStateOf<Long?>(null) }
     var editHasFocused by remember { mutableStateOf(false) }
     var editValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -129,8 +121,7 @@ fun TagManagerScreen(
         val trimmed = editValue.text.trim()
         cancelRename()
         if (trimmed.isEmpty() || trimmed == tag.name) return
-        tags = tags.map { if (it.id == tag.id) it.copy(name = trimmed) else it }
-        scope.launch(Dispatchers.IO) { appsVM.renameTag(tag.id, trimmed) }
+        appsVM.renameTag(tag.id, trimmed)
     }
 
     val onDelete: (LauncherItem.Tag) -> Unit = { tag ->
@@ -139,8 +130,7 @@ fun TagManagerScreen(
     val confirmDelete: (LauncherItem.Tag) -> Unit = { tag ->
         deleteCandidate = null
         editingTagId = if (editingTagId == tag.id) null else editingTagId
-        tags = tags.filterNot { it.id == tag.id }
-        scope.launch(Dispatchers.IO) { appsVM.deleteTag(tag.id) }
+        appsVM.deleteTag(tag.id)
     }
 
     BackHandler {
@@ -235,7 +225,7 @@ fun TagManagerScreen(
                                     layoutCoordinates?.boundsInWindow()?.bottom?.let { y ->
                                         fired = true
                                         change.consume()
-                                        val entries = tag.items
+                                        val entries = appsVM.tagItems(tag.id)
                                         if (entries.isEmpty()) {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         }
@@ -334,7 +324,7 @@ fun TagManagerScreen(
                             }
                         }
                         Text(
-                            text = tag.items.size.toString(),
+                            text = tag.count.toString(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(end = H_PAD2.dp)
                         )
@@ -375,11 +365,9 @@ fun TagManagerScreen(
         TagPreviewPopup(
             popup = popup,
             onManage = {
-                scope.launch {
-                    val latest = appsVM.getTag(popup.tag.id).first() ?: return@launch
-                    popupState = null
-                    viewVM.setView(View.ManageTag(latest, latest.items))
-                }
+                val latest = appsVM.tagSnapshot(popup.tag.id)
+                popupState = null
+                if (latest != null) viewVM.setView(View.ManageTag(latest, appsVM.tagItems(latest.id)))
             },
             onDismiss = { popupState = null }
         )

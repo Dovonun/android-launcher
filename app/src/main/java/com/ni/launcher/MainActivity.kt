@@ -274,6 +274,12 @@ class MainActivity : ComponentActivity() {
         viewVM.softReset()
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Persist pending graph edits when the launcher leaves the foreground.
+        (application as NiLauncher).flushGraphAsync()
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
