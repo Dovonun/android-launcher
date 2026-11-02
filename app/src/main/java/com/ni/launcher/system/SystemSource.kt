@@ -47,7 +47,7 @@ const val SYSTEM_REFRESH_COALESCE_MS = 150L
 private const val ICON_BATCH = 32
 private const val LOADED_WAIT_MS = 500L
 private const val E2E_HOLD_TAG = "NiE2EHoldShortcuts"
-private const val E2E_HOLD_SHORTCUTS_MS = 30_000L
+private const val E2E_HOLD_MAX_MS = 600_000L
 
 /**
  * Adapter from LauncherApps to the graph store (design doc §3, §8). All IPC, label loading and
@@ -433,15 +433,16 @@ class SystemSource(
         if (prev == next) prev else next
 
     /**
-     * Debuggable builds only: `adb shell setprop log.tag.NiE2EHoldShortcuts DEBUG` delays stage 4
-     * by [E2E_HOLD_SHORTCUTS_MS], so the e2e test can reliably act while apps are known but
-     * shortcuts are not (the window is often too short on a warm start).
+     * Debuggable builds only: while `adb shell setprop log.tag.NiE2EHoldShortcuts DEBUG` is set,
+     * stage 4 waits until the test clears it (at most [E2E_HOLD_MAX_MS]), so the e2e test can act
+     * while apps are known but shortcuts are not, however slow the device is. (A fixed 30 s hold
+     * raced the test on the TCG emulator: see docs/adr/0007.)
      */
     private suspend fun e2eHoldShortcuts() {
         val debuggable = appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (debuggable && Log.isLoggable(E2E_HOLD_TAG, Log.DEBUG)) {
-            Log.w(E2E_HOLD_TAG, "holding shortcut discovery for ${E2E_HOLD_SHORTCUTS_MS} ms")
-            delay(E2E_HOLD_SHORTCUTS_MS)
+            Log.w(E2E_HOLD_TAG, "holding shortcut discovery until log.tag.$E2E_HOLD_TAG is cleared")
+            withTimeoutOrNull(E2E_HOLD_MAX_MS) { while (Log.isLoggable(E2E_HOLD_TAG, Log.DEBUG)) delay(250) }
         }
     }
 
