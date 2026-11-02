@@ -245,8 +245,6 @@ class MainActivity : ComponentActivity() {
                                             item { Spacer(modifier = Modifier.height(48.dp)) }
                                         }
                                     }
-
-                                    else -> Unit
                                 }
                                 LetterBar(
                                     letters = remember(allApps) { allApps.keys.toList() },
