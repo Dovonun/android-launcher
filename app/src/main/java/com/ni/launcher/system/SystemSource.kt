@@ -94,6 +94,8 @@ class SystemSource(
     private val mutex = Mutex()
     /** Last SystemData this source dispatched. Written only under [mutex]. */
     @Volatile private var current: SystemData = SystemData.EMPTY
+    /** The last all-package shortcut query was refused (not the home app). See [onForeground]. */
+    @Volatile private var shortcutsRefused = false
 
     private var thread: HandlerThread? = null
     private var job: Job? = null
@@ -151,6 +153,18 @@ class SystemSource(
      */
     fun requestRefresh() {
         refresh.trySend(Unit)
+    }
+
+    /**
+     * Call when the launcher comes to the foreground. Android sends no onShortcutsChanged to a
+     * launcher that is not the home app, so after the user makes us home the shortcuts would stay
+     * empty until a restart: re-read them once if the last query was refused and we may now read.
+     */
+    fun onForeground() {
+        if (!shortcutsRefused || !launcherApps.hasShortcutHostPermission()) return
+        shortcutsRefused = false
+        Log.i(LOG_TAG, "shortcut host permission granted; re-reading shortcuts")
+        requestRefresh()
     }
 
     private fun changed(pkg: String?) {
@@ -214,7 +228,8 @@ class SystemSource(
             e2eHoldShortcuts()
             var infos: List<ShortcutInfo> = emptyList()
             stage(4, "shortcuts", t0) { cur ->
-                infos = queryShortcuts(null) ?: return@stage cur
+                infos = queryShortcuts(null) ?: run { shortcutsRefused = true; return@stage cur }
+                shortcutsRefused = false
                 cur.copy(shortcuts = reuseShortcutMap(cur.shortcuts, infos.groupBy { it.`package` }, decode = false))
             }
 
