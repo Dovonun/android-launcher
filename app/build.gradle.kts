@@ -136,6 +136,13 @@ dependencies {
 
 
 }
+kapt {
+    arguments {
+        // Room schema export (committed under app/schemas) so future version bumps get real migrations.
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
 configurations.all {
     resolutionStrategy {
         force("org.jetbrains:annotations:23.0.0")

@@ -38,12 +38,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,9 +78,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 private data class TagPreviewPopupState(
     val tag: LauncherItem.Tag,
@@ -94,17 +90,13 @@ fun TagManagerScreen(
     appsVM: AppsVM,
     viewVM: ViewVM
 ) {
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val density = LocalDensity.current
 
-    val initialTags by produceState(initialValue = emptyList<LauncherItem.Tag>()) {
-        value = appsVM.allTags.first()
-    }
-    var tags by remember(initialTags) { mutableStateOf(initialTags) }
+    val tags by appsVM.allTags.collectAsState()
     var editingTagId by remember { mutableStateOf<Long?>(null) }
     var editHasFocused by remember { mutableStateOf(false) }
     var editValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -129,18 +121,13 @@ fun TagManagerScreen(
         val trimmed = editValue.text.trim()
         cancelRename()
         if (trimmed.isEmpty() || trimmed == tag.name) return
-        tags = tags.map { if (it.id == tag.id) it.copy(name = trimmed) else it }
-        scope.launch(Dispatchers.IO) { appsVM.renameTag(tag.id, trimmed) }
+        appsVM.renameTag(tag.id, trimmed)
     }
 
-    val onDelete: (LauncherItem.Tag) -> Unit = { tag ->
-        deleteCandidate = tag
-    }
     val confirmDelete: (LauncherItem.Tag) -> Unit = { tag ->
         deleteCandidate = null
         editingTagId = if (editingTagId == tag.id) null else editingTagId
-        tags = tags.filterNot { it.id == tag.id }
-        scope.launch(Dispatchers.IO) { appsVM.deleteTag(tag.id) }
+        appsVM.deleteTag(tag.id)
     }
 
     BackHandler {
@@ -158,36 +145,20 @@ fun TagManagerScreen(
         lastEditingTagId = currentId
     }
 
+    // Centers the tags when they all fit, else keeps the usual 1/8 screen bottom gap.
     val listContentPadding by remember(listState, tags, density, screenHeight) {
         derivedStateOf {
             val minPadding = 1f / 8f * screenHeight
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
             val totalCount = layoutInfo.totalItemsCount
-            if (totalCount == 0) {
-                return@derivedStateOf androidx.compose.foundation.layout.PaddingValues(
-                    top = minPadding,
-                    bottom = minPadding
-                )
-            }
-            if (visibleItems.size == totalCount && layoutInfo.viewportSize.height > 0) {
+            val padding = if (totalCount > 0 && visibleItems.size == totalCount && layoutInfo.viewportSize.height > 0) {
                 val spacingPx = with(density) { 6.dp.toPx() }
-                val contentHeightPx = visibleItems.sumOf { it.size } +
-                    spacingPx * (visibleItems.size - 1).coerceAtLeast(0)
-                val centerPaddingPx =
-                    ((layoutInfo.viewportSize.height - contentHeightPx) / 2f).coerceAtLeast(0f)
-                val centerPadding = with(density) { centerPaddingPx.toDp() }
-                val finalPadding = if (centerPadding > minPadding) centerPadding else minPadding
-                androidx.compose.foundation.layout.PaddingValues(
-                    top = finalPadding,
-                    bottom = finalPadding
-                )
-            } else {
-                androidx.compose.foundation.layout.PaddingValues(
-                    top = minPadding,
-                    bottom = minPadding
-                )
-            }
+                val contentHeightPx = visibleItems.sumOf { it.size } + spacingPx * (visibleItems.size - 1).coerceAtLeast(0)
+                val centerPadding = with(density) { ((layoutInfo.viewportSize.height - contentHeightPx) / 2f).coerceAtLeast(0f).toDp() }
+                if (centerPadding > minPadding) centerPadding else minPadding
+            } else minPadding
+            androidx.compose.foundation.layout.PaddingValues(top = padding, bottom = padding)
         }
     }
 
@@ -207,8 +178,6 @@ fun TagManagerScreen(
             ) { tag ->
                 val isSystem = tag.id == TAG.FAV || tag.id == TAG.PINNED
                 val isEditing = editingTagId == tag.id
-                var layoutCoordinates: LayoutCoordinates? = null
-                var fired by remember { mutableStateOf(false) }
                 val focusRequester = remember(tag.id) { FocusRequester() }
 
                 val rowAlpha = if (isSystem) 0.55f else 1f
@@ -219,30 +188,17 @@ fun TagManagerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .alpha(rowAlpha)
-                        .onGloballyPositioned { coordinates -> layoutCoordinates = coordinates }
                         .pointerInput(tag) {
                             detectTapGestures(
                                 onLongPress = {
-                                    if (!isSystem && !isEditing) onDelete(tag)
+                                    if (!isSystem && !isEditing) deleteCandidate = tag
                                 }
                             )
                         }
-                        .pointerInput(tag) {
-                            detectHorizontalDragGestures(onDragStart = { fired = false }) { change, drag ->
-                                if (isEditing) return@detectHorizontalDragGestures
-                                if (fired) return@detectHorizontalDragGestures
-                                if (drag > 50f) {
-                                    layoutCoordinates?.boundsInWindow()?.bottom?.let { y ->
-                                        fired = true
-                                        change.consume()
-                                        val entries = tag.items
-                                        if (entries.isEmpty()) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        }
-                                        popupState = TagPreviewPopupState(tag, entries, y)
-                                    }
-                                }
-                            }
+                        .onSwipeRight(tag, enabled = !isEditing) { y ->
+                            val entries = appsVM.tagItems(tag.id)
+                            if (entries.isEmpty()) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            popupState = TagPreviewPopupState(tag, entries, y)
                         }
                         .padding(vertical = 6.dp)
                 ) {
@@ -302,39 +258,32 @@ fun TagManagerScreen(
                     } else {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    RowLabel(tag.name)
-                                    if (isSystem) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "System tag",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            painter = painterResource(
-                                                id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
-                                            ),
-                                            contentDescription = "Rename tag",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .size(18.dp)
-                                                .clickable { startRename(tag) }
-                                        )
-                                    }
-                                }
+                            RowLabel(tag.name)
+                            if (isSystem) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "System tag",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(
+                                        id = R.drawable.edit_24dp_e3e3e3_fill0_wght400_grad0_opsz24
+                                    ),
+                                    contentDescription = "Rename tag",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { startRename(tag) }
+                                )
                             }
                         }
                         Text(
-                            text = tag.items.size.toString(),
+                            text = tag.count.toString(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(end = H_PAD2.dp)
                         )
@@ -375,11 +324,9 @@ fun TagManagerScreen(
         TagPreviewPopup(
             popup = popup,
             onManage = {
-                scope.launch {
-                    val latest = appsVM.getTag(popup.tag.id).first() ?: return@launch
-                    popupState = null
-                    viewVM.setView(View.ManageTag(latest, latest.items))
-                }
+                val latest = appsVM.tagSnapshot(popup.tag.id)
+                popupState = null
+                if (latest != null) viewVM.setView(View.ManageTag(latest, appsVM.tagItems(latest.id)))
             },
             onDismiss = { popupState = null }
         )
